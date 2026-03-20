@@ -1,0 +1,55 @@
+god_swarms:
+  - id: "gs-appforge-fixes-20260224"
+    created: "2026-02-24T05:08:00Z"
+    objective: "Fix remaining 1,145 TypeScript errors in AppForge"
+    status: "active"
+    project: "D:\\appforge-main"
+    target_errors: 1145
+    
+    sub_swarms:
+      - id: "ts-pages"
+        type: "code-archaeology"
+        objective: "Fix src/pages/*.jsx errors"
+        status: "running"
+        files: ["Components.jsx", "Projects.jsx", "TokenCreator.jsx", "ContractBuilder.jsx", "NFTStudio.jsx"]
+        
+      - id: "ts-functions"
+        type: "code-archaeology"
+        objective: "Fix functions/*.ts errors"
+        status: "running"
+        files: ["continuousProjectMonitoring.ts", "deployBot.ts", "executeAdvancedWorkflow.ts", "executeBotWorkflow.ts", "monitorResourceUsage.ts", "runProjectDiagnostics.ts"]
+        
+      - id: "ts-reactquery"
+        type: "code-archaeology"
+        objective: "Fix React Query v5 invalidateQueries"
+        status: "running"
+        pattern: "invalidateQueries"
+        
+      - id: "ts-base44"
+        type: "code-archaeology"
+        objective: "Fix base44 SDK types"
+        status: "running"
+        deliverable: "src/types/base44.d.ts"
+        
+      - id: "ts-components"
+        type: "code-archaeology"
+        objective: "Fix component prop types"
+        status: "running"
+        files: ["src/components/**/*.tsx"]
+    
+    next_phase:
+      - id: "security-final"
+        type: "security-audit"
+        objective: "Fix remaining vulnerabilities"
+        status: "queued"
+        
+      - id: "openrouter-integration"
+        type: "feature-forge"
+        objective: "Wire OpenRouter LLM to AppForge"
+        status: "queued"
+        depends_on: ["ts-fixes-complete"]
+    
+    credentials:
+      note: "Secured internally - not exposed in logs"
+      openrouter: "configured"
+      github: "configured"

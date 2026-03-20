@@ -1,0 +1,27 @@
+{
+  "name": "quantumskill",
+  "version": "1.0.0",
+  "description": "Quantum Engine integration for complex reasoning and swarm orchestration",
+  "claws": {
+    "tools": {
+      "quantum_solve": {
+        "description": "Actively use the local CHIMERA Quantum Engine (port 7870) and Qiskit Swarm Orchestration for complex tasks.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "task": {
+              "type": "string",
+              "description": "The complex problem, coding task, or architectural query to solve."
+            },
+            "domain": {
+              "type": "string",
+              "description": "The general domain of the task (e.g., coding, math, architecture)."
+            }
+          },
+          "required": ["task", "domain"]
+        },
+        "command": "D:\\appforge-main\\.venv\\Scripts\\python.exe D:\\openclaw\\skills\\quantumskill\\quantum_tool.py"
+      }
+    }
+  }
+}

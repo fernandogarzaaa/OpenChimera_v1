@@ -1,0 +1,23 @@
+{
+  "name": "hyper_intelligence",
+  "version": "1.0.0",
+  "description": "Quantum Tree of Thoughts (Q-ToT) algorithm for ultra-deep reasoning and hyper-intelligence.",
+  "claws": {
+    "tools": {
+      "hyper_reason": {
+        "description": "Activate Hyper Intelligence mode. Uses a Quantum Tree of Thoughts (Q-ToT) algorithm to generate multiple parallel reasoning paths, detect semantic entanglement, and mathematically collapse them into the ultimate truth using Qiskit.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "The highly complex problem requiring hyper-intelligence."
+            }
+          },
+          "required": ["query"]
+        },
+        "command": "D:\\appforge-main\\.venv\\Scripts\\python.exe D:\\openclaw\\skills\\hyper_intelligence\\hyper_tool.py"
+      }
+    }
+  }
+}

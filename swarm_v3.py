@@ -563,15 +563,11 @@ class SwarmV3:
                 if dep_id not in results:
                     raise ValueError(f"Dependency not met: {dep_id}")
             
-            try:
-                result = await self.execute_task(task, current_context)
-                results[task.task_id] = result
-                # Update context with result for next task
-                current_context[f"result_{task.task_id}"] = result["result"]
-            except Exception as e:
-                print(f"⚠️ Task {task.task_id} failed, skipping: {e}")
-                results[task.task_id] = {"error": str(e)}
+            result = await self.execute_task(task, current_context)
+            results[task.task_id] = result
             
+            # Update context with result for next task
+            current_context[f"result_{task.task_id}"] = result["result"]
             current_context = optimize_context(current_context, token_threshold=4000)
         
         return results
@@ -579,14 +575,9 @@ class SwarmV3:
     async def _execute_parallel(self, tasks: List[Task], context: Dict[str, Any]) -> Dict[str, Any]:
         """Execute tasks in parallel"""
         context = optimize_context(context, token_threshold=4000)
-        
         async def run_task(task: Task) -> Tuple[str, Dict[str, Any]]:
-            try:
-                result = await self.execute_task(task, context)
-                return task.task_id, result
-            except Exception as e:
-                print(f"⚠️ Task {task.task_id} failed, skipping: {e}")
-                return task.task_id, {"error": str(e)}
+            result = await self.execute_task(task, context)
+            return task.task_id, result
         
         # Sort by priority
         sorted_tasks = sorted(tasks, key=lambda t: t.priority.value, reverse=True)

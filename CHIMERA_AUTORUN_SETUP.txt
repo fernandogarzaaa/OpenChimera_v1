@@ -1,0 +1,42 @@
+# CHIMERA Ultimate Server Auto-Start Configuration (Manual Steps)
+
+The CHIMERA Ultimate server is currently running on port 7870 (session swift-coral exited successfully). To ensure it starts automatically every time Windows boots, please follow these steps to create a Scheduled Task:
+
+**1. Locate the Startup Script:**
+The script to run is: `D:\openclaw\start_chimera_ultimate.bat`
+
+**2. Open Task Scheduler:**
+*   Press `Win + R`, type `taskschd.msc`, and press Enter.
+*   Alternatively, search for "Task Scheduler" in the Start Menu.
+
+**3. Create the Task:**
+*   In the right-hand pane, click **"Create Task..."** (not Basic Task).
+
+**4. General Tab Settings:**
+*   **Name:** `OpenClaw_CHIMERA_Ultimate_Server`
+*   **Description:** Auto-starts the CHIMERA LLM server on system boot.
+*   **Security Options:** Select **"Run whether user is logged on or not"**.
+*   Check the box for **"Run with highest privileges"**.
+*   Configure for: **Windows 10/11** (or your current OS version).
+
+**5. Triggers Tab Settings:**
+*   Click **"New..."**.
+*   Begin the task: **"At startup"**.
+*   Ensure it is **Enabled**. Click OK.
+
+**6. Actions Tab Settings:**
+*   Click **"New..."**.
+*   Action: **"Start a program"**.
+*   **Program/script:** Enter the full path to your startup script: `D:\openclaw\start_chimera_ultimate.bat`
+*   Click OK.
+
+**7. Settings Tab (Optional but Recommended):**
+*   Check **"If the task fails, restart every:"** and set it to **1 minute**.
+*   Set "Attempt to restart up to: **3 times**".
+
+**8. Save the Task:**
+*   Click **OK** at the bottom. You may be prompted to enter your user password to save the task with highest privileges.
+
+Once saved, the CHIMERA server will launch automatically every time the system starts up.
+
+Let me know if you get stuck on any step, and I can try to guide you through that specific part!

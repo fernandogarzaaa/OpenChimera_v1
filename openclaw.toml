@@ -1,0 +1,6 @@
+[plugin:lossless]
+enabled = true
+memory_dir = "D:\\openclaw\\memory\\lcm"
+strategy = "infinite"
+max_active_tokens = 8000
+compression = true

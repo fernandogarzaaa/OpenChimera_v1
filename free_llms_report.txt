@@ -1,0 +1,23 @@
+No new free LLMs were detected in the latest sweep.
+
+However, based on the current `chimera_free_fallbacks.json` roster, CHIMERA should prioritize these highly capable free models for fallback routing:
+
+1. Nous: Hermes 3 405B Instruct (nousresearch/hermes-3-llama-3.1-405b:free)
+- Massive 405B parameter class
+- 131k context window
+- Strengths: General, Coding
+
+2. NVIDIA: Nemotron 3 Super (nvidia/nemotron-3-super-120b-a12b:free)
+- 120B parameter class
+- Massive 262k context window
+- Strengths: General
+
+3. Qwen: Qwen3 Next 80B A3B Instruct (qwen/qwen3-next-80b-a3b-instruct:free)
+- 80B parameter class
+- Massive 262k context window
+- Strengths: General, Coding
+
+4. Meta: Llama 3.3 70B Instruct (meta-llama/llama-3.3-70b-instruct:free)
+- 70B parameter class
+- 65k context window
+- Strengths: General, Coding

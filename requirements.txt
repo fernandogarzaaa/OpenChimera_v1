@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+requests
+token_fracture
+swarm_v2
+smart_router
+quantum_consensus_v2
+simple_rag
+qwen-agent
+qwen_agent
+# Note: Other dependencies like numpy, httpx are likely pulled in by these core libs.
