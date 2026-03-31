@@ -16,9 +16,15 @@ LOGGER = logging.getLogger(__name__)
 
 
 class _ProviderHTTPServer(ThreadingHTTPServer):
-    def __init__(self, server_address: tuple[str, int], provider: OpenChimeraProvider):
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        provider: OpenChimeraProvider,
+        system_status_provider: callable | None = None,
+    ):
         super().__init__(server_address, _ProviderRequestHandler)
         self.provider = provider
+        self.system_status_provider = system_status_provider
 
 
 class _ProviderRequestHandler(BaseHTTPRequestHandler):
@@ -45,6 +51,30 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/v1/autonomy/status":
             self._write_json(self.server.provider.autonomy_status())
+            return
+        if self.path == "/v1/model-registry/status":
+            self._write_json(self.server.provider.model_registry_status())
+            return
+        if self.path == "/v1/onboarding/status":
+            self._write_json(self.server.provider.onboarding_status())
+            return
+        if self.path == "/v1/integrations/status":
+            self._write_json(self.server.provider.integration_status())
+            return
+        if self.path == "/v1/aegis/status":
+            self._write_json(self.server.provider.aegis_status())
+            return
+        if self.path == "/v1/ascension/status":
+            self._write_json(self.server.provider.ascension_status())
+            return
+        if self.path == "/v1/briefings/daily":
+            self._write_json(self.server.provider.daily_briefing())
+            return
+        if self.path == "/v1/system/status":
+            if self.server.system_status_provider is None:
+                self._write_json({"error": "System status unavailable"}, status=HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            self._write_json(self.server.system_status_provider())
             return
         self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
 
@@ -87,6 +117,31 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             self._write_json(self.server.provider.stop_local_models(requested_models))
             return
 
+        if self.path == "/v1/model-registry/refresh":
+            self._write_json(self.server.provider.refresh_model_registry())
+            return
+
+        if self.path == "/v1/aegis/run":
+            self._write_json(
+                self.server.provider.run_aegis_workflow(
+                    target_project=str(payload.get("target_project") or "") or None,
+                    preview=bool(payload.get("preview", True)),
+                )
+            )
+            return
+
+        if self.path == "/v1/ascension/deliberate":
+            raw_perspectives = payload.get("perspectives")
+            perspectives = [str(item) for item in raw_perspectives] if isinstance(raw_perspectives, list) else None
+            self._write_json(
+                self.server.provider.deliberate(
+                    prompt=str(payload.get("prompt", "")),
+                    perspectives=perspectives,
+                    max_tokens=int(payload.get("max_tokens", 256)),
+                )
+            )
+            return
+
         if self.path == "/v1/autonomy/start":
             self._write_json(self.server.provider.start_autonomy())
             return
@@ -101,6 +156,27 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
 
         if self.path == "/v1/minimind/dataset/build":
             self._write_json(self.server.provider.build_minimind_dataset(force=bool(payload.get("force", True))))
+            return
+
+        if self.path == "/v1/minimind/server/start":
+            self._write_json(self.server.provider.start_minimind_server())
+            return
+
+        if self.path == "/v1/minimind/server/stop":
+            self._write_json(self.server.provider.stop_minimind_server())
+            return
+
+        if self.path == "/v1/minimind/training/start":
+            self._write_json(
+                self.server.provider.start_minimind_training(
+                    mode=str(payload.get("mode", "reason_sft")),
+                    force_dataset=bool(payload.get("force_dataset", False)),
+                )
+            )
+            return
+
+        if self.path == "/v1/minimind/training/stop":
+            self._write_json(self.server.provider.stop_minimind_training(str(payload.get("job_id", ""))))
             return
 
         self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
@@ -168,10 +244,17 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
 
 
 class OpenChimeraAPIServer:
-    def __init__(self, provider: OpenChimeraProvider, host: str | None = None, port: int | None = None):
+    def __init__(
+        self,
+        provider: OpenChimeraProvider,
+        host: str | None = None,
+        port: int | None = None,
+        system_status_provider: callable | None = None,
+    ):
         self.provider = provider
         self.host = host or get_provider_host()
         self.port = port or get_provider_port()
+        self.system_status_provider = system_status_provider
         self.server: _ProviderHTTPServer | None = None
         self.thread: threading.Thread | None = None
 
@@ -180,7 +263,11 @@ class OpenChimeraAPIServer:
             return True
 
         try:
-            self.server = _ProviderHTTPServer((self.host, self.port), self.provider)
+            self.server = _ProviderHTTPServer(
+                (self.host, self.port),
+                self.provider,
+                system_status_provider=self.system_status_provider,
+            )
         except OSError as exc:
             LOGGER.exception("Failed to bind OpenChimera API server.")
             return False

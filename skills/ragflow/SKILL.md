@@ -1,3 +1,8 @@
+---
+name: "ragflow"
+description: Bridge skill for the local RagFlow workspace mirrored under D:\openclaw\skills\ragflow. Use when the task requires deeper retrieval pipeline design, document ingestion patterns, or RagFlow interoperability.
+---
+
 # ragflow
 
 ## Description

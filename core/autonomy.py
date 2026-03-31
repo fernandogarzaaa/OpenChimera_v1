@@ -148,7 +148,8 @@ class AutonomyScheduler:
 
         openclaw_names = sorted(path.name for path in openclaw_skills.iterdir() if path.is_dir()) if openclaw_skills.exists() else []
         openchimera_names = sorted(path.name for path in openchimera_skills.iterdir() if path.is_dir()) if openchimera_skills.exists() else []
-        missing = sorted(name for name in openclaw_names if name not in set(openchimera_names))
+        openchimera_slug_map = {self._skill_slug(name): name for name in openchimera_names}
+        missing = sorted(name for name in openclaw_names if self._skill_slug(name) not in openchimera_slug_map)
         payload = {
             "status": "ok",
             "openclaw_skill_count": len(openclaw_names),
@@ -160,6 +161,9 @@ class AutonomyScheduler:
         }
         target_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         return payload
+
+    def _skill_slug(self, name: str) -> str:
+        return name.strip().lower().replace(" ", "-")
 
     def _refresh_harness_dataset(self) -> dict[str, Any]:
         manifest = self.minimind.build_training_dataset(

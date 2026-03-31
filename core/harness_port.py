@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from core.config import get_harness_repo_root, get_legacy_harness_snapshot_root
+from core.config import get_harness_repo_root, get_legacy_harness_snapshot_root, is_supported_harness_repo_root
 
 
 class HarnessPortAdapter:
@@ -13,12 +13,15 @@ class HarnessPortAdapter:
         self.root = get_harness_repo_root()
         self.src_root = self.root / "src"
         self.legacy_snapshot_root = get_legacy_harness_snapshot_root()
-        self.available = (self.src_root / "main.py").exists()
+        self.available = is_supported_harness_repo_root(self.root)
         self.error: str | None = None
         self._manifest_module = None
         self._query_engine_module = None
         self._commands_module = None
         self._tools_module = None
+
+        if not self.available:
+            self.error = self._build_unavailable_reason()
 
         if self.available:
             try:
@@ -201,3 +204,22 @@ class HarnessPortAdapter:
         sanitized = sanitized.replace("Claude", "Harness")
         sanitized = sanitized.replace("Anthropic", "upstream vendor")
         return sanitized
+
+    def _build_unavailable_reason(self) -> str:
+        if not self.root.exists():
+            return f"Harness root does not exist: {self.root}"
+        suspicious_markers = [
+            self.root / "extract-sources.js",
+            self.root / "package" / "cli.js",
+            self.root / "package" / "cli.js.map",
+            self.root / "restored-src",
+        ]
+        if any(path.exists() for path in suspicious_markers):
+            return (
+                "Harness root failed safety validation: source-map/package restoration trees are not allowed as live "
+                "OpenChimera harness inputs."
+            )
+        return (
+            "Harness root failed structural validation: expected a Python port workspace with src/main.py, "
+            "src/port_manifest.py, src/query_engine.py, src/commands.py, and src/tools.py."
+        )

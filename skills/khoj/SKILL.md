@@ -1,3 +1,8 @@
+---
+name: "khoj"
+description: Bridge skill for the local Khoj workspace mirrored under D:\openclaw\skills\khoj. Use when the task benefits from local knowledge search, indexing patterns, or Khoj-specific integrations already present on D:.
+---
+
 # khoj
 
 ## Description

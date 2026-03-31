@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from core.autonomy import AutonomyScheduler
+from core.aegis_service import AegisService
+from core.ascension_service import AscensionService
 from core.bus import EventBus
 from core.config import (
     ROOT,
@@ -19,7 +21,9 @@ from core.config import (
     load_runtime_profile,
 )
 from core.harness_port import HarnessPortAdapter
+from core.integration_audit import IntegrationAudit
 from core.local_llm import LocalLLMManager
+from core.model_registry import ModelRegistry
 from core.minimind_service import MiniMindService
 from core.personality import Personality
 from core.rag import Document, SimpleRAG
@@ -47,6 +51,10 @@ class OpenChimeraProvider:
         self.harness_port = HarnessPortAdapter()
         self.minimind = MiniMindService()
         self.autonomy = AutonomyScheduler(self.bus, self.harness_port, self.minimind, self.personality.identity)
+        self.model_registry = ModelRegistry()
+        self.integration_audit = IntegrationAudit()
+        self.aegis = AegisService()
+        self.ascension = AscensionService(self.llm_manager, self.minimind)
         self.started = False
         self.base_url = get_provider_base_url()
         self._seed_knowledge()
@@ -55,13 +63,22 @@ class OpenChimeraProvider:
         if self.started:
             return
         self.llm_manager.start_health_monitoring()
+        self.minimind.refresh_runtime_state()
+        if self.profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("auto_start_server", False):
+            self.minimind.start_server()
         if self.autonomy.should_auto_start():
             self.autonomy.start()
+        self.aegis.start()
+        self.ascension.start()
         self.started = True
         self.bus.publish_nowait("system/provider", self.status())
 
     def stop(self) -> None:
+        self.ascension.stop()
+        self.aegis.stop()
         self.autonomy.stop()
+        if self.profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("shutdown_with_provider", False):
+            self.minimind.stop_server()
         self.llm_manager.stop_health_monitoring()
         self.started = False
 
@@ -126,6 +143,25 @@ class OpenChimeraProvider:
         if any(token in lowered for token in ["quick", "short", "fast"]):
             return "fast"
         return "general"
+
+    def _should_force_fast_path(self, query: str, query_type: str, max_tokens: int) -> bool:
+        if query_type != "general":
+            return False
+        if max_tokens > 64:
+            return False
+        lowered = query.lower()
+        substantive_markers = [
+            "summary",
+            "summarize",
+            "technical",
+            "architecture",
+            "explain",
+            "describe",
+            "overview",
+        ]
+        if any(marker in lowered for marker in substantive_markers):
+            return False
+        return len(query.strip()) <= 120
 
     def _should_skip_retrieval(self, query: str, query_type: str) -> bool:
         lowered = query.lower()
@@ -253,6 +289,84 @@ class OpenChimeraProvider:
     def autonomy_status(self) -> dict[str, Any]:
         return self.autonomy.status()
 
+    def model_registry_status(self) -> dict[str, Any]:
+        return self.model_registry.status()
+
+    def refresh_model_registry(self) -> dict[str, Any]:
+        result = self.model_registry.refresh()
+        self.bus.publish_nowait("system/model-registry", {"action": "refresh", "result": result})
+        return result
+
+    def onboarding_status(self) -> dict[str, Any]:
+        return self.model_registry.onboarding_status()
+
+    def integration_status(self) -> dict[str, Any]:
+        report = self.integration_audit.build_report()
+        engines = report.get("engines", {})
+        if "aegis_swarm" in engines:
+            engines["aegis_swarm"]["integrated_runtime"] = bool(self.aegis.status().get("available"))
+            engines["aegis_swarm"]["bridge_status"] = self.aegis.status()
+        if "ascension_engine" in engines:
+            engines["ascension_engine"]["integrated_runtime"] = True
+            engines["ascension_engine"]["bridge_status"] = self.ascension.status()
+        return report
+
+    def aegis_status(self) -> dict[str, Any]:
+        return self.aegis.status()
+
+    def run_aegis_workflow(self, target_project: str | None = None, preview: bool = True) -> dict[str, Any]:
+        result = self.aegis.run_workflow(target_project=target_project, preview=preview)
+        self.bus.publish_nowait("system/aegis", {"action": "run_workflow", "result": result})
+        return result
+
+    def ascension_status(self) -> dict[str, Any]:
+        return self.ascension.status()
+
+    def deliberate(self, prompt: str, perspectives: list[str] | None = None, max_tokens: int = 256) -> dict[str, Any]:
+        result = self.ascension.deliberate(prompt=prompt, perspectives=perspectives, max_tokens=max_tokens)
+        self.bus.publish_nowait("system/ascension", {"action": "deliberate", "result": result})
+        return result
+
+    def daily_briefing(self) -> dict[str, Any]:
+        integrations = self.integration_status()
+        onboarding = self.onboarding_status()
+        autonomy = self.autonomy_status()
+        llm_status = self.llm_manager.get_status()
+        recent_events = self.bus.recent_events()[-8:]
+        priorities: list[str] = []
+        if onboarding.get("suggested_cloud_models") and onboarding.get("suggested_local_models") == []:
+            priorities.append("Provision a cloud fallback provider because the detected hardware is below the preferred local-only range.")
+        remediation = integrations.get("remediation", [])
+        priorities.extend(remediation[:3])
+        stale_jobs = [
+            name
+            for name, details in autonomy.get("jobs", {}).items()
+            if details.get("enabled") and details.get("last_status") in {"never", "error"}
+        ]
+        if stale_jobs:
+            priorities.append("Autonomy jobs need attention: " + ", ".join(stale_jobs))
+        if llm_status.get("healthy_count", 0) == 0:
+            priorities.append("No healthy local models are currently online.")
+        summary = (
+            f"OpenChimera runtime has {llm_status.get('healthy_count', 0)} healthy local models, "
+            f"MiniMind available={self.minimind.available}, and {len(remediation)} integration gaps still visible."
+        )
+        return {
+            "generated_at": int(time.time()),
+            "summary": summary,
+            "priorities": priorities,
+            "system": {
+                "healthy_local_models": llm_status.get("healthy_count", 0),
+                "known_local_models": llm_status.get("total_count", 0),
+                "minimind": self.minimind_status(),
+                "aegis": self.aegis_status(),
+                "ascension": self.ascension_status(),
+            },
+            "onboarding": onboarding,
+            "integrations": integrations,
+            "recent_events": recent_events,
+        }
+
     def build_minimind_dataset(self, force: bool = True) -> dict[str, Any]:
         result = self.minimind.build_training_dataset(
             self.harness_port,
@@ -260,6 +374,32 @@ class OpenChimeraProvider:
             force=force,
         )
         self.bus.publish_nowait("system/minimind", {"action": "build_dataset", "result": result})
+        return result
+
+    def start_minimind_server(self) -> dict[str, Any]:
+        result = self.minimind.start_server()
+        self.bus.publish_nowait("system/minimind", {"action": "start_server", "result": result})
+        return result
+
+    def stop_minimind_server(self) -> dict[str, Any]:
+        result = self.minimind.stop_server()
+        self.bus.publish_nowait("system/minimind", {"action": "stop_server", "result": result})
+        return result
+
+    def start_minimind_training(self, mode: str = "reason_sft", force_dataset: bool = False) -> dict[str, Any]:
+        if force_dataset:
+            dataset_result = self.build_minimind_dataset(force=True)
+            self.bus.publish_nowait(
+                "system/minimind",
+                {"action": "build_dataset_before_training", "mode": mode, "result": dataset_result},
+            )
+        result = self.minimind.start_training_job(mode=mode, force_dataset=False)
+        self.bus.publish_nowait("system/minimind", {"action": "start_training", "mode": mode, "result": result})
+        return result
+
+    def stop_minimind_training(self, job_id: str) -> dict[str, Any]:
+        result = self.minimind.stop_training_job(job_id)
+        self.bus.publish_nowait("system/minimind", {"action": "stop_training", "job_id": job_id, "result": result})
         return result
 
     def start_autonomy(self) -> dict[str, Any]:
@@ -312,7 +452,7 @@ class OpenChimeraProvider:
         created = int(time.time())
         query = "\n".join(str(item.get("content", "")) for item in messages if item.get("role") == "user").strip()
         query_type = self._infer_query_type(query)
-        if max_tokens <= 128 and query_type == "general":
+        if self._should_force_fast_path(query, query_type, max_tokens):
             query_type = "fast"
         context_messages, compression_stats, documents = self._build_context_messages(
             messages,
@@ -330,7 +470,25 @@ class OpenChimeraProvider:
 
         attempted_models: list[str] = []
         result: dict[str, Any] = {"content": "", "model": None, "error": "No healthy local models available"}
+        if query_type == "reasoning":
+            minimind_result = self.minimind.reasoning_completion(
+                messages=context_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=max(request_timeout, 60.0),
+            )
+            if minimind_result.get("content") and not minimind_result.get("error"):
+                result = {
+                    "content": minimind_result["content"],
+                    "model": minimind_result.get("model", "minimind"),
+                    "query_type": query_type,
+                    "prompt_strategy": "minimind_reasoning",
+                    "route_reason": "minimind-reasoning-engine",
+                }
+
         for _ in range(max_retries + 1):
+            if result.get("content") and not result.get("error"):
+                break
             route = self.router.decide(
                 query=query,
                 query_type=query_type,
@@ -349,6 +507,7 @@ class OpenChimeraProvider:
             result = self.llm_manager.chat_completion(
                 messages=context_messages,
                 model=route.model,
+                query_type=query_type,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 timeout=request_timeout,
@@ -359,6 +518,12 @@ class OpenChimeraProvider:
 
         content = result.get("content") or self._fallback_answer(query, documents, result.get("error"))
         model_used = result.get("model") or model
+        prompt_strategy = result.get("prompt_strategy")
+        prompt_strategies_tried = result.get("prompt_strategies_tried")
+        if prompt_strategy is None and model_used and model_used != "minimind":
+            prompt_strategy = self.llm_manager._prompt_strategy_for_model(str(model_used))
+        if prompt_strategies_tried is None and prompt_strategy is not None:
+            prompt_strategies_tried = [prompt_strategy]
 
         prompt_tokens = sum(_count_tokens(str(item.get("content", ""))) for item in context_messages)
         completion_tokens = _count_tokens(content)
@@ -383,9 +548,13 @@ class OpenChimeraProvider:
                 "compression": compression_stats,
                 "retrieved_documents": [doc.metadata for doc in documents],
                 "fallback_used": bool(result.get("error")),
+                "query_type": query_type,
                 "stream_requested": stream,
                 "attempted_models": attempted_models,
+                "prompt_strategy": prompt_strategy,
+                "prompt_strategies_tried": prompt_strategies_tried,
                 "route_reason": result.get("route_reason"),
+                "minimind_runtime": self.minimind.get_runtime_status(),
             },
         }
         self.bus.publish_nowait(
@@ -396,6 +565,8 @@ class OpenChimeraProvider:
                 "query_type": query_type,
                 "fallback": bool(result.get("error")),
                 "attempted_models": attempted_models,
+                "prompt_strategy": prompt_strategy,
+                "prompt_strategies_tried": prompt_strategies_tried,
             },
         )
         return response
@@ -412,4 +583,9 @@ class OpenChimeraProvider:
             "harness_port": self.harness_port_status(),
             "minimind": self.minimind_status(),
             "autonomy": self.autonomy_status(),
+            "aegis": self.aegis_status(),
+            "ascension": self.ascension_status(),
+            "model_registry": self.model_registry_status(),
+            "onboarding": self.onboarding_status(),
+            "integrations": self.integration_status(),
         }

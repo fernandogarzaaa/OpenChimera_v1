@@ -12,11 +12,31 @@ DEFAULT_AETHER_ROOT = Path(r"D:\Project AETHER")
 DEFAULT_WRAITH_ROOT = Path(r"D:\Project Wraith")
 DEFAULT_EVO_ROOT = Path(r"D:\project-evo")
 DEFAULT_OPENCLAW_ROOT = Path(r"D:\openclaw")
+DEFAULT_AEGIS_ROOT = DEFAULT_OPENCLAW_ROOT / "aegis_swarm"
+DEFAULT_ASCENSION_ROOT = DEFAULT_AEGIS_ROOT
 DEFAULT_HARNESS_REPO_ROOT = Path(r"D:\repos\upstream-harness-repo")
 DEFAULT_LEGACY_HARNESS_SNAPSHOT_ROOT = DEFAULT_OPENCLAW_ROOT / "integrations" / "legacy-harness-snapshot"
 DEFAULT_MINIMIND_ROOT = Path(r"D:\openclaw\research\minimind")
 DEFAULT_PROVIDER_HOST = "127.0.0.1"
 DEFAULT_PROVIDER_PORT = 7870
+
+
+def is_supported_harness_repo_root(candidate: Path) -> bool:
+    src_root = candidate / "src"
+    required_files = [
+        src_root / "main.py",
+        src_root / "port_manifest.py",
+        src_root / "query_engine.py",
+        src_root / "commands.py",
+        src_root / "tools.py",
+    ]
+    blocked_markers = [
+        candidate / "extract-sources.js",
+        candidate / "package" / "cli.js",
+        candidate / "package" / "cli.js.map",
+        candidate / "restored-src",
+    ]
+    return all(path.exists() for path in required_files) and not any(path.exists() for path in blocked_markers)
 
 
 @lru_cache(maxsize=None)
@@ -42,11 +62,19 @@ def get_openclaw_root() -> Path:
     return resolve_root("OPENCLAW_ROOT", DEFAULT_OPENCLAW_ROOT)
 
 
+def get_aegis_root() -> Path:
+    return resolve_root("AEGIS_ROOT", DEFAULT_AEGIS_ROOT)
+
+
+def get_ascension_root() -> Path:
+    return resolve_root("ASCENSION_ROOT", DEFAULT_ASCENSION_ROOT)
+
+
 def get_harness_repo_root() -> Path:
-    configured = os.getenv("OPENCHIMERA_HARNESS_ROOT") or os.getenv("CLAUDE_CODE_ROOT")
+    configured = os.getenv("OPENCHIMERA_HARNESS_ROOT")
     if configured:
         candidate = Path(configured).expanduser()
-        if candidate.exists():
+        if candidate.exists() and is_supported_harness_repo_root(candidate):
             return candidate
     return DEFAULT_HARNESS_REPO_ROOT
 
@@ -58,6 +86,33 @@ def get_legacy_harness_snapshot_root() -> Path:
 
 def get_minimind_root() -> Path:
     return resolve_root("MINIMIND_ROOT", DEFAULT_MINIMIND_ROOT)
+
+
+def get_minimind_python_executable() -> Path:
+    profile = load_runtime_profile()
+    configured = profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("python_executable")
+    if configured:
+        return Path(configured)
+    candidate = get_openclaw_root() / "venv" / "Scripts" / "python.exe"
+    return candidate if candidate.exists() else Path("python")
+
+
+def get_minimind_api_host() -> str:
+    profile = load_runtime_profile()
+    return str(profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("api_host", DEFAULT_PROVIDER_HOST))
+
+
+def get_minimind_api_port() -> int:
+    profile = load_runtime_profile()
+    configured = profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("api_port", 8998)
+    try:
+        return int(configured)
+    except (TypeError, ValueError):
+        return 8998
+
+
+def get_minimind_api_base_url() -> str:
+    return f"http://{get_minimind_api_host()}:{get_minimind_api_port()}"
 
 
 def get_provider_host() -> str:
@@ -129,6 +184,7 @@ def build_identity_snapshot() -> dict[str, Any]:
     local_runtime = runtime_profile.get("local_runtime", {})
     model_inventory = runtime_profile.get("model_inventory", {})
     reasoning_engine = local_runtime.get("reasoning_engine", "unknown")
+    supervision = runtime_profile.get("supervision", {})
     return {
         "root": str(ROOT),
         "provider_url": get_provider_base_url(),
@@ -136,6 +192,7 @@ def build_identity_snapshot() -> dict[str, Any]:
         "hardware": hardware,
         "local_runtime": local_runtime,
         "reasoning_engine": reasoning_engine,
+        "supervision": supervision,
         "launcher": local_runtime.get("launcher", {}),
         "model_inventory": model_inventory,
         "external_roots": {
@@ -143,6 +200,8 @@ def build_identity_snapshot() -> dict[str, Any]:
             "wraith": str(get_wraith_root()),
             "evo": str(get_evo_root()),
             "openclaw": str(get_openclaw_root()),
+            "aegis": str(get_aegis_root()),
+            "ascension": str(get_ascension_root()),
         },
         "integration_roots": {
             "harness_repo": str(get_harness_repo_root()),
