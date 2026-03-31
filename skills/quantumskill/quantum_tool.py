@@ -100,7 +100,7 @@ def main():
             print("\n[Error] Quantum consensus timed out. The local models took too long to vote.")
         except Exception as req_e:
             print(f"\n[Error] Failed to connect to CHIMERA Quantum Engine: {req_e}")
-            print("Make sure D:\\openclaw\\start_chimera_ultimate.bat is running on port 7870.")
+            print("Make sure your local CHIMERA Quantum Engine is running on port 7870.")
             
     except json.JSONDecodeError:
         print(f"[Fatal Error] Failed to parse input parameters. Did you send valid JSON?")

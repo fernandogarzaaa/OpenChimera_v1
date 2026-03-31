@@ -10,7 +10,7 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 try:
     from quantum_consensus_v2 import quantum_consensus, entanglement_detector
 except ImportError:
-    print(json.dumps({"error": "Failed to import quantum_consensus_v2. Ensure D:\\openclaw is in PYTHONPATH."}))
+    print(json.dumps({"error": "Failed to import quantum_consensus_v2. Ensure OpenChimera or the configured OpenClaw root is available on PYTHONPATH."}))
     sys.exit(1)
 
 def query_local_llm(prompt: str, sys_prompt: str = "You are a Hyper-Intelligent System.", temp: float = 0.7) -> str:
