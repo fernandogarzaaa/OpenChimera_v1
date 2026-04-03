@@ -1,10 +1,43 @@
-# Build artifacts and secrets
+# Build artifacts
 dist/
 build/
 *.spec
-.env*
-.pyc
+openchimera.egg-info/
+
+# Python artifacts
+*.pyc
 __pycache__/
-*.json
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Local secrets and machine-specific overrides
+.env
+.env.*
+!.env.example
+config/runtime_profile.local.json
+data/credentials.json
+
+# Runtime outputs
 *.log
+debug.log
 .DS_Store
+logs/
+memory/
+models/
+checkpoints/
+rag_storage.json
+chimera_kb.json
+data/
+tmp_sandbox_debug/
+tmp_sandbox_helper/
+tmp_sandbox_timing/
+tmp_session_test/
+
+# Local editor settings
+.vscode/

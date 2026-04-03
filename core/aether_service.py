@@ -25,12 +25,15 @@ class AetherKernelAdapter:
 
         evolution_path = core_root / "evolution_engine.py"
         evolution_module = None
+        self.immune_loop_available = False
+        self.immune_loop_error: str | None = None
         if evolution_path.exists():
             try:
                 evolution_module = import_module_from_file(
                     "openchimera_aether_evolution_engine", evolution_path, repo_root=root
                 )
             except Exception as exc:
+                self.immune_loop_error = str(exc)
                 LOGGER.warning("AETHER evolution engine unavailable; continuing without immune loop: %s", exc)
 
         event_bus_cls = getattr(event_bus_module, "EventBus")
@@ -42,6 +45,9 @@ class AetherKernelAdapter:
 
         if evolution_module is not None and hasattr(evolution_module, "EvolutionEngine"):
             self.evolution_engine = evolution_module.EvolutionEngine()
+            self.immune_loop_available = True
+        elif evolution_path.exists() and self.immune_loop_error is None:
+            self.immune_loop_error = "EvolutionEngine export not found"
 
     def start_immune_system(self) -> None:
         if self.evolution_engine is None or self.evolution_thread is not None:
@@ -117,12 +123,19 @@ class AetherService:
         return self.thread is not None and self.thread.is_alive()
 
     def status(self) -> dict[str, object]:
+        immune_loop_available = False
+        immune_loop_error = None
+        if self.adapter is not None:
+            immune_loop_available = bool(self.adapter.immune_loop_available)
+            immune_loop_error = self.adapter.immune_loop_error
         return {
             "name": "aether",
             "available": self.available,
             "running": self.is_running(),
             "root": str(self.root),
             "entrypoint": str(self.entrypoint),
+            "immune_loop_available": immune_loop_available,
+            "immune_loop_error": immune_loop_error,
             "start_attempts": self.start_attempts,
             "last_started_at": self.last_started_at,
             "last_exited_at": self.last_exited_at,

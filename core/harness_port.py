@@ -159,11 +159,11 @@ class HarnessPortAdapter:
             {
                 "conversations": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": "What legacy reverse-engineered workflow clues were preserved in OpenClaw?"},
+                    {"role": "user", "content": "What legacy reverse-engineered workflow clues were preserved in the compatibility snapshot?"},
                     {
                         "role": "assistant",
                         "content": (
-                            "OpenClaw preserved a legacy agent snapshot under "
+                            "The legacy compatibility snapshot preserved an agent archive under "
                             f"{legacy.get('root', 'unknown')} with notable skill clues: {legacy_skills}. "
                             "Treat it as a workflow and skill reference, not as a model runtime."
                         ),

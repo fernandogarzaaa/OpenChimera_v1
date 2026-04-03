@@ -1,0 +1,35 @@
+services:
+  openchimera:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openchimera:local
+    container_name: openchimera
+    restart: unless-stopped
+    ports:
+      - "7870:7870"
+    environment:
+      OPENCHIMERA_HOST: 0.0.0.0
+      OPENCHIMERA_PORT: 7870
+      OPENCHIMERA_API_TOKEN: ${OPENCHIMERA_API_TOKEN}
+      OPENCHIMERA_ADMIN_TOKEN: ${OPENCHIMERA_ADMIN_TOKEN}
+      OPENCHIMERA_LOG_LEVEL: INFO
+      OPENCHIMERA_STRUCTURED_LOG_ENABLED: "1"
+      OPENCHIMERA_STRUCTURED_LOG_PATH: /app/logs/openchimera-runtime.jsonl
+      OPENCHIMERA_RUNTIME_PROFILE: /app/config/runtime_profile.local.json
+    volumes:
+      - openchimera-data:/app/data
+      - openchimera-logs:/app/logs
+      - openchimera-models:/app/models
+      - ./config/runtime_profile.local.json:/app/config/runtime_profile.local.json:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json, sys, urllib.request; response = urllib.request.urlopen('http://127.0.0.1:7870/health', timeout=4); payload = json.loads(response.read().decode('utf-8')); sys.exit(0 if payload.get('status') == 'online' else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  openchimera-data:
+  openchimera-logs:
+  openchimera-models:

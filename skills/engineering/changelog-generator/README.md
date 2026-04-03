@@ -41,8 +41,8 @@ cp -R engineering/changelog-generator ~/.claude/skills/changelog-generator
 cp -R engineering/changelog-generator ~/.codex/skills/changelog-generator
 ```
 
-### OpenClaw
+### OpenChimera
 
 ```bash
-cp -R engineering/changelog-generator ~/.openclaw/skills/changelog-generator
+cp -R engineering/changelog-generator ./skills/changelog-generator
 ```

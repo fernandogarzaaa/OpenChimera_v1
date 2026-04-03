@@ -39,8 +39,17 @@ class OpenChimeraKernel:
         LOGGER.info("Booting OpenChimera...")
         self._running = True
 
-        self.provider.start()
         api_online = self.api_server.start()
+        if not api_online:
+            self._running = False
+            raise RuntimeError("OpenChimera API server failed to start")
+
+        try:
+            self.provider.start()
+        except Exception:
+            self.api_server.stop()
+            self._running = False
+            raise
 
         if self.aether.start():
             self.bus.publish_nowait("system/runtime", self.aether.status())
@@ -153,6 +162,7 @@ class OpenChimeraKernel:
             "aegis": provider_status.get("aegis", {}),
             "ascension": provider_status.get("ascension", {}),
             "provider_online": provider_status.get("online", False) and provider_status.get("api_online", True),
+            "deployment": provider_status.get("deployment", {}),
             "onboarding": provider_status.get("onboarding", {}),
             "integrations": provider_status.get("integrations", {}),
             "supervision": {
@@ -169,5 +179,8 @@ Kernel = OpenChimeraKernel
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    from core.config import get_log_level, get_structured_log_path
+    from core.logging_utils import configure_runtime_logging
+
+    configure_runtime_logging(level=get_log_level(), structured_log_path=get_structured_log_path())
     OpenChimeraKernel().boot()

@@ -8,6 +8,9 @@ from typing import Any
 from urllib import error, request
 
 from core.config import ROOT, load_runtime_profile
+from core.credential_store import CredentialStore
+from core.local_model_inventory import discover_local_model_inventory
+from core.transactions import atomic_write_json
 
 
 LOCAL_MODEL_SEEDS: dict[str, dict[str, Any]] = {
@@ -87,9 +90,10 @@ CLOUD_MODEL_SEEDS: list[dict[str, Any]] = [
 
 
 class ModelRegistry:
-    def __init__(self):
+    def __init__(self, credential_store: CredentialStore | None = None):
         self.profile = load_runtime_profile()
         self.registry_path = ROOT / "data" / "model_registry.json"
+        self.credential_store = credential_store or CredentialStore()
 
     def status(self) -> dict[str, Any]:
         if self.registry_path.exists():
@@ -98,7 +102,18 @@ class ModelRegistry:
             except json.JSONDecodeError:
                 raw = None
             if isinstance(raw, dict):
-                return raw
+                persisted_discovery = raw.get("discovery", {}) if isinstance(raw.get("discovery", {}), dict) else {}
+                live_inventory = discover_local_model_inventory(self.profile, known_model_names=list(LOCAL_MODEL_SEEDS.keys()))
+                live_search_roots = list(live_inventory.get("search_roots") or [])
+                live_available_models = list(live_inventory.get("available_models") or [])
+                persisted_search_roots = list(persisted_discovery.get("local_search_roots") or [])
+                persisted_available_models = list(persisted_discovery.get("local_discovered_models") or [])
+                if (
+                    persisted_search_roots == live_search_roots
+                    and bool(persisted_discovery.get("local_model_assets_available", False)) == bool(live_available_models)
+                    and persisted_available_models == live_available_models
+                ):
+                    return raw
         return self.refresh()
 
     def refresh(self) -> dict[str, Any]:
@@ -118,7 +133,7 @@ class ModelRegistry:
             "onboarding": self._build_onboarding(hardware, recommendations),
         }
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)
-        self.registry_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        atomic_write_json(self.registry_path, payload)
         return payload
 
     def onboarding_status(self) -> dict[str, Any]:
@@ -147,7 +162,12 @@ class ModelRegistry:
     def _build_local_model_catalog(self, hardware: dict[str, Any]) -> list[dict[str, Any]]:
         model_inventory = self.profile.get("model_inventory", {})
         local_runtime = self.profile.get("local_runtime", {})
-        available_models = list(model_inventory.get("available_models") or [])
+        discovered_inventory = discover_local_model_inventory(self.profile, known_model_names=list(LOCAL_MODEL_SEEDS.keys()))
+        configured_available_models = list(model_inventory.get("available_models") or [])
+        discovered_available_models = list(discovered_inventory.get("available_models") or [])
+        available_models = configured_available_models + [
+            model_name for model_name in discovered_available_models if model_name not in configured_available_models
+        ]
         model_files = model_inventory.get("model_files", {}) or {}
         endpoint_overrides = local_runtime.get("model_endpoints", {}) or {}
         models_dir = Path(model_inventory.get("models_dir") or ROOT / "models")
@@ -157,9 +177,12 @@ class ModelRegistry:
         for model_name in known_model_names:
             seed = LOCAL_MODEL_SEEDS.get(model_name, {})
             configured_file = model_files.get(model_name)
+            discovered_file = discovered_inventory.get("model_files", {}).get(model_name) if isinstance(discovered_inventory, dict) else None
             model_path = Path(configured_file) if configured_file else None
             if model_path is not None and not model_path.is_absolute():
                 model_path = models_dir / model_path
+            if (model_path is None or not model_path.exists()) and discovered_file:
+                model_path = Path(discovered_file)
             model_path_exists = bool(model_path and model_path.exists())
             catalog.append(
                 {
@@ -169,6 +192,7 @@ class ModelRegistry:
                     "available_locally": model_name in available_models or model_path_exists,
                     "configured_endpoint": endpoint_overrides.get(model_name),
                     "configured_model_path": str(model_path) if model_path else None,
+                    "discovered_model_path": discovered_file,
                     "model_path_exists": model_path_exists,
                     "min_vram_gb": float(seed.get("min_vram_gb", 0.0)),
                     "min_ram_gb": float(seed.get("min_ram_gb", 0.0)),
@@ -176,7 +200,7 @@ class ModelRegistry:
                     "runnable_on_detected_hardware": self._is_runnable(seed, hardware),
                     "compatibility": {
                         "openchimera": True,
-                        "openclaw_style_local_runtime": True,
+                        "legacy_runtime_compatible": True,
                     },
                 }
             )
@@ -189,16 +213,31 @@ class ModelRegistry:
         deduped: dict[str, dict[str, Any]] = {}
         for item in catalog:
             deduped[str(item.get("id"))] = item
-        return list(deduped.values())
+        return self._apply_learned_fallback_rankings(list(deduped.values()))
 
     def _build_provider_catalog(self, local_models: list[dict[str, Any]]) -> list[dict[str, Any]]:
         providers: list[dict[str, Any]] = []
+        providers_config = self.profile.get("providers", {}) if isinstance(self.profile.get("providers", {}), dict) else {}
+        enabled_provider_ids = set(str(item) for item in providers_config.get("enabled", []))
+        preferred_cloud_provider = str(providers_config.get("preferred_cloud_provider", "")).strip()
         for provider in PROVIDER_MODULE_SEEDS:
             item = dict(provider)
             if item["id"] == "local-llama-cpp":
                 item["discovered_models"] = sorted(model["id"] for model in local_models if model["provider_module"] == "local-llama-cpp")
-            item["enabled"] = item["id"] in {"openchimera-gateway", "local-llama-cpp", "minimind"}
-            item["auth_configured"] = any(os.getenv(env_var) for env_var in item.get("auth_env_vars", []))
+            default_enabled = item["id"] in {"openchimera-gateway", "local-llama-cpp", "minimind"}
+            item["enabled"] = item["id"] in enabled_provider_ids if enabled_provider_ids else default_enabled
+            configured_from_env = any(os.getenv(env_var) for env_var in item.get("auth_env_vars", []))
+            configured_from_store = self.credential_store.has_provider_credentials(item["id"], list(item.get("auth_env_vars", [])))
+            item["auth_configured"] = configured_from_env or configured_from_store
+            item["credential_sources"] = {
+                "environment": configured_from_env,
+                "credential_store": configured_from_store,
+            }
+            item["activation_state"] = {
+                "enabled": item["enabled"],
+                "preferred_cloud_provider": bool(preferred_cloud_provider and preferred_cloud_provider == item["id"]),
+                "prefer_free_models": bool(providers_config.get("prefer_free_models", False)),
+            }
             providers.append(item)
         return providers
 
@@ -208,15 +247,37 @@ class ModelRegistry:
         local_models: list[dict[str, Any]],
         cloud_models: list[dict[str, Any]],
     ) -> dict[str, Any]:
+        prefer_free_models = bool(self.profile.get("providers", {}).get("prefer_free_models", False))
         local_candidates = [model for model in local_models if model["runnable_on_detected_hardware"]]
         local_candidates.sort(key=lambda item: (not item["available_locally"], item["min_vram_gb"], item["id"]))
+        free_candidates = [
+            model
+            for model in cloud_models
+            if str(model.get("provider") or "") in {"scouted", "openrouter", "ollama"}
+            or str(model.get("source") or "") in {"autonomy-sync", "autonomy-discovery"}
+        ]
         cloud_candidates = []
         if not local_candidates or float(hardware.get("gpu", {}).get("vram_gb", 0.0)) < 6.0:
-            cloud_candidates = cloud_models[:3]
+            prioritized = free_candidates + [item for item in cloud_models if item not in free_candidates]
+            cloud_candidates = prioritized[:3] if prefer_free_models else cloud_models[:3]
         return {
             "suggested_local_models": local_candidates[:4],
             "suggested_cloud_models": cloud_candidates,
+            "suggested_free_models": free_candidates[:5],
+            "learned_free_rankings": [
+                {
+                    "id": model.get("id"),
+                    "query_type": model.get("learned_query_type"),
+                    "rank": model.get("learned_rank"),
+                    "score": model.get("learned_score"),
+                    "confidence": model.get("learned_confidence"),
+                    "degraded": model.get("learned_degraded", False),
+                }
+                for model in free_candidates
+                if model.get("learned_rank") is not None
+            ][:5],
             "needs_cloud_fallback": not bool(local_candidates) or float(hardware.get("gpu", {}).get("vram_gb", 0.0)) < 4.0,
+            "prefer_free_models": prefer_free_models,
             "refresh_strategy": "runtime-profile plus curated catalog, scouted model sync, and optional remote discovery refresh",
         }
 
@@ -234,16 +295,27 @@ class ModelRegistry:
             "hardware_detected": hardware,
             "suggested_local_models": local_suggestions,
             "suggested_cloud_models": recommendations.get("suggested_cloud_models", []),
+            "suggested_free_models": recommendations.get("suggested_free_models", []),
+            "prefer_free_models": recommendations.get("prefer_free_models", False),
             "setup_notes": setup_notes,
             "minimind_optimization_profile": self._build_minimind_optimization_profile(hardware),
         }
 
     def _build_discovery_status(self) -> dict[str, Any]:
         scouted_path = ROOT / "data" / "autonomy" / "scouted_models_registry.json"
+        discovered_path = ROOT / "data" / "autonomy" / "discovered_models.json"
         sources = self.profile.get("model_inventory", {}).get("discovery_sources", [])
+        local_inventory = discover_local_model_inventory(self.profile, known_model_names=list(LOCAL_MODEL_SEEDS.keys()))
         return {
             "scouted_models_path": str(scouted_path),
             "scouted_models_available": scouted_path.exists(),
+            "discovered_models_path": str(discovered_path),
+            "discovered_models_available": discovered_path.exists(),
+            "learned_rankings_path": str(ROOT / "data" / "autonomy" / "learned_fallback_rankings.json"),
+            "learned_rankings_available": (ROOT / "data" / "autonomy" / "learned_fallback_rankings.json").exists(),
+            "local_model_assets_available": bool(local_inventory.get("available_models")),
+            "local_discovered_models": list(local_inventory.get("available_models") or []),
+            "local_search_roots": list(local_inventory.get("search_roots") or []),
             "remote_sources": [str(source.get("name") or source.get("url") or "unnamed") for source in sources if isinstance(source, dict)],
         }
 
@@ -352,3 +424,59 @@ class ModelRegistry:
                     }
                 )
         return discovered
+
+    def _apply_learned_fallback_rankings(self, catalog: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        rankings = self._load_learned_fallback_rankings()
+        if not rankings:
+            return catalog
+        annotated: list[dict[str, Any]] = []
+        for item in catalog:
+            annotated_item = dict(item)
+            model_id = str(annotated_item.get("id") or "").strip()
+            entry = rankings.get(model_id)
+            if entry:
+                annotated_item.update(
+                    {
+                        "learned_query_type": entry.get("query_type"),
+                        "learned_rank": entry.get("rank"),
+                        "learned_score": entry.get("score"),
+                        "learned_confidence": entry.get("confidence"),
+                        "learned_degraded": entry.get("degraded", False),
+                        "learned_reasons": list(entry.get("reasons") or []),
+                    }
+                )
+            annotated.append(annotated_item)
+        return annotated
+
+    def _load_learned_fallback_rankings(self) -> dict[str, dict[str, Any]]:
+        learned_path = ROOT / "data" / "autonomy" / "learned_fallback_rankings.json"
+        if not learned_path.exists():
+            return {}
+        try:
+            raw = json.loads(learned_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {}
+        query_types = raw.get("query_types", {}) if isinstance(raw, dict) else {}
+        if not isinstance(query_types, dict):
+            return {}
+        learned: dict[str, dict[str, Any]] = {}
+        for query_type, entries in query_types.items():
+            if not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                model_id = str(entry.get("model") or "").strip()
+                if not model_id:
+                    continue
+                existing = learned.get(model_id)
+                if existing is None or int(entry.get("rank") or 999999) < int(existing.get("rank") or 999999):
+                    learned[model_id] = {
+                        "query_type": str(query_type),
+                        "rank": int(entry.get("rank") or 0),
+                        "score": float(entry.get("score") or 0.0),
+                        "confidence": float(entry.get("confidence") or 0.0),
+                        "degraded": bool(entry.get("degraded", False)),
+                        "reasons": list(entry.get("reasons") or []),
+                    }
+        return learned

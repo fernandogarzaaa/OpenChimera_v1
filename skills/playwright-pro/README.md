@@ -107,7 +107,7 @@ Then use `/pw:browserstack` to run tests across browsers.
 |---|---|
 | **Claude Code** | Full plugin — slash commands, MCP tools, hooks, agents |
 | **Codex CLI** | Copy `CLAUDE.md` to your project root as `AGENTS.md` |
-| **OpenClaw** | Use as a skill with `SKILL.md` entry point |
+| **OpenChimera** | Use as a skill with `SKILL.md` entry point |
 
 ## Built-in Command Integration
 

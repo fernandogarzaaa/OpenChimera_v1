@@ -44,8 +44,8 @@ cp -R engineering/git-worktree-manager ~/.claude/skills/git-worktree-manager
 cp -R engineering/git-worktree-manager ~/.codex/skills/git-worktree-manager
 ```
 
-### OpenClaw
+### OpenChimera
 
 ```bash
-cp -R engineering/git-worktree-manager ~/.openclaw/skills/git-worktree-manager
+cp -R engineering/git-worktree-manager ./skills/git-worktree-manager
 ```

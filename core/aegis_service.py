@@ -43,7 +43,12 @@ class AegisService:
         self.running = False
         return self.status()
 
-    def run_workflow(self, target_project: str | None = None, preview: bool = True) -> dict[str, Any]:
+    def run_workflow(
+        self,
+        target_project: str | None = None,
+        preview: bool = True,
+        preview_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         target = Path(target_project or ROOT).resolve()
         if not self.available:
             result = {"status": "error", "error": "Aegis workspace unavailable", "target": str(target)}
@@ -58,6 +63,8 @@ class AegisService:
                 "mode": "safe-preview",
                 "debt_count": len(debt_targets),
                 "debt_targets": debt_targets[:50],
+                "focus_areas": list((preview_context or {}).get("focus_areas", []))[:8],
+                "recommended_actions": self._preview_recommendations(preview_context or {}, debt_targets),
                 "workflow_steps": [
                     "analysis-scan",
                     "audit-review",
@@ -115,3 +122,16 @@ class AegisService:
             debt_targets.extend(glob.glob(str(target / pattern)))
         debt_targets = [path for path in debt_targets if not path.endswith("README.md")]
         return sorted(set(debt_targets))
+
+    def _preview_recommendations(self, preview_context: dict[str, Any], debt_targets: list[str]) -> list[str]:
+        recommendations: list[str] = []
+        focus_areas = [str(item) for item in preview_context.get("focus_areas", []) if str(item).strip()]
+        if focus_areas:
+            recommendations.append("Inspect the highest-priority autonomy focus areas first: " + ", ".join(focus_areas[:4]))
+        context_recommendations = [str(item) for item in preview_context.get("recommendations", []) if str(item).strip()]
+        recommendations.extend(context_recommendations[:4])
+        if debt_targets:
+            recommendations.append("Review the detected debt targets before attempting any repair workflow mutations.")
+        if not recommendations:
+            recommendations.append("No concrete repair actions were inferred; keep the workflow in preview mode.")
+        return recommendations[:6]

@@ -32,7 +32,7 @@ Promoting a pattern from memory to rules fundamentally changes how Claude treats
 /plugin install self-improving-agent@claude-code-skills
 ```
 
-### OpenClaw
+### OpenChimera
 ```bash
 clawhub install self-improving-agent
 ```
@@ -79,7 +79,7 @@ Space freed for new learnings
 | Platform | Memory System | Support |
 |----------|--------------|---------|
 | Claude Code | Auto-memory (MEMORY.md) | ✅ Full |
-| OpenClaw | workspace/MEMORY.md | ✅ Adapted |
+| OpenChimera | workspace/MEMORY.md | ✅ Adapted |
 | Codex CLI | AGENTS.md | ✅ Adapted |
 | GitHub Copilot | copilot-instructions.md | ⚠️ Manual |
 

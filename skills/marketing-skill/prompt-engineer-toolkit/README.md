@@ -44,8 +44,8 @@ cp -R marketing-skill/prompt-engineer-toolkit ~/.claude/skills/prompt-engineer-t
 cp -R marketing-skill/prompt-engineer-toolkit ~/.codex/skills/prompt-engineer-toolkit
 ```
 
-### OpenClaw
+### OpenChimera
 
 ```bash
-cp -R marketing-skill/prompt-engineer-toolkit ~/.openclaw/skills/prompt-engineer-toolkit
+cp -R marketing-skill/prompt-engineer-toolkit ./skills/prompt-engineer-toolkit
 ```

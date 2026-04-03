@@ -41,8 +41,8 @@ cp -R engineering/ci-cd-pipeline-builder ~/.claude/skills/ci-cd-pipeline-builder
 cp -R engineering/ci-cd-pipeline-builder ~/.codex/skills/ci-cd-pipeline-builder
 ```
 
-### OpenClaw
+### OpenChimera
 
 ```bash
-cp -R engineering/ci-cd-pipeline-builder ~/.openclaw/skills/ci-cd-pipeline-builder
+cp -R engineering/ci-cd-pipeline-builder ./skills/ci-cd-pipeline-builder
 ```

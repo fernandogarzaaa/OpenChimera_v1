@@ -22,6 +22,8 @@ from core.config import (
     get_minimind_training_output_dir,
     load_runtime_profile,
 )
+from core.resilience import retry_call
+from core.transactions import atomic_write_json, atomic_write_jsonl
 
 
 class MiniMindService:
@@ -391,7 +393,7 @@ class MiniMindService:
                 ),
             },
         }
-        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        atomic_write_json(manifest_path, manifest)
         return manifest
 
     def refresh_runtime_state(self) -> None:
@@ -628,7 +630,7 @@ class MiniMindService:
                 timeout=30,
                 check=False,
             )
-        except OSError:
+        except (OSError, subprocess.TimeoutExpired):
             return "cpu"
         return configured if result.stdout.strip() == "1" else "cpu"
 
@@ -652,17 +654,23 @@ class MiniMindService:
             return False
 
     def _get_json(self, url: str, timeout: float = 5.0) -> dict[str, Any]:
-        req = request.Request(url, method="GET")
-        with request.urlopen(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
+        def _fetch() -> dict[str, Any]:
+            req = request.Request(url, method="GET")
+            with request.urlopen(req, timeout=timeout) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+
+        return retry_call(_fetch, attempts=2, delay_seconds=0.15, retry_exceptions=(OSError, TimeoutError, json.JSONDecodeError))
 
     def _post_json(self, url: str, payload: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
-        body = json.dumps(payload).encode("utf-8")
-        req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
-        with request.urlopen(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
+        def _send() -> dict[str, Any]:
+            body = json.dumps(payload).encode("utf-8")
+            req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+            with request.urlopen(req, timeout=timeout) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+
+        return retry_call(_send, attempts=2, delay_seconds=0.2, retry_exceptions=(OSError, TimeoutError, json.JSONDecodeError))
 
     def _load_training_jobs(self) -> dict[str, dict[str, Any]]:
         if not self.job_manifest_path.exists():
@@ -677,7 +685,7 @@ class MiniMindService:
 
     def _persist_training_jobs(self) -> None:
         self.training_output_dir.mkdir(parents=True, exist_ok=True)
-        self.job_manifest_path.write_text(json.dumps(self._training_jobs, indent=2), encoding="utf-8")
+        atomic_write_json(self.job_manifest_path, self._training_jobs)
 
     def _reconcile_persisted_jobs(self, active_jobs: list[str]) -> None:
         dirty = False
@@ -746,12 +754,11 @@ class MiniMindService:
             "updated_at": time.time(),
             "runtime": self.get_runtime_status(),
         }
-        self.runtime_manifest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        atomic_write_json(self.runtime_manifest_path, payload)
 
     def _write_jsonl(self, output_path: Path, records: list[dict[str, Any]]) -> None:
-        with output_path.open("w", encoding="utf-8") as handle:
-            for record in records:
-                handle.write(json.dumps(self._sanitize_record(record), ensure_ascii=True) + "\n")
+        sanitized = [self._sanitize_record(record) for record in records]
+        atomic_write_jsonl(output_path, sanitized)
 
     def _sanitize_record(self, record: dict[str, Any]) -> dict[str, Any]:
         raw = json.dumps(record, ensure_ascii=False)

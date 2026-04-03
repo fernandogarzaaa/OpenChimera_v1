@@ -25,6 +25,24 @@ class AdvancedCapabilityTests(unittest.TestCase):
             self.assertEqual(result["debt_count"], 1)
             self.assertTrue((root / "test_demo.py").exists())
 
+    def test_aegis_preview_includes_context_recommendations(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            service = AegisService()
+            service.available = True
+
+            result = service.run_workflow(
+                target_project=str(root),
+                preview=True,
+                preview_context={
+                    "focus_areas": ["generation-path-offline"],
+                    "recommendations": ["Restore at least one healthy local or cloud generation path."],
+                },
+            )
+
+            self.assertIn("generation-path-offline", result["focus_areas"])
+            self.assertTrue(any("Restore at least one healthy local or cloud generation path." in item for item in result["recommended_actions"]))
+
     def test_ascension_deliberation_falls_back_to_local_llm(self) -> None:
         minimind = MiniMindService()
         minimind.reasoning_completion = MagicMock(return_value={"content": "", "model": "minimind", "error": "low quality"})

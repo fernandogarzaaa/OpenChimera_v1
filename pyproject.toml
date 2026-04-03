@@ -8,13 +8,27 @@ version = "0.1.0"
 description = "Local-first orchestration runtime for OpenChimera"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+	"psutil>=5.9,<8",
+	"pydantic>=2.12,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+	"build>=1.2,<2",
+	"wheel>=0.45,<1",
+	"pip-tools>=7.5,<8",
+]
 
 [project.scripts]
 openchimera = "run:main"
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false
+py-modules = ["run"]
+
+[tool.setuptools.package-data]
+core = ["migrations/*.sql"]
 
 [tool.setuptools.packages.find]
-include = ["core", "openchimera"]
+include = ["core*", "sandbox*"]

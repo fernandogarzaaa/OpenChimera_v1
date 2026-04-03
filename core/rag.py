@@ -8,6 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from core.transactions import atomic_write_json
+
+
+SOURCE_TYPE_WEIGHTS = {
+    "openchimera-runtime": 1.35,
+    "harness-port": 1.2,
+    "minimind": 1.1,
+    "legacy-harness-snapshot": 0.9,
+}
+
 
 @dataclass
 class Document:
@@ -51,10 +61,7 @@ class SimpleRAG:
 
     def _save_to_disk(self) -> None:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        self.storage_path.write_text(
-            json.dumps([doc.to_dict() for doc in self.documents], indent=2),
-            encoding="utf-8",
-        )
+        atomic_write_json(self.storage_path, [doc.to_dict() for doc in self.documents])
 
     def _add_to_memory(self, doc: Document) -> None:
         if any(existing.id == doc.id for existing in self.documents):
@@ -125,13 +132,29 @@ class SimpleRAG:
         overlap = set(query_tokens) & set(doc_tokens)
         score = len(overlap) / max(len(set(query_tokens)), 1)
 
+        query_lower = query.lower()
+        metadata = doc.metadata or {}
+        source_type = str(metadata.get("source_type", "")).strip().lower()
+        score *= SOURCE_TYPE_WEIGHTS.get(source_type, 1.0)
+
         for token in overlap:
             if len(token) > 5:
                 score += 0.1
 
-        for value in (doc.metadata or {}).values():
+        for value in metadata.values():
             if str(value).lower() in query.lower():
                 score *= 1.5
+
+        filename = str(metadata.get("filename", "")).lower()
+        topic = str(metadata.get("topic", "")).lower()
+        if filename and any(token in filename for token in query_tokens):
+            score += 0.35
+        if topic and any(token in topic for token in query_tokens):
+            score += 0.3
+        if metadata.get("chunk") == 0:
+            score += 0.05
+        if "openchimera" in query_lower and source_type == "openchimera-runtime":
+            score += 0.2
         return score
 
     def retrieve(self, query: str, top_k: int = 3, min_score: float = 0.05) -> list[Document]:

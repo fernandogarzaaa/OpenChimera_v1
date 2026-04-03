@@ -1,0 +1,44 @@
+{
+  "api": {
+    "auth": {
+      "enabled": true,
+      "header": "Authorization",
+      "token": "replace-with-user-token",
+      "admin_token": "replace-with-admin-token"
+    },
+    "tls": {
+      "enabled": false,
+      "certfile": "",
+      "keyfile": "",
+      "key_password": ""
+    }
+  },
+  "providers": {
+    "enabled": [
+      "openchimera-gateway",
+      "local-llama-cpp",
+      "minimind",
+      "openai"
+    ],
+    "preferred_cloud_provider": "openai",
+    "prefer_free_models": false
+  },
+  "logging": {
+    "level": "INFO",
+    "structured": {
+      "enabled": true,
+      "path": "logs/openchimera-runtime.jsonl"
+    }
+  },
+  "local_runtime": {
+    "context_length": 4096,
+    "launcher": {
+      "enabled": true,
+      "auto_start": false,
+      "shutdown_with_manager": false,
+      "llama_server_path": "",
+      "shared_args": [],
+      "model_args": {}
+    }
+  }
+}

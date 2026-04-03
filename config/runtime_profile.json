@@ -1,0 +1,183 @@
+{
+  "generated_at": "bootstrap-default",
+  "api": {
+    "auth": {
+      "enabled": false,
+      "header": "Authorization",
+      "token": "",
+      "admin_token": ""
+    },
+    "tls": {
+      "enabled": false,
+      "certfile": "",
+      "keyfile": "",
+      "key_password": ""
+    }
+  },
+  "external_roots": {
+    "aether": "external/aether",
+    "wraith": "external/wraith",
+    "evo": "external/evo",
+    "appforge": "external/appforge",
+    "legacy_workspace": "external/legacy-workspace",
+    "openclaw": "external/legacy-workspace",
+    "aegis": "external/legacy-workspace/aegis_swarm",
+    "ascension": "external/legacy-workspace/aegis_swarm",
+    "aegis_mobile": "external/aegis-mobile"
+  },
+  "integration_roots": {
+    "harness_repo": "external/upstream-harness-repo",
+    "legacy_harness_snapshot": "external/legacy-workflow-snapshot",
+    "minimind": "external/minimind"
+  },
+  "providers": {
+    "enabled": [
+      "openchimera-gateway",
+      "local-llama-cpp",
+      "minimind"
+    ],
+    "preferred_cloud_provider": "",
+    "prefer_free_models": false
+  },
+  "onboarding": {
+    "completed_at": null,
+    "preferred_channel_id": "",
+    "selected_cloud_provider": ""
+  },
+  "hardware": {
+    "cpu_count": 4,
+    "ram_gb": 0.0,
+    "gpu": {
+      "available": false,
+      "name": "unknown",
+      "vram_gb": 0.0,
+      "device_count": 0
+    }
+  },
+  "local_runtime": {
+    "mode": "bootstrap-safe",
+    "preferred_local_models": [
+      "llama-3.2-3b",
+      "phi-3.5-mini"
+    ],
+    "local_max_tokens": 128,
+    "local_timeout_s": 35.0,
+    "cpu_threads": 4,
+    "reasoning_engine": "minimind",
+    "worker_runtime": "llama.cpp",
+    "context_length": 4096,
+    "reasoning_engine_config": {
+      "python_executable": "",
+      "api_host": "127.0.0.1",
+      "api_port": 8998,
+      "auto_start_server": false,
+      "shutdown_with_provider": true,
+      "device": "cpu",
+      "serve_weight": "reason",
+      "serve_max_seq_len": 8192,
+      "hidden_size": 512,
+      "num_hidden_layers": 8,
+      "training_num_workers": 0,
+      "training_epochs": 1,
+      "training_batch_size": 4,
+      "training_from_weight": "full_sft",
+      "training_save_dir": "data/minimind"
+    },
+    "launcher": {
+      "enabled": true,
+      "auto_start": false,
+      "shutdown_with_manager": false,
+      "llama_server_path": "",
+      "shared_args": [],
+      "model_args": {}
+    }
+  },
+  "autonomy": {
+    "enabled": true,
+    "auto_start": true,
+    "artifacts": {
+      "retention": {
+        "max_history_entries": 100,
+        "max_age_days": 30
+      }
+    },
+    "alerts": {
+      "enabled": true,
+      "dispatch_topic": "system/autonomy/alert",
+      "minimum_severity": "high"
+    },
+    "digests": {
+      "dispatch_topic": "system/briefing/daily",
+      "history_limit": 5
+    },
+    "jobs": {
+      "sync_scouted_models": {
+        "enabled": true,
+        "interval_seconds": 900
+      },
+      "discover_free_models": {
+        "enabled": true,
+        "interval_seconds": 3600
+      },
+      "learn_fallback_rankings": {
+        "enabled": true,
+        "interval_seconds": 1800
+      },
+      "audit_skill_bridges": {
+        "enabled": true,
+        "interval_seconds": 1800
+      },
+      "refresh_harness_dataset": {
+        "enabled": true,
+        "interval_seconds": 21600
+      },
+      "check_degradation_chains": {
+        "enabled": true,
+        "interval_seconds": 1800
+      },
+      "run_self_audit": {
+        "enabled": true,
+        "interval_seconds": 3600
+      },
+      "preview_self_repair": {
+        "enabled": true,
+        "interval_seconds": 7200
+      },
+      "dispatch_operator_digest": {
+        "enabled": true,
+        "interval_seconds": 14400
+      }
+    }
+  },
+  "supervision": {
+    "enabled": true,
+    "interval_seconds": 15,
+    "restart_cooldown_seconds": 30
+  },
+  "observability": {
+    "recent_limit": 64,
+    "persistence": {
+      "enabled": true,
+      "path": "data/observability.db"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "structured": {
+      "enabled": true,
+      "path": "logs/openchimera-runtime.jsonl"
+    }
+  },
+  "model_inventory": {
+    "models_dir": "models",
+    "available_models": [],
+    "model_files": {},
+    "known_models": {},
+    "discovery_sources": []
+  },
+  "reasoning_engine": {
+    "name": "minimind",
+    "training_output_dir": "data/minimind",
+    "api_base_url": "http://127.0.0.1:8998"
+  }
+}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from core.local_llm import LocalLLMManager
 
@@ -90,6 +91,34 @@ class LocalLLMQualityTests(unittest.TestCase):
             manager._preferred_prompt_strategy("qwen2.5-7b", "general", snapshot),
             "flattened_plaintext",
         )
+
+    def test_missing_configured_model_path_falls_back_to_discovered_search_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            search_root = Path(temp_dir) / "search-root"
+            search_root.mkdir(parents=True)
+            discovered = search_root / "phi-3.5-mini-instruct-q8_0.gguf"
+            discovered.write_text("stub", encoding="utf-8")
+            profile = {
+                "model_inventory": {
+                    "available_models": [],
+                    "model_files": {"phi-3.5-mini": str(Path(temp_dir) / "missing" / "phi.gguf")},
+                    "models_dir": str(Path(temp_dir) / "models"),
+                    "search_roots": [str(search_root)],
+                },
+                "local_runtime": {
+                    "preferred_local_models": ["phi-3.5-mini"],
+                    "launcher": {"enabled": True, "auto_start": False, "shutdown_with_manager": False, "llama_server_path": ""},
+                },
+            }
+
+            with patch("core.local_llm.load_runtime_profile", return_value=profile):
+                manager = LocalLLMManager()
+
+            runtime_status = manager.get_runtime_status()
+            phi_status = runtime_status["models"]["phi-3.5-mini"]
+            self.assertTrue(phi_status["model_path_exists"])
+            self.assertEqual(phi_status["model_path"], str(discovered))
+            self.assertIn("phi-3.5-mini", runtime_status["discovery"]["available_models"])
 
     def test_chat_completion_retries_with_alternate_prompt_strategy(self) -> None:
         manager = LocalLLMManager()

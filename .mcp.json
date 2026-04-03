@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "openchimera-local": {
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/run.py",
+        "mcp",
+        "--serve"
+      ]
+    }
+  }
+}

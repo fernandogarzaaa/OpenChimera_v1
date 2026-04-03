@@ -1,49 +1,89 @@
-name: Deploy to Vercel
+name: Release Artifacts
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
+    tags:
+      - "v*"
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  build:
+    name: Build distributions
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Build Project Artifacts
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Deploy Project Artifacts to Vercel
-        id: deploy
+      - name: Install build tooling
         run: |
-          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
-          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
-          echo "Deployed to $DEPLOY_URL"
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
 
-      - name: Wait for Deployment
-        run: sleep 10
+      - name: Build distributions
+        run: python -m build
 
-      - name: Health Check Probe
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openchimera-dist
+          path: dist/*
+
+  smoke-install:
+    name: Smoke install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: openchimera-dist
+          path: dist
+
+      - name: Install wheel
+        shell: bash
         run: |
-          echo "Checking health of ${{ steps.deploy.outputs.url }}..."
-          # The health check expects the deployment to be up. Using curl with retries.
-          curl --fail --silent --show-error --max-time 10 --retry 5 --retry-connrefused --retry-delay 5 "${{ steps.deploy.outputs.url }}"
-          echo "Health check passed."
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+
+      - name: Run package smoke checks
+        shell: bash
+        run: |
+          openchimera bootstrap
+          openchimera doctor --production --json
+          openchimera status --json
+          openchimera backup create --json
+
+  publish-release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: smoke-install
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: openchimera-dist
+          path: dist
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

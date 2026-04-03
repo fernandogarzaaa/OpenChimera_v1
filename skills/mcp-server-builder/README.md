@@ -43,8 +43,8 @@ cp -R engineering/mcp-server-builder ~/.claude/skills/mcp-server-builder
 cp -R engineering/mcp-server-builder ~/.codex/skills/mcp-server-builder
 ```
 
-### OpenClaw
+### OpenChimera
 
 ```bash
-cp -R engineering/mcp-server-builder ~/.openclaw/skills/mcp-server-builder
+cp -R engineering/mcp-server-builder ./skills/mcp-server-builder
 ```

@@ -1,0 +1,5 @@
+-r requirements.in
+build>=1.2,<2
+wheel>=0.45,<1
+pip-tools>=7.5,<8
+pre-commit>=4.3,<5

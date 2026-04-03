@@ -13,6 +13,9 @@ from typing import Any
 from urllib import error, request
 
 from core.config import ROOT, load_runtime_profile
+from core.local_model_inventory import discover_local_model_inventory
+from core.resilience import retry_call
+from core.transactions import atomic_write_json
 
 
 LOGGER = logging.getLogger(__name__)
@@ -67,12 +70,17 @@ class LocalLLMManager:
         self._log_dir = ROOT / "logs" / "local_llm"
         self._route_memory_path = ROOT / "data" / "local_llm_route_memory.json"
         self._route_memory = self._load_route_memory()
+        self._discovered_inventory = discover_local_model_inventory(self.profile)
         self._initialize_defaults()
 
     def _initialize_defaults(self) -> None:
         local_runtime = self.profile.get("local_runtime", {})
         model_inventory = self.profile.get("model_inventory", {})
-        available_models = model_inventory.get("available_models") or [
+        configured_available_models = list(model_inventory.get("available_models") or [])
+        discovered_available_models = list(self._discovered_inventory.get("available_models") or [])
+        available_models = configured_available_models + [
+            model_name for model_name in discovered_available_models if model_name not in configured_available_models
+        ] or [
             "qwen2.5-7b",
             "gemma-2-9b",
             "llama-3.2-3b",
@@ -89,6 +97,7 @@ class LocalLLMManager:
 
         models_dir = model_inventory.get("models_dir", "models")
         model_files = model_inventory.get("model_files", {})
+        discovered_model_files = self._discovered_inventory.get("model_files", {}) if isinstance(self._discovered_inventory, dict) else {}
         endpoint_overrides = local_runtime.get("model_endpoints", {})
         gpu_layers = int(local_runtime.get("gpu_layers", 35 if local_runtime.get("vram_gb", 0) else 0))
         default_ports = {
@@ -103,7 +112,7 @@ class LocalLLMManager:
             config = ModelConfig(
                 name=model_name,
                 endpoint=endpoint.rstrip("/"),
-                model_path=str(self._resolve_model_path(models_dir, model_name, model_files.get(model_name))),
+                model_path=str(self._resolve_model_path(models_dir, model_name, model_files.get(model_name), discovered_model_files.get(model_name))),
                 quantization="runtime-managed",
                 n_gpu_layers=gpu_layers,
                 context_length=int(local_runtime.get("context_length", 4096)),
@@ -117,11 +126,16 @@ class LocalLLMManager:
                 quantization=config.quantization,
             )
 
-    def _resolve_model_path(self, models_dir: str, model_name: str, configured_file: str | None) -> Path:
+    def _resolve_model_path(self, models_dir: str, model_name: str, configured_file: str | None, discovered_file: str | None = None) -> Path:
         base_dir = Path(models_dir)
         if configured_file:
             candidate = Path(configured_file)
-            return candidate if candidate.is_absolute() else base_dir / candidate
+            resolved = candidate if candidate.is_absolute() else base_dir / candidate
+            if resolved.exists() or not discovered_file:
+                return resolved
+
+        if discovered_file:
+            return Path(discovered_file)
 
         fallback_names = {
             "qwen2.5-7b": "qwen2.5-7b-instruct-q4_k_m.gguf",
@@ -321,21 +335,28 @@ class LocalLLMManager:
             "llama_server_exists": executable.exists(),
             "log_dir": str(self._log_dir),
             "route_memory_path": str(self._route_memory_path),
+            "discovery": self._discovered_inventory,
             "models": models,
         }
 
     def _get_json(self, url: str, timeout: float = 5.0) -> dict[str, Any]:
-        req = request.Request(url, method="GET")
-        with request.urlopen(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
+        def _fetch() -> dict[str, Any]:
+            req = request.Request(url, method="GET")
+            with request.urlopen(req, timeout=timeout) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+
+        return retry_call(_fetch, attempts=2, delay_seconds=0.15, retry_exceptions=(error.URLError, TimeoutError, json.JSONDecodeError))
 
     def _post_json(self, url: str, payload: dict[str, Any], timeout: float = 30.0) -> dict[str, Any]:
-        body = json.dumps(payload).encode("utf-8")
-        req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
-        with request.urlopen(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
-            return json.loads(raw) if raw else {}
+        def _send() -> dict[str, Any]:
+            body = json.dumps(payload).encode("utf-8")
+            req = request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+            with request.urlopen(req, timeout=timeout) as response:
+                raw = response.read().decode("utf-8")
+                return json.loads(raw) if raw else {}
+
+        return retry_call(_send, attempts=2, delay_seconds=0.2, retry_exceptions=(error.URLError, TimeoutError, json.JSONDecodeError))
 
     def start_health_monitoring(self) -> None:
         if self._running:
@@ -882,7 +903,7 @@ class LocalLLMManager:
 
     def _persist_route_memory(self) -> None:
         self._route_memory_path.parent.mkdir(parents=True, exist_ok=True)
-        self._route_memory_path.write_text(json.dumps(self._route_memory, indent=2), encoding="utf-8")
+        atomic_write_json(self._route_memory_path, self._route_memory)
 
     def _get_route_bucket(self, model_name: str, query_type: str) -> dict[str, Any]:
         model_bucket = self._route_memory.setdefault(model_name, {})

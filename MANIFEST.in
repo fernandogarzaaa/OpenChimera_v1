@@ -1,0 +1,26 @@
+include README.md
+include LICENSE
+include LEGACY_INTEGRATIONS.md
+include SECURITY.md
+include requirements-prod.txt
+include requirements-dev.txt
+include run.py
+recursive-include core *.py
+recursive-include core/migrations *.sql
+recursive-include sandbox *.py
+global-exclude __pycache__ *.py[cod]
+prune .git
+prune .github
+prune .venv
+prune assets
+prune checkpoints
+prune data
+prune logs
+prune memory
+prune models
+prune openchimera
+prune scripts
+prune skills
+prune swarms
+prune tests
+prune tmp_session_test

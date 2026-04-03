@@ -1,0 +1,35 @@
+{
+  "id": "openchimera-core",
+  "name": "OpenChimera Core Runtime",
+  "version": "1.0.0",
+  "description": "Bundles the native runtime capability surfaces for commands, tools, skills discovery, and local MCP adapters.",
+  "commands": [
+    "bootstrap",
+    "doctor",
+    "onboard",
+    "status",
+    "serve",
+    "capabilities"
+  ],
+  "tools": [
+    "browser.fetch",
+    "browser.submit_form",
+    "media.transcribe",
+    "media.synthesize",
+    "jobs.create",
+    "channels.dispatch_daily_briefing",
+    "aegis.run_workflow",
+    "ascension.deliberate"
+  ],
+  "skills": [
+    "advanced-memory",
+    "appforge-mcp",
+    "chimera-control",
+    "token-fracture"
+  ],
+  "mcp_servers": [
+    "openchimera-local",
+    "context_hub",
+    "appforge-local"
+  ]
+}

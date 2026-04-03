@@ -1,43 +1,62 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import time
-import uuid
 from pathlib import Path
 from typing import Any
 
+from core.autonomy_plane import AutonomyPlane
 from core.autonomy import AutonomyScheduler
 from core.aegis_service import AegisService
+from core.activation_plane import ActivationPlane
 from core.ascension_service import AscensionService
 from core.bus import EventBus
+from core.browser_service import BrowserService
+from core.bootstrap_plane import BootstrapPlane
+from core.capabilities import CapabilityRegistry
+from core.capability_plane import CapabilityPlane
+from core.channels import ChannelManager
+from core.credential_store import CredentialStore
+from core.database import DatabaseManager
 from core.config import (
-    ROOT,
-    get_chimera_kb_path,
-    get_legacy_harness_snapshot_root,
+    get_aegis_mobile_root,
+    get_aether_root,
+    get_appforge_root,
+    get_api_admin_token,
+    get_api_auth_header,
+    get_api_auth_token,
+    get_legacy_workspace_root,
+    get_observability_db_path,
+    get_observability_recent_limit,
     get_provider_base_url,
     get_rag_storage_path,
     load_runtime_profile,
 )
+from core.control_plane import OperatorControlPlane
+from core.inference_plane import InferencePlane
+from core.integration_plane import IntegrationPlane
+from core.interaction_plane import InteractionPlane
 from core.harness_port import HarnessPortAdapter
 from core.integration_audit import IntegrationAudit
+from core.job_queue import PersistentJobQueue
 from core.local_llm import LocalLLMManager
 from core.model_registry import ModelRegistry
+from core.model_roles import ModelRoleManager
 from core.minimind_service import MiniMindService
+from core.multimodal_service import MultimodalService
+from core.observability import ObservabilityStore
+from core.onboarding import OnboardingManager
 from core.personality import Personality
+from core.plugins import PluginManager
+from core.query_engine import QueryEngine
 from core.rag import Document, SimpleRAG
 from core.router import OpenChimeraRouter
-from core.token_fracture import compress_context
+from core.runtime_plane import RuntimePlane
+from core.service_plane import ServicePlane
+from core.subsystems import ManagedSubsystemRegistry
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _count_tokens(text: str) -> int:
-    if not text:
-        return 0
-    return max(1, len(text) // 4)
 
 
 class OpenChimeraProvider:
@@ -46,133 +65,228 @@ class OpenChimeraProvider:
         self.personality = personality
         self.profile = load_runtime_profile()
         self.llm_manager = LocalLLMManager()
-        self.router = OpenChimeraRouter(self.llm_manager)
         self.rag = SimpleRAG(get_rag_storage_path())
+        self.database = DatabaseManager()
+        self.database.initialize()
         self.harness_port = HarnessPortAdapter()
         self.minimind = MiniMindService()
         self.autonomy = AutonomyScheduler(self.bus, self.harness_port, self.minimind, self.personality.identity)
-        self.model_registry = ModelRegistry()
+        self.credential_store = CredentialStore(database=self.database)
+        self.browser = BrowserService()
+        self.multimodal = MultimodalService(credential_store=self.credential_store)
+        self.channels = ChannelManager(database=self.database)
+        self.capabilities = CapabilityRegistry()
+        self.model_registry = ModelRegistry(credential_store=self.credential_store)
+        self.model_roles = ModelRoleManager(self.model_registry)
+        self.router = OpenChimeraRouter(self.llm_manager, self.model_roles)
+        self.plugins = PluginManager(self.capabilities)
+        self.capability_plane = CapabilityPlane(capabilities=self.capabilities, plugins=self.plugins, bus=self.bus)
+        self.job_queue = PersistentJobQueue(self.bus, executor=lambda job: self.autonomy_plane.execute_operator_job(job), database=self.database)
+        self.observability = ObservabilityStore(
+            recent_limit=get_observability_recent_limit(),
+            persist_path=get_observability_db_path(),
+        )
+        self.onboarding = OnboardingManager(self.model_registry, self.credential_store, self.channels)
         self.integration_audit = IntegrationAudit()
         self.aegis = AegisService()
         self.ascension = AscensionService(self.llm_manager, self.minimind)
         self.started = False
         self.base_url = get_provider_base_url()
+        self.bootstrap_plane = BootstrapPlane(
+            profile_loader=load_runtime_profile,
+            profile_setter=lambda profile: setattr(self, "profile", profile),
+            started_getter=lambda: self.started,
+            started_setter=lambda started: setattr(self, "started", started),
+            llm_manager=self.llm_manager,
+            job_queue=self.job_queue,
+            minimind=self.minimind,
+            autonomy=self.autonomy,
+            aegis=self.aegis,
+            ascension=self.ascension,
+            bus=self.bus,
+            status_getter=self.status,
+            rag=self.rag,
+            harness_port=self.harness_port,
+            onboarding=self.onboarding,
+            model_registry=self.model_registry,
+        )
+        self.activation_plane = ActivationPlane(
+            profile_getter=lambda: self.profile,
+            refresh_profile=self._reload_profile,
+            credential_store=self.credential_store,
+            model_registry=self.model_registry,
+            model_roles=self.model_roles,
+            bus=self.bus,
+        )
+        self.inference_plane = InferencePlane(
+            personality=self.personality,
+            rag=self.rag,
+            llm_manager=self.llm_manager,
+            minimind=self.minimind,
+            router=self.router,
+            model_registry=self.model_registry,
+            credential_store=self.credential_store,
+            observability=self.observability,
+            bus=self.bus,
+            profile_getter=lambda: self.profile,
+        )
+        self.integration_plane = IntegrationPlane(
+            integration_audit=self.integration_audit,
+            mcp_status_getter=self.mcp_status,
+            aegis_status_getter=self.aegis.status,
+            ascension_status_getter=self.ascension.status,
+        )
+        self.autonomy_plane = AutonomyPlane(
+            profile_getter=lambda: self.profile,
+            autonomy=self.autonomy,
+            job_queue=self.job_queue,
+            channels=self.channels,
+            bus=self.bus,
+            provider_activation_getter=self.provider_activation_status,
+            job_queue_status_getter=self.job_queue_status,
+            daily_briefing_getter=self.daily_briefing,
+            create_operator_job_callback=lambda job_type, payload, max_attempts=3: self.create_operator_job(job_type, payload, max_attempts=max_attempts),
+            run_autonomy_job_callback=self.run_autonomy_job,
+        )
+        self.subsystems = ManagedSubsystemRegistry(
+            self.integration_audit,
+            providers={
+                "aegis_swarm": self.aegis.status,
+                "ascension_engine": self.ascension.status,
+                "aether_operator_stack": self.aether_operator_stack_status,
+                "clawd_hybrid_rtx": self.clawd_hybrid_rtx_status,
+                "qwen_agent": self.qwen_agent_status,
+                "context_hub": self.context_hub_status,
+                "deepagents_stack": self.deepagents_stack_status,
+                "aegis_mobile_gateway": self.aegis_mobile_gateway_status,
+                "minimind": self.minimind.status,
+            },
+            invokers={
+                "aegis_swarm": self._invoke_managed_subsystem,
+                "ascension_engine": self._invoke_managed_subsystem,
+                "aether_operator_stack": self._invoke_managed_subsystem,
+                "clawd_hybrid_rtx": self._invoke_managed_subsystem,
+                "qwen_agent": self._invoke_managed_subsystem,
+                "context_hub": self._invoke_managed_subsystem,
+                "deepagents_stack": self._invoke_managed_subsystem,
+                "aegis_mobile_gateway": self._invoke_managed_subsystem,
+                "minimind": self._invoke_managed_subsystem,
+            },
+        )
+        self.query_engine = QueryEngine(
+            capability_registry=self.capabilities,
+            model_roles=self.model_roles,
+            completion_callback=self.chat_completion,
+            job_submitter=self.create_operator_job,
+            database=self.database,
+        )
+        self.interaction_plane = InteractionPlane(
+            channels=self.channels,
+            browser=self.browser,
+            multimodal=self.multimodal,
+            query_engine=self.query_engine,
+            bus=self.bus,
+            daily_briefing_getter=lambda: self.daily_briefing(),
+        )
+        self.service_plane = ServicePlane(
+            aegis=self.aegis,
+            ascension=self.ascension,
+            minimind=self.minimind,
+            autonomy=self.autonomy,
+            llm_manager=self.llm_manager,
+            harness_port=self.harness_port,
+            identity_snapshot=self.personality.identity,
+            subsystems=self.subsystems,
+            bus=self.bus,
+            clawd_hybrid_rtx_status_getter=self.clawd_hybrid_rtx_status,
+            qwen_agent_status_getter=self.qwen_agent_status,
+            context_hub_status_getter=self.context_hub_status,
+            deepagents_stack_status_getter=self.deepagents_stack_status,
+            aether_operator_stack_status_getter=self.aether_operator_stack_status,
+            aegis_mobile_gateway_status_getter=self.aegis_mobile_gateway_status,
+        )
+        self.control_plane = OperatorControlPlane(
+            base_url_getter=lambda: self.base_url,
+            profile_getter=lambda: self.profile,
+            llm_manager=self.llm_manager,
+            rag=self.rag,
+            router=self.router,
+            harness_port=self.harness_port,
+            minimind=self.minimind,
+            autonomy=self.autonomy,
+            model_registry=self.model_registry,
+            model_roles=self.model_roles,
+            onboarding=self.onboarding,
+            provider_activation_builder=self.activation_plane.provider_activation_status,
+            fallback_learning_builder=self.activation_plane.fallback_learning_summary,
+            integration_status_builder=self._build_integration_status,
+            subsystem_status_builder=self.subsystems.status,
+            channel_status_builder=self.channels.status,
+            channel_history_builder=self.channels.delivery_history,
+            bus=self.bus,
+            aegis=self.aegis,
+            ascension=self.ascension,
+        )
+        self.runtime_plane = RuntimePlane(
+            base_url_getter=lambda: self.base_url,
+            profile_getter=lambda: self.profile,
+            llm_manager=self.llm_manager,
+            rag=self.rag,
+            router=self.router,
+            harness_port=self.harness_port,
+            minimind=self.minimind,
+            autonomy=self.autonomy,
+            observability=self.observability,
+            health_getter=lambda: self.control_plane.health(),
+            autonomy_diagnostics_getter=self.autonomy_diagnostics,
+            aegis_status_getter=self.aegis_status,
+            ascension_status_getter=self.ascension_status,
+            model_registry_status_getter=self.model_registry_status,
+            browser_status_getter=self.browser_status,
+            media_status_getter=self.media_status,
+            query_status_getter=self.query_status,
+            model_role_status_getter=self.model_role_status,
+            plugin_status_getter=self.plugin_status,
+            subsystem_status_getter=self.subsystem_status,
+            onboarding_status_getter=self.onboarding_status,
+            integration_status_getter=self.integration_status,
+        )
+        self.autonomy.bind_runtime_context(
+            health=self.health,
+            provider_activation=self.provider_activation_status,
+            onboarding=self.onboarding_status,
+            integrations=self.integration_status,
+            subsystems=self.subsystem_status,
+            job_queue=self.job_queue_status,
+            daily_briefing=self.daily_briefing,
+            channel_history=self.channel_delivery_history,
+            channel_dispatch=self.dispatch_channel,
+            aegis_preview=self._autonomy_aegis_preview,
+        )
+        self.bus.subscribe("system/autonomy/job", self._handle_autonomy_job_event)
         self._seed_knowledge()
 
     def start(self) -> None:
-        if self.started:
-            return
-        self.llm_manager.start_health_monitoring()
-        self.minimind.refresh_runtime_state()
-        if self.profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("auto_start_server", False):
-            self.minimind.start_server()
-        if self.autonomy.should_auto_start():
-            self.autonomy.start()
-        self.aegis.start()
-        self.ascension.start()
-        self.started = True
-        self.bus.publish_nowait("system/provider", self.status())
+        self.bootstrap_plane.start()
 
     def stop(self) -> None:
-        self.ascension.stop()
-        self.aegis.stop()
-        self.autonomy.stop()
-        if self.profile.get("local_runtime", {}).get("reasoning_engine_config", {}).get("shutdown_with_provider", False):
-            self.minimind.stop_server()
-        self.llm_manager.stop_health_monitoring()
-        self.started = False
+        self.bootstrap_plane.stop()
+        self.database.close()
 
     def _seed_knowledge(self) -> None:
-        kb_path = get_chimera_kb_path()
-        if kb_path.exists():
-            try:
-                data = json.loads(kb_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                data = []
-
-            docs = []
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                docs.append(
-                    Document(
-                        text=str(item.get("text", "")),
-                        metadata=item.get("metadata", {}),
-                        id=item.get("id"),
-                    )
-                )
-            self.rag.add_documents(docs, persist=False)
-
-        for path in [ROOT / "README.md", ROOT / "config" / "runtime_profile.json"]:
-            self.rag.add_file(path, metadata={"source_type": "openchimera-runtime"}, persist=False)
-
-        if self.harness_port.available:
-            harness_status = self.harness_port.status()
-            harness_summary = harness_status.get("summary")
-            if harness_summary:
-                self.rag.add_documents(
-                    [
-                        Document(
-                            text=harness_summary,
-                            metadata={"topic": "upstream-harness-port", "source_type": "harness-port"},
-                        )
-                    ],
-                    persist=False,
-                )
-            self.rag.add_file(self.harness_port.root / "README.md", metadata={"source_type": "harness-port"}, persist=False)
-
-        legacy_snapshot_root = get_legacy_harness_snapshot_root()
-        self.rag.add_file(legacy_snapshot_root / "README.md", metadata={"source_type": "legacy-harness-snapshot"}, persist=False)
-
-        if self.minimind.available:
-            self.rag.add_file(self.minimind.root / "README.md", metadata={"source_type": "minimind"}, persist=False)
-            self.rag.add_file(
-                self.minimind.root / "CHIMERA_MINI_PROPOSAL.md",
-                metadata={"source_type": "minimind"},
-                persist=False,
-            )
+        self.bootstrap_plane.seed_knowledge()
 
     def _infer_query_type(self, query: str) -> str:
-        lowered = query.lower()
-        if any(token in lowered for token in ["reply with exactly", "answer with exactly", "respond with exactly", "only reply"]):
-            return "fast"
-        if any(token in lowered for token in ["code", "python", "bug", "stack", "trace", "function"]):
-            return "code"
-        if any(token in lowered for token in ["why", "reason", "analyze", "compare", "architecture"]):
-            return "reasoning"
-        if any(token in lowered for token in ["quick", "short", "fast"]):
-            return "fast"
-        return "general"
+        return self.inference_plane._infer_query_type(query)
+
+    def _reload_profile(self) -> dict[str, Any]:
+        return self.bootstrap_plane.reload_profile()
 
     def _should_force_fast_path(self, query: str, query_type: str, max_tokens: int) -> bool:
-        if query_type != "general":
-            return False
-        if max_tokens > 64:
-            return False
-        lowered = query.lower()
-        substantive_markers = [
-            "summary",
-            "summarize",
-            "technical",
-            "architecture",
-            "explain",
-            "describe",
-            "overview",
-        ]
-        if any(marker in lowered for marker in substantive_markers):
-            return False
-        return len(query.strip()) <= 120
+        return self.inference_plane._should_force_fast_path(query, query_type, max_tokens)
 
     def _should_skip_retrieval(self, query: str, query_type: str) -> bool:
-        lowered = query.lower()
-        exact_markers = [
-            "reply with exactly",
-            "answer with exactly",
-            "respond with exactly",
-            "only reply",
-            "exactly:",
-        ]
-        return query_type == "fast" or (len(query) <= 120 and any(marker in lowered for marker in exact_markers))
+        return self.inference_plane._should_skip_retrieval(query, query_type)
 
     def _build_context_messages(
         self,
@@ -180,265 +294,447 @@ class OpenChimeraProvider:
         max_tokens: int,
         query_type: str,
     ) -> tuple[list[dict[str, str]], dict[str, Any], list[Document]]:
-        query = "\n".join(str(item.get("content", "")) for item in messages if item.get("role") == "user").strip()
-        compressed_messages, compression_stats = compress_context(messages, query=query, max_tokens=max_tokens)
-        documents = [] if not query or self._should_skip_retrieval(query, query_type) else self.rag.retrieve(query, top_k=3)
-
-        context_messages: list[dict[str, str]] = [
-            {"role": "system", "content": self.personality.system_prompt},
-        ]
-        if documents:
-            rag_context = "\n\n".join(
-                f"Source: {doc.metadata.get('filename', doc.metadata.get('topic', 'internal'))}\n{doc.text[:600]}"
-                for doc in documents
-            )
-            context_messages.append(
-                {
-                    "role": "system",
-                    "content": "Use this retrieved OpenChimera context when relevant:\n\n" + rag_context,
-                }
-            )
-        context_messages.extend(
-            {
-                "role": str(item.get("role", "user")),
-                "content": str(item.get("content", "")),
-            }
-            for item in compressed_messages
-        )
-        return context_messages, compression_stats, documents
+        return self.inference_plane._build_context_messages(messages, max_tokens, query_type)
 
     def _fallback_answer(self, query: str, documents: list[Document], model_error: str | None) -> str:
-        if documents:
-            excerpts = []
-            for doc in documents[:3]:
-                label = doc.metadata.get("filename") or doc.metadata.get("topic") or "knowledge-base"
-                excerpts.append(f"[{label}] {doc.text[:280]}")
-            summary = "\n\n".join(excerpts)
-            return (
-                "OpenChimera could not reach a healthy local generation endpoint, so this response is assembled from indexed runtime knowledge.\n\n"
-                f"Relevant context:\n{summary}\n\n"
-                f"Requested query: {query or 'unknown'}\n"
-                f"Model error: {model_error or 'unavailable'}"
-            )
+        return self.inference_plane._fallback_answer(query, documents, model_error)
 
-        return (
-            "OpenChimera is online, but no healthy local model endpoint is currently reachable. "
-            f"Query preserved: {query or 'unknown'}. "
-            f"Model error: {model_error or 'unavailable'}."
+    def _free_model_fallback_enabled(self) -> bool:
+        return self.inference_plane._free_model_fallback_enabled()
+
+    def _openrouter_api_key(self) -> str:
+        return self.inference_plane._openrouter_api_key()
+
+    def _post_json_request(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str] | None = None,
+        timeout: float = 30.0,
+    ) -> dict[str, Any]:
+        return self.inference_plane._post_json_request(url, payload, headers=headers, timeout=timeout)
+
+    def _call_openrouter_free_model(
+        self,
+        model_id: str,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+    ) -> dict[str, Any]:
+        return self.inference_plane._call_openrouter_free_model(model_id, messages, temperature, max_tokens, timeout)
+
+    def _call_ollama_free_model(
+        self,
+        model_id: str,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+    ) -> dict[str, Any]:
+        return self.inference_plane._call_ollama_free_model(model_id, messages, temperature, max_tokens, timeout)
+
+    def _extract_remote_completion_text(self, payload: dict[str, Any]) -> str:
+        return self.inference_plane._extract_remote_completion_text(payload)
+
+    def _supports_free_fallback_candidate(self, candidate: dict[str, Any]) -> bool:
+        return self.inference_plane._supports_free_fallback_candidate(candidate)
+
+    def _free_fallback_candidates(self, query_type: str, exclude: list[str] | None = None) -> list[dict[str, Any]]:
+        return self.inference_plane._free_fallback_candidates(query_type, exclude=exclude)
+
+    def _run_free_model_fallback(
+        self,
+        messages: list[dict[str, str]],
+        query_type: str,
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+        exclude: list[str] | None = None,
+    ) -> dict[str, Any]:
+        return self.inference_plane._run_free_model_fallback(
+            messages,
+            query_type,
+            temperature,
+            max_tokens,
+            timeout,
+            exclude=exclude,
         )
 
     def health(self) -> dict[str, Any]:
-        llm_status = self.llm_manager.get_status()
-        rag_status = self.rag.get_status()
-        return {
-            "status": "online",
-            "name": "openchimera",
-            "base_url": self.base_url,
-            "components": {
-                "local_llm": llm_status.get("healthy_count", 0) > 0,
-                "rag": True,
-                "token_fracture": True,
-                "router": True,
-                "harness_port": self.harness_port.available,
-                "minimind": self.minimind.available,
-                "autonomy": self.autonomy.status().get("running", False),
-            },
-            "healthy_models": llm_status.get("healthy_count", 0),
-            "known_models": llm_status.get("total_count", 0),
-            "documents": rag_status.get("documents", 0),
-            "router": self.router.status(),
-        }
+        return self.runtime_plane.health()
 
     def list_models(self) -> dict[str, Any]:
-        llm_status = self.llm_manager.get_status()
-        models = []
-        for name, details in llm_status.get("models", {}).items():
-            models.append(
-                {
-                    "id": name,
-                    "object": "model",
-                    "created": 1704067200,
-                    "owned_by": "openchimera",
-                    "status": details.get("status"),
-                    "endpoint": details.get("endpoint"),
-                    "context_length": details.get("context_length"),
-                }
-            )
-        models.append(
-            {
-                "id": "openchimera-local",
-                "object": "model",
-                "created": 1704067200,
-                "owned_by": "openchimera",
-                "status": "healthy",
-                "endpoint": self.base_url,
-                "context_length": self.profile.get("local_runtime", {}).get("context_length", 4096),
-            }
-        )
-        return {"object": "list", "data": models}
+        return self.runtime_plane.list_models()
 
     def local_runtime_status(self) -> dict[str, Any]:
-        return self.llm_manager.get_runtime_status()
+        return self.runtime_plane.local_runtime_status()
 
     def harness_port_status(self) -> dict[str, Any]:
-        return self.harness_port.status()
+        return self.runtime_plane.harness_port_status()
 
     def minimind_status(self) -> dict[str, Any]:
-        return self.minimind.status()
+        return self.runtime_plane.minimind_status()
 
     def autonomy_status(self) -> dict[str, Any]:
-        return self.autonomy.status()
+        return self.runtime_plane.autonomy_status()
 
     def model_registry_status(self) -> dict[str, Any]:
-        return self.model_registry.status()
+        return self.activation_plane.model_registry_status()
+
+    def _fallback_learning_summary(self, registry: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.activation_plane.fallback_learning_summary(registry)
+
+    def provider_activation_status(self) -> dict[str, Any]:
+        return self.activation_plane.provider_activation_status()
+
+    def model_role_status(self) -> dict[str, Any]:
+        return self.activation_plane.model_role_status()
+
+    def configure_model_roles(self, overrides: dict[str, Any]) -> dict[str, Any]:
+        return self.activation_plane.configure_model_roles(overrides)
+
+    def capability_status(self) -> dict[str, Any]:
+        return self.capability_plane.capability_status()
+
+    def list_capabilities(self, kind: str) -> list[dict[str, Any]]:
+        return self.capability_plane.list_capabilities(kind)
+
+    def mcp_status(self) -> dict[str, Any]:
+        return self.capability_plane.mcp_status()
+
+    def mcp_registry_status(self) -> dict[str, Any]:
+        return self.capability_plane.mcp_registry_status()
+
+    def register_mcp_connector(
+        self,
+        server_id: str,
+        *,
+        transport: str,
+        name: str | None = None,
+        description: str | None = None,
+        url: str | None = None,
+        command: str | None = None,
+        args: list[str] | None = None,
+        enabled: bool = True,
+    ) -> dict[str, Any]:
+        return self.capability_plane.register_mcp_connector(
+            server_id,
+            transport=transport,
+            name=name,
+            description=description,
+            url=url,
+            command=command,
+            args=args,
+            enabled=enabled,
+        )
+
+    def unregister_mcp_connector(self, server_id: str) -> dict[str, Any]:
+        return self.capability_plane.unregister_mcp_connector(server_id)
+
+    def probe_mcp_connectors(self, server_id: str | None = None, timeout_seconds: float = 3.0) -> dict[str, Any]:
+        return self.capability_plane.probe_mcp_connectors(server_id=server_id, timeout_seconds=timeout_seconds)
+
+    def credential_status(self) -> dict[str, Any]:
+        return self.activation_plane.credential_status()
+
+    def channel_status(self) -> dict[str, Any]:
+        return self.interaction_plane.channel_status()
+
+    def channel_delivery_history(self, topic: str | None = None, status: str | None = None, limit: int = 20) -> dict[str, Any]:
+        return self.interaction_plane.channel_delivery_history(topic=topic, status=status, limit=limit)
+
+    def validate_channel_subscription(self, subscription_id: str = "", subscription: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.interaction_plane.validate_channel_subscription(subscription_id=subscription_id, subscription=subscription)
+
+    def plugin_status(self) -> dict[str, Any]:
+        return self.capability_plane.plugin_status()
+
+    def install_plugin(self, plugin_id: str) -> dict[str, Any]:
+        return self.capability_plane.install_plugin(plugin_id)
+
+    def uninstall_plugin(self, plugin_id: str) -> dict[str, Any]:
+        return self.capability_plane.uninstall_plugin(plugin_id)
+
+    def browser_status(self) -> dict[str, Any]:
+        return self.interaction_plane.browser_status()
+
+    def query_status(self) -> dict[str, Any]:
+        return self.interaction_plane.query_status()
+
+    def list_query_sessions(self, limit: int = 20) -> list[dict[str, Any]]:
+        return self.interaction_plane.list_query_sessions(limit=limit)
+
+    def get_query_session(self, session_id: str) -> dict[str, Any]:
+        return self.interaction_plane.get_query_session(session_id)
+
+    def inspect_memory(self) -> dict[str, Any]:
+        return self.interaction_plane.inspect_memory()
+
+    def run_query(
+        self,
+        query: str = "",
+        messages: list[dict[str, Any]] | None = None,
+        session_id: str | None = None,
+        permission_scope: str = "user",
+        max_tokens: int = 512,
+        allow_tool_planning: bool = True,
+        allow_agent_spawn: bool = False,
+        spawn_job: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self.interaction_plane.run_query(
+            query=query,
+            messages=messages,
+            session_id=session_id,
+            permission_scope=permission_scope,
+            max_tokens=max_tokens,
+            allow_tool_planning=allow_tool_planning,
+            allow_agent_spawn=allow_agent_spawn,
+            spawn_job=spawn_job,
+        )
+
+    def browser_fetch(self, url: str, max_chars: int = 4000) -> dict[str, Any]:
+        return self.interaction_plane.browser_fetch(url=url, max_chars=max_chars)
+
+    def browser_submit_form(self, url: str, form_data: dict[str, Any], method: str = "POST", max_chars: int = 4000) -> dict[str, Any]:
+        return self.interaction_plane.browser_submit_form(url=url, form_data=form_data, method=method, max_chars=max_chars)
+
+    def media_status(self) -> dict[str, Any]:
+        return self.interaction_plane.media_status()
+
+    def media_transcribe(self, audio_text: str = "", audio_base64: str = "", language: str = "en") -> dict[str, Any]:
+        return self.interaction_plane.media_transcribe(audio_text=audio_text, audio_base64=audio_base64, language=language)
+
+    def media_synthesize(
+        self,
+        text: str,
+        voice: str = "openchimera-default",
+        audio_format: str = "wav",
+        sample_rate_hz: int = 16000,
+    ) -> dict[str, Any]:
+        return self.interaction_plane.media_synthesize(
+            text=text,
+            voice=voice,
+            audio_format=audio_format,
+            sample_rate_hz=sample_rate_hz,
+        )
+
+    def media_understand_image(self, prompt: str = "", image_path: str = "", image_base64: str = "") -> dict[str, Any]:
+        return self.interaction_plane.media_understand_image(prompt=prompt, image_path=image_path, image_base64=image_base64)
+
+    def media_generate_image(self, prompt: str, width: int = 1024, height: int = 1024, style: str = "schematic") -> dict[str, Any]:
+        return self.interaction_plane.media_generate_image(prompt=prompt, width=width, height=height, style=style)
+
+    def job_queue_status(
+        self,
+        status_filter: str | None = None,
+        job_type: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        return self.job_queue.status(status_filter=status_filter, job_type=job_type, limit=limit)
+
+    def get_operator_job(self, job_id: str) -> dict[str, Any]:
+        return self.job_queue.get(job_id)
+
+    def create_operator_job(self, job_type: str, payload: dict[str, Any], max_attempts: int = 3) -> dict[str, Any]:
+        return self.autonomy_plane.create_operator_job(job_type, payload, max_attempts)
+
+    def cancel_operator_job(self, job_id: str) -> dict[str, Any]:
+        result = self.job_queue.cancel(job_id)
+        self.bus.publish_nowait("system/jobs", {"action": "cancel", "result": result})
+        return result
+
+    def replay_operator_job(self, job_id: str) -> dict[str, Any]:
+        result = self.job_queue.replay(job_id)
+        self.bus.publish_nowait("system/jobs", {"action": "replay", "result": result})
+        return result
+
+    def upsert_channel_subscription(self, subscription: dict[str, Any]) -> dict[str, Any]:
+        return self.interaction_plane.upsert_channel_subscription(subscription)
+
+    def delete_channel_subscription(self, subscription_id: str) -> dict[str, Any]:
+        return self.interaction_plane.delete_channel_subscription(subscription_id)
+
+    def dispatch_daily_briefing(self) -> dict[str, Any]:
+        return self.interaction_plane.dispatch_daily_briefing()
+
+    def dispatch_channel(self, topic: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.interaction_plane.dispatch_channel(topic, payload)
+
+    def autonomy_diagnostics(self) -> dict[str, Any]:
+        return self.autonomy_plane.diagnostics()
+
+    def autonomy_artifact_history(self, artifact_name: str | None = None, limit: int = 20) -> dict[str, Any]:
+        return self.autonomy_plane.artifact_history(artifact_name=artifact_name, limit=limit)
+
+    def autonomy_artifact(self, artifact_name: str) -> dict[str, Any]:
+        return self.autonomy_plane.artifact(artifact_name)
+
+    def operator_digest(self) -> dict[str, Any]:
+        return self.autonomy_plane.operator_digest()
+
+    def dispatch_operator_digest(
+        self,
+        enqueue: bool = False,
+        max_attempts: int = 3,
+        history_limit: int | None = None,
+        dispatch_topic: str | None = None,
+    ) -> dict[str, Any]:
+        return self.autonomy_plane.dispatch_operator_digest(
+            enqueue=enqueue,
+            max_attempts=max_attempts,
+            history_limit=history_limit,
+            dispatch_topic=dispatch_topic,
+        )
+
+    def auth_status(self) -> dict[str, Any]:
+        return self.activation_plane.auth_status()
+
+    def observability_status(self) -> dict[str, Any]:
+        return self.runtime_plane.observability_status()
+
+    def set_provider_credential(self, provider_id: str, key: str, value: str) -> dict[str, Any]:
+        return self.activation_plane.set_provider_credential(provider_id, key, value)
+
+    def delete_provider_credential(self, provider_id: str, key: str) -> dict[str, Any]:
+        return self.activation_plane.delete_provider_credential(provider_id, key)
 
     def refresh_model_registry(self) -> dict[str, Any]:
-        result = self.model_registry.refresh()
-        self.bus.publish_nowait("system/model-registry", {"action": "refresh", "result": result})
-        return result
+        return self.activation_plane.refresh_model_registry()
+
+    def configure_provider_activation(
+        self,
+        enabled_provider_ids: list[str] | None = None,
+        preferred_cloud_provider: str | None = None,
+        prefer_free_models: bool | None = None,
+    ) -> dict[str, Any]:
+        return self.activation_plane.configure_provider_activation(
+            enabled_provider_ids=enabled_provider_ids,
+            preferred_cloud_provider=preferred_cloud_provider,
+            prefer_free_models=prefer_free_models,
+        )
 
     def onboarding_status(self) -> dict[str, Any]:
-        return self.model_registry.onboarding_status()
+        return self.control_plane.onboarding_status()
+
+    def apply_onboarding(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.bootstrap_plane.apply_onboarding(payload)
+
+    def reset_onboarding(self) -> dict[str, Any]:
+        return self.bootstrap_plane.reset_onboarding()
+
+    def _build_integration_status(self) -> dict[str, Any]:
+        return self.integration_plane.build_integration_status()
 
     def integration_status(self) -> dict[str, Any]:
-        report = self.integration_audit.build_report()
-        engines = report.get("engines", {})
-        if "aegis_swarm" in engines:
-            engines["aegis_swarm"]["integrated_runtime"] = bool(self.aegis.status().get("available"))
-            engines["aegis_swarm"]["bridge_status"] = self.aegis.status()
-        if "ascension_engine" in engines:
-            engines["ascension_engine"]["integrated_runtime"] = True
-            engines["ascension_engine"]["bridge_status"] = self.ascension.status()
-        return report
+        return self.control_plane.integration_status()
+
+    def subsystem_status(self) -> dict[str, Any]:
+        return self.control_plane.subsystem_status()
+
+    def invoke_subsystem(self, subsystem_id: str, action: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.service_plane.invoke_subsystem(subsystem_id, action, payload)
 
     def aegis_status(self) -> dict[str, Any]:
-        return self.aegis.status()
+        return self.service_plane.aegis_status()
 
-    def run_aegis_workflow(self, target_project: str | None = None, preview: bool = True) -> dict[str, Any]:
-        result = self.aegis.run_workflow(target_project=target_project, preview=preview)
-        self.bus.publish_nowait("system/aegis", {"action": "run_workflow", "result": result})
-        return result
+    def run_aegis_workflow(
+        self,
+        target_project: str | None = None,
+        preview: bool = True,
+        preview_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        return self.service_plane.run_aegis_workflow(target_project=target_project, preview=preview, preview_context=preview_context)
+
+    def preview_self_repair(self, target_project: str | None = None, enqueue: bool = False, max_attempts: int = 3) -> dict[str, Any]:
+        return self.autonomy_plane.preview_self_repair(target_project=target_project, enqueue=enqueue, max_attempts=max_attempts)
 
     def ascension_status(self) -> dict[str, Any]:
-        return self.ascension.status()
+        return self.service_plane.ascension_status()
 
     def deliberate(self, prompt: str, perspectives: list[str] | None = None, max_tokens: int = 256) -> dict[str, Any]:
-        result = self.ascension.deliberate(prompt=prompt, perspectives=perspectives, max_tokens=max_tokens)
-        self.bus.publish_nowait("system/ascension", {"action": "deliberate", "result": result})
-        return result
+        return self.service_plane.deliberate(prompt=prompt, perspectives=perspectives, max_tokens=max_tokens)
 
     def daily_briefing(self) -> dict[str, Any]:
-        integrations = self.integration_status()
-        onboarding = self.onboarding_status()
-        autonomy = self.autonomy_status()
-        llm_status = self.llm_manager.get_status()
-        recent_events = self.bus.recent_events()[-8:]
-        priorities: list[str] = []
-        if onboarding.get("suggested_cloud_models") and onboarding.get("suggested_local_models") == []:
-            priorities.append("Provision a cloud fallback provider because the detected hardware is below the preferred local-only range.")
-        remediation = integrations.get("remediation", [])
-        priorities.extend(remediation[:3])
-        stale_jobs = [
-            name
-            for name, details in autonomy.get("jobs", {}).items()
-            if details.get("enabled") and details.get("last_status") in {"never", "error"}
-        ]
-        if stale_jobs:
-            priorities.append("Autonomy jobs need attention: " + ", ".join(stale_jobs))
-        if llm_status.get("healthy_count", 0) == 0:
-            priorities.append("No healthy local models are currently online.")
-        summary = (
-            f"OpenChimera runtime has {llm_status.get('healthy_count', 0)} healthy local models, "
-            f"MiniMind available={self.minimind.available}, and {len(remediation)} integration gaps still visible."
-        )
-        return {
-            "generated_at": int(time.time()),
-            "summary": summary,
-            "priorities": priorities,
-            "system": {
-                "healthy_local_models": llm_status.get("healthy_count", 0),
-                "known_local_models": llm_status.get("total_count", 0),
-                "minimind": self.minimind_status(),
-                "aegis": self.aegis_status(),
-                "ascension": self.ascension_status(),
-            },
-            "onboarding": onboarding,
-            "integrations": integrations,
-            "recent_events": recent_events,
-        }
+        return self.control_plane.daily_briefing()
+
+    def control_plane_readiness(self, system_status: dict[str, Any] | None = None, auth_required: bool = False) -> dict[str, Any]:
+        return self.control_plane.readiness_status(system_status=system_status, auth_required=auth_required)
+
+    def control_plane_status(self, system_status: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.control_plane.status_snapshot(system_status=system_status, job_queue_status=self.job_queue_status(limit=20))
+
+    def _handle_autonomy_job_event(self, payload: Any) -> None:
+        self.autonomy_plane.handle_job_event(payload)
+
+    def _autonomy_aegis_preview(self, target_project: str | None = None, preview_context: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.run_aegis_workflow(target_project=target_project, preview=True, preview_context=preview_context)
+
+    def _build_autonomy_alert(self, payload: dict[str, Any]) -> dict[str, Any] | None:
+        return self.autonomy_plane.build_autonomy_alert(payload)
+
+    def _severity_rank(self, severity: str) -> int:
+        return self.autonomy_plane.severity_rank(severity)
+
+    def _execute_operator_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        return self.autonomy_plane.execute_operator_job(job)
+
+    def _classify_operator_job(self, job_type: str, payload: dict[str, Any]) -> tuple[str, str, str]:
+        return self.autonomy_plane.classify_operator_job(job_type, payload)
+
+    def _invoke_managed_subsystem(self, subsystem_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return self.service_plane.invoke_managed_subsystem(subsystem_id, payload)
 
     def build_minimind_dataset(self, force: bool = True) -> dict[str, Any]:
-        result = self.minimind.build_training_dataset(
-            self.harness_port,
-            identity_snapshot=self.personality.identity,
-            force=force,
-        )
-        self.bus.publish_nowait("system/minimind", {"action": "build_dataset", "result": result})
-        return result
+        return self.service_plane.build_minimind_dataset(force=force)
 
     def start_minimind_server(self) -> dict[str, Any]:
-        result = self.minimind.start_server()
-        self.bus.publish_nowait("system/minimind", {"action": "start_server", "result": result})
-        return result
+        return self.service_plane.start_minimind_server()
 
     def stop_minimind_server(self) -> dict[str, Any]:
-        result = self.minimind.stop_server()
-        self.bus.publish_nowait("system/minimind", {"action": "stop_server", "result": result})
-        return result
+        return self.service_plane.stop_minimind_server()
 
     def start_minimind_training(self, mode: str = "reason_sft", force_dataset: bool = False) -> dict[str, Any]:
-        if force_dataset:
-            dataset_result = self.build_minimind_dataset(force=True)
-            self.bus.publish_nowait(
-                "system/minimind",
-                {"action": "build_dataset_before_training", "mode": mode, "result": dataset_result},
-            )
-        result = self.minimind.start_training_job(mode=mode, force_dataset=False)
-        self.bus.publish_nowait("system/minimind", {"action": "start_training", "mode": mode, "result": result})
-        return result
+        return self.service_plane.start_minimind_training(mode=mode, force_dataset=force_dataset)
 
     def stop_minimind_training(self, job_id: str) -> dict[str, Any]:
-        result = self.minimind.stop_training_job(job_id)
-        self.bus.publish_nowait("system/minimind", {"action": "stop_training", "job_id": job_id, "result": result})
-        return result
+        return self.service_plane.stop_minimind_training(job_id)
 
     def start_autonomy(self) -> dict[str, Any]:
-        result = self.autonomy.start()
-        self.bus.publish_nowait("system/autonomy", {"action": "start", "result": result})
-        return result
+        return self.service_plane.start_autonomy()
+
+    def qwen_agent_status(self) -> dict[str, Any]:
+        return self.integration_plane.qwen_agent_status()
+
+    def context_hub_status(self) -> dict[str, Any]:
+        return self.integration_plane.context_hub_status()
+
+    def deepagents_stack_status(self) -> dict[str, Any]:
+        return self.integration_plane.deepagents_stack_status()
+
+    def aether_operator_stack_status(self) -> dict[str, Any]:
+        return self.integration_plane.aether_operator_stack_status()
+
+    def clawd_hybrid_rtx_status(self) -> dict[str, Any]:
+        return self.integration_plane.clawd_hybrid_rtx_status()
+
+    def aegis_mobile_gateway_status(self) -> dict[str, Any]:
+        return self.integration_plane.aegis_mobile_gateway_status()
 
     def stop_autonomy(self) -> dict[str, Any]:
-        result = self.autonomy.stop()
-        self.bus.publish_nowait("system/autonomy", {"action": "stop", "result": result})
-        return result
+        return self.service_plane.stop_autonomy()
 
-    def run_autonomy_job(self, job_name: str) -> dict[str, Any]:
-        result = self.autonomy.run_job(job_name)
-        self.bus.publish_nowait("system/autonomy", {"action": "run_job", "job": job_name, "result": result})
-        return result
+    def run_autonomy_job(self, job_name: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.service_plane.run_autonomy_job(job_name, payload=payload)
 
     def start_local_models(self, models: list[str] | None = None) -> dict[str, Any]:
-        result = self.llm_manager.start_configured_models(models)
-        self.bus.publish_nowait("system/local-llm", {"action": "start", "result": result})
-        return result
+        return self.service_plane.start_local_models(models)
 
     def stop_local_models(self, models: list[str] | None = None) -> dict[str, Any]:
-        result = self.llm_manager.stop_configured_models(models)
-        self.bus.publish_nowait("system/local-llm", {"action": "stop", "result": result})
-        return result
+        return self.service_plane.stop_local_models(models)
 
     def embeddings(self, input_text: str, model: str = "openchimera-local") -> dict[str, Any]:
-        vector_size = 64
-        vector = [0.0] * vector_size
-        for token in input_text.lower().split():
-            bucket = int(hashlib.sha256(token.encode("utf-8")).hexdigest(), 16) % vector_size
-            vector[bucket] += 1.0
-        return {
-            "object": "list",
-            "data": [{"object": "embedding", "index": 0, "embedding": vector}],
-            "model": model,
-            "usage": {"prompt_tokens": _count_tokens(input_text), "total_tokens": _count_tokens(input_text)},
-        }
+        return self.runtime_plane.embeddings(input_text=input_text, model=model)
 
     def chat_completion(
         self,
@@ -448,144 +744,13 @@ class OpenChimeraProvider:
         max_tokens: int = 1024,
         stream: bool = False,
     ) -> dict[str, Any]:
-        request_id = f"openchimera-{uuid.uuid4().hex[:12]}"
-        created = int(time.time())
-        query = "\n".join(str(item.get("content", "")) for item in messages if item.get("role") == "user").strip()
-        query_type = self._infer_query_type(query)
-        if self._should_force_fast_path(query, query_type, max_tokens):
-            query_type = "fast"
-        context_messages, compression_stats, documents = self._build_context_messages(
-            messages,
-            max_tokens=max(512, max_tokens * 4),
-            query_type=query_type,
+        return self.inference_plane.chat_completion(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=stream,
         )
-        request_timeout = float(self.profile.get("local_runtime", {}).get("local_timeout_s", 35.0))
-        max_retries = 2
-        if query_type == "fast":
-            request_timeout = max(20.0, min(request_timeout, 30.0))
-            max_retries = 1
-        elif query_type == "general":
-            request_timeout = max(25.0, min(request_timeout, 35.0))
-            max_retries = 1
-
-        attempted_models: list[str] = []
-        result: dict[str, Any] = {"content": "", "model": None, "error": "No healthy local models available"}
-        if query_type == "reasoning":
-            minimind_result = self.minimind.reasoning_completion(
-                messages=context_messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=max(request_timeout, 60.0),
-            )
-            if minimind_result.get("content") and not minimind_result.get("error"):
-                result = {
-                    "content": minimind_result["content"],
-                    "model": minimind_result.get("model", "minimind"),
-                    "query_type": query_type,
-                    "prompt_strategy": "minimind_reasoning",
-                    "route_reason": "minimind-reasoning-engine",
-                }
-
-        for _ in range(max_retries + 1):
-            if result.get("content") and not result.get("error"):
-                break
-            route = self.router.decide(
-                query=query,
-                query_type=query_type,
-                max_tokens=max_tokens,
-                exclude=attempted_models,
-            )
-            if route.model is None:
-                result = {
-                    "content": "",
-                    "model": attempted_models[-1] if attempted_models else None,
-                    "error": result.get("error") or "No healthy local models available",
-                }
-                break
-
-            attempted_models.append(route.model)
-            result = self.llm_manager.chat_completion(
-                messages=context_messages,
-                model=route.model,
-                query_type=query_type,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                timeout=request_timeout,
-            )
-            if result.get("content") and not result.get("error"):
-                result["route_reason"] = route.reason
-                break
-
-        content = result.get("content") or self._fallback_answer(query, documents, result.get("error"))
-        model_used = result.get("model") or model
-        prompt_strategy = result.get("prompt_strategy")
-        prompt_strategies_tried = result.get("prompt_strategies_tried")
-        if prompt_strategy is None and model_used and model_used != "minimind":
-            prompt_strategy = self.llm_manager._prompt_strategy_for_model(str(model_used))
-        if prompt_strategies_tried is None and prompt_strategy is not None:
-            prompt_strategies_tried = [prompt_strategy]
-
-        prompt_tokens = sum(_count_tokens(str(item.get("content", ""))) for item in context_messages)
-        completion_tokens = _count_tokens(content)
-        response = {
-            "id": request_id,
-            "object": "chat.completion",
-            "created": created,
-            "model": model_used,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {"role": "assistant", "content": content},
-                    "finish_reason": "stop",
-                }
-            ],
-            "usage": {
-                "prompt_tokens": prompt_tokens,
-                "completion_tokens": completion_tokens,
-                "total_tokens": prompt_tokens + completion_tokens,
-            },
-            "openchimera": {
-                "compression": compression_stats,
-                "retrieved_documents": [doc.metadata for doc in documents],
-                "fallback_used": bool(result.get("error")),
-                "query_type": query_type,
-                "stream_requested": stream,
-                "attempted_models": attempted_models,
-                "prompt_strategy": prompt_strategy,
-                "prompt_strategies_tried": prompt_strategies_tried,
-                "route_reason": result.get("route_reason"),
-                "minimind_runtime": self.minimind.get_runtime_status(),
-            },
-        }
-        self.bus.publish_nowait(
-            "llm/completion",
-            {
-                "request_id": request_id,
-                "model": model_used,
-                "query_type": query_type,
-                "fallback": bool(result.get("error")),
-                "attempted_models": attempted_models,
-                "prompt_strategy": prompt_strategy,
-                "prompt_strategies_tried": prompt_strategies_tried,
-            },
-        )
-        return response
 
     def status(self) -> dict[str, Any]:
-        return {
-            "online": True,
-            "base_url": self.base_url,
-            "health": self.health(),
-            "models": self.list_models().get("data", []),
-            "llm": self.llm_manager.get_status(),
-            "router": self.router.status(),
-            "rag": self.rag.get_status(),
-            "harness_port": self.harness_port_status(),
-            "minimind": self.minimind_status(),
-            "autonomy": self.autonomy_status(),
-            "aegis": self.aegis_status(),
-            "ascension": self.ascension_status(),
-            "model_registry": self.model_registry_status(),
-            "onboarding": self.onboarding_status(),
-            "integrations": self.integration_status(),
-        }
+        return self.runtime_plane.status()
