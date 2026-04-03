@@ -1,6 +1,6 @@
 # OpenChimera
 
-![OpenChimera](assets/openchimera-logo.svg)
+![OpenChimera](assets/openchimera-logo.jpg)
 
 **Local-first orchestration for models, operator jobs, browser tasks, and optional external runtimes.**
 
