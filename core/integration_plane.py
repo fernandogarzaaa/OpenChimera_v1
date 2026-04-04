@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -19,11 +20,15 @@ class IntegrationPlane:
         mcp_status_getter: Callable[[], dict[str, Any]],
         aegis_status_getter: Callable[[], dict[str, Any]],
         ascension_status_getter: Callable[[], dict[str, Any]],
+        bus: Any = None,
     ) -> None:
         self.integration_audit = integration_audit
         self.mcp_status_getter = mcp_status_getter
         self.aegis_status_getter = aegis_status_getter
         self.ascension_status_getter = ascension_status_getter
+        self._bus = bus
+        self._bridges: dict[str, Any] = {}
+        self._active_bridges: dict[str, int] = {}
 
     def build_integration_status(self) -> dict[str, Any]:
         report = self.integration_audit.build_report()
@@ -220,3 +225,74 @@ class IntegrationPlane:
                 "websocket-control",
             ],
         }
+
+    # ------------------------------------------------------------------
+    # Bridge execution layer
+    # ------------------------------------------------------------------
+
+    def activate_bridge(self, bridge_id: str) -> dict:
+        bridge = self._bridges.get(bridge_id)
+        if bridge is None:
+            result: dict = {
+                "bridge_id": bridge_id,
+                "activated": False,
+                "status": "not_found",
+                "error": f"Bridge '{bridge_id}' not found",
+            }
+        else:
+            ts = int(time.time())
+            self._active_bridges[bridge_id] = ts
+            result = {
+                "bridge_id": bridge_id,
+                "activated": True,
+                "status": "active",
+                "activated_at": ts,
+            }
+        try:
+            if self._bus is not None:
+                self._bus.publish_nowait("integration/bridge/activated", result)
+        except Exception:
+            pass
+        return result
+
+    def invoke_bridge(self, bridge_id: str, payload: dict | None = None) -> dict:
+        if bridge_id not in self._active_bridges:
+            self.activate_bridge(bridge_id)
+
+        bridge = self._bridges.get(bridge_id)
+        result: dict
+        try:
+            executor: Any = None
+            if isinstance(bridge, dict):
+                executor = bridge.get("executor")
+            if callable(executor):
+                rv = executor(payload)
+                result = {
+                    "bridge_id": bridge_id,
+                    "invoked": True,
+                    "result": rv,
+                    "payload_echo": payload,
+                    "executed_at": int(time.time()),
+                }
+            else:
+                result = {
+                    "bridge_id": bridge_id,
+                    "invoked": True,
+                    "result": None,
+                    "payload_echo": payload,
+                    "executed_at": int(time.time()),
+                    "note": "Bridge registered but has no executor; metadata-only bridge.",
+                }
+        except Exception as exc:
+            result = {
+                "bridge_id": bridge_id,
+                "invoked": False,
+                "error": str(exc),
+                "executed_at": int(time.time()),
+            }
+        try:
+            if self._bus is not None:
+                self._bus.publish_nowait("integration/bridge/invoked", result)
+        except Exception:
+            pass
+        return result

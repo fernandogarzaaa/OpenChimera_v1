@@ -175,3 +175,61 @@ class OpenChimeraMCPServerTests(unittest.TestCase):
         )
 
         self.assertEqual(response["error"]["code"], -32602)
+
+    def test_ping_returns_empty_result(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({"jsonrpc": "2.0", "id": 10, "method": "ping", "params": {}})
+        self.assertEqual(response["result"], {})
+
+    def test_notifications_initialized_returns_none(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({"jsonrpc": "2.0", "id": None, "method": "notifications/initialized"})
+        self.assertIsNone(response)
+
+    def test_unsupported_method_returns_method_not_found_error(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({"jsonrpc": "2.0", "id": 11, "method": "totally/unknown"})
+        self.assertEqual(response["error"]["code"], -32601)
+
+    def test_unknown_resource_uri_returns_error(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "resources/read",
+            "params": {"uri": "openchimera://status/nonexistent"},
+        })
+        self.assertEqual(response["error"]["code"], -32602)
+
+    def test_unknown_prompt_name_returns_error(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({
+            "jsonrpc": "2.0",
+            "id": 13,
+            "method": "prompts/get",
+            "params": {"name": "openchimera.nonexistent", "arguments": {}},
+        })
+        self.assertEqual(response["error"]["code"], -32602)
+
+    def test_system_overview_prompt_returns_messages_list(self) -> None:
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        response = server.handle_request({
+            "jsonrpc": "2.0",
+            "id": 14,
+            "method": "prompts/get",
+            "params": {"name": "openchimera.system_overview", "arguments": {}},
+        })
+        self.assertIn("messages", response["result"])
+        self.assertGreater(len(response["result"]["messages"]), 0)
+
+    def test_read_write_message_roundtrip(self) -> None:
+        import io
+        server = OpenChimeraMCPServer(provider=_FakeProvider())
+        payload = {"jsonrpc": "2.0", "id": 99, "method": "ping"}
+        sink = io.BytesIO()
+        server._write_message(sink, payload)
+        # Rewind and read back
+        sock = io.BytesIO(sink.getvalue())
+        parsed = server._read_message(sock)
+        self.assertEqual(parsed["id"], 99)
+        self.assertEqual(parsed["method"], "ping")

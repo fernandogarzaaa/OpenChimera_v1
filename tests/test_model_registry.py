@@ -160,7 +160,7 @@ class ModelRegistryTests(unittest.TestCase):
                 "local_runtime": {},
             }
 
-            with patch("core.model_registry.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=appforge_root), patch(
+            with patch("core.model_registry.ROOT", temp_root), patch("core.local_model_inventory.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=appforge_root), patch(
                 "core.local_model_inventory.get_legacy_workspace_root", return_value=temp_root / "legacy"
             ):
                 payload = registry.refresh()

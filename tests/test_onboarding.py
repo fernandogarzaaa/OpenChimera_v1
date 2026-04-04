@@ -248,7 +248,7 @@ class OnboardingTests(unittest.TestCase):
                 "integration_roots": {"harness_repo": str(temp_root / "missing-harness"), "minimind": str(temp_root / "missing-minimind")},
             }
             registry.profile = profile_state
-            with patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
+            with patch("core.local_model_inventory.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
                 "core.local_model_inventory.get_legacy_workspace_root", return_value=temp_root / "legacy"
             ):
                 registry.refresh()
@@ -262,7 +262,7 @@ class OnboardingTests(unittest.TestCase):
                 profile_saver=lambda profile: profile_state.update(json.loads(json.dumps(profile))),
             )
 
-            with patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
+            with patch("core.local_model_inventory.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
                 "core.local_model_inventory.get_legacy_workspace_root", return_value=temp_root / "legacy"
             ):
                 status = onboarding.status()
@@ -301,7 +301,7 @@ class OnboardingTests(unittest.TestCase):
                 "integration_roots": {"harness_repo": temp_dir, "minimind": temp_dir},
             }
             registry.profile = profile_state
-            with patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
+            with patch("core.local_model_inventory.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
                 "core.local_model_inventory.get_legacy_workspace_root", return_value=temp_root / "legacy"
             ):
                 registry.refresh()
@@ -327,7 +327,7 @@ class OnboardingTests(unittest.TestCase):
                 profile_saver=lambda profile: profile_state.update(json.loads(json.dumps(profile))),
             )
 
-            with patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
+            with patch("core.local_model_inventory.ROOT", temp_root), patch("core.local_model_inventory.get_appforge_root", return_value=temp_root / "appforge"), patch(
                 "core.local_model_inventory.get_legacy_workspace_root", return_value=temp_root / "legacy"
             ):
                 status = onboarding.status()

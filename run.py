@@ -769,6 +769,9 @@ def _doctor_payload(*, production: bool = False, database_path: Path | None = No
         warnings.append("API auth is enabled but no admin token is configured for mutating routes.")
     if not checks["external_bind_protected"]:
         warnings.append("OpenChimera is configured to bind beyond localhost without API auth. Set OPENCHIMERA_API_TOKEN and OPENCHIMERA_ADMIN_TOKEN before exposing the runtime.")
+    auth_enabled = profile.get("api", {}).get("auth", {}).get("enabled", False)
+    if not auth_enabled:
+        warnings.append("Auth is disabled. Enable api.auth.enabled=true for production deployments.")
 
     next_actions: list[str] = []
     if not checks["harness_repo_supported"]:

@@ -780,19 +780,27 @@ class ApiContractTests(unittest.TestCase):
         merged_headers = {"Content-Type": "application/json", "Content-Length": str(len(body))}
         if headers:
             merged_headers.update(headers)
-        req = request.Request(
-            f"{self.base_url}{path}",
-            data=body,
-            headers=merged_headers,
-            method="POST",
-        )
-        try:
-            with request.urlopen(req, timeout=10) as response:
-                return response.status, json.loads(response.read().decode("utf-8"))
-        except error.HTTPError as exc:
-            body = exc.read().decode("utf-8")
-            exc.close()
-            return exc.code, json.loads(body)
+        last_os_exc: OSError | None = None
+        for _attempt in range(2):
+            req = request.Request(
+                f"{self.base_url}{path}",
+                data=body,
+                headers=merged_headers,
+                method="POST",
+            )
+            try:
+                with request.urlopen(req, timeout=10) as response:
+                    return response.status, json.loads(response.read().decode("utf-8"))
+            except error.HTTPError as exc:
+                raw = exc.read().decode("utf-8")
+                exc.close()
+                return exc.code, json.loads(raw)
+            except OSError as exc:
+                # Windows (WinError 10053/10054) can abort the connection when the
+                # server sends a 429 and immediately closes the socket.  Retry once.
+                last_os_exc = exc
+                import time as _t; _t.sleep(0.05)
+        raise last_os_exc  # type: ignore[misc]
 
     def _post_raw_with_headers(
         self,

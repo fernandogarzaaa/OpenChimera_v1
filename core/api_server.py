@@ -62,7 +62,7 @@ class _ProviderHTTPServer(ThreadingHTTPServer):
         super().__init__(server_address, _ProviderRequestHandler)
         self.provider = provider
         self.system_status_provider = system_status_provider
-        self.authorizer = RequestAuthorizer()
+        self.authorizer = RequestAuthorizer(bus=getattr(provider, "bus", None))
         self.observability = getattr(provider, "observability", ObservabilityStore())
         self.mcp = OpenChimeraMCPServer(provider)
         self.rate_limiter = rate_limiter or RateLimiter()
