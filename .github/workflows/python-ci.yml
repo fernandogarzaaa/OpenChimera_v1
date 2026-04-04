@@ -29,7 +29,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
+          python -m pip install pip-audit
           python -m pip install -e .
+
+      - name: Audit Python dependencies for CVEs
+        run: python -m pip_audit --requirement requirements.txt --strict
 
       - name: Run pre-commit checks
         if: runner.os == 'Linux'

@@ -45,5 +45,9 @@ tmp_sandbox_helper/
 tmp_sandbox_timing/
 tmp_session_test/
 
+# Node artifacts — lockfiles in skill fixtures aren't committed
+node_modules/
+skills/dependency-auditor/test-project/package-lock.json
+
 # Local editor settings
 .vscode/
