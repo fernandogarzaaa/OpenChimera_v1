@@ -50,7 +50,7 @@ Sphinx==6.2.1
 sphinx-rtd-theme==1.2.0
 
 # Deployment and server
-gunicorn==20.1.0
+gunicorn==22.0.0
 whitenoise==6.4.0
 
 # Environment and configuration
