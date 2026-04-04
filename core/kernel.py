@@ -208,7 +208,21 @@ class OpenChimeraKernel:
                 "running": self._supervisor_thread is not None and self._supervisor_thread.is_alive(),
             },
             "watch_files": self.watch_files,
+            "swarm_agents": self._swarm_status(),
         }
+
+    def _swarm_status(self) -> dict:
+        """Return lightweight swarm surface info without instantiating GodSwarm."""
+        try:
+            from swarms.god_swarm import GodSwarm
+            return {
+                "core_agents": GodSwarm.CORE_AGENT_IDS,
+                "supporting_agents": GodSwarm.SUPPORTING_AGENT_IDS,
+                "total_agents": len(GodSwarm.ALL_AGENT_IDS),
+                "ready": True,
+            }
+        except Exception as exc:
+            return {"ready": False, "error": str(exc)}
 
 
 Kernel = OpenChimeraKernel

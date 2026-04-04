@@ -52,6 +52,9 @@ jobs:
       - name: Run release validation gate
         run: python run.py validate
 
+      - name: Run quantum consensus simulation verification
+        run: python scripts/quantum_sim_verify.py
+
   full-discovery:
     name: Full discovery sweep
     runs-on: ubuntu-latest
