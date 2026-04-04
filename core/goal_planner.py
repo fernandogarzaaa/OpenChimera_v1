@@ -1,0 +1,815 @@
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
+import time
+import uuid
+from dataclasses import dataclass
+from typing import Any
+
+from core._bus_fallback import EventBus
+from core._database_fallback import DatabaseManager
+
+log = logging.getLogger(__name__)
+
+
+class GoalStatus:
+    """Goal status constants."""
+
+    PENDING = "pending"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+
+
+@dataclass(frozen=True)
+class Goal:
+    """Immutable goal representation."""
+
+    id: str
+    parent_id: str | None
+    depth: int
+    description: str
+    domain: str
+    preconditions: list[str]
+    postconditions: list[str]
+    success_criteria: list[str]
+    status: str
+    assigned_model: str | None
+    result: str | None
+    confidence: float
+    max_depth: int
+    created_at: int
+    updated_at: int
+
+
+class GoalPlanner:
+    """HTN-style hierarchical goal planner with dependency tracking."""
+
+    def __init__(self, db: DatabaseManager, bus: EventBus) -> None:
+        """Initialize goal planner.
+
+        Args:
+            db: DatabaseManager instance for persistence
+            bus: EventBus instance for event publishing
+        """
+        self._db = db
+        self._bus = bus
+
+    # ========== CRUD Operations ==========
+
+    def create_goal(
+        self,
+        description: str,
+        domain: str = "general",
+        parent_id: str | None = None,
+        preconditions: list[str] | None = None,
+        postconditions: list[str] | None = None,
+        success_criteria: list[str] | None = None,
+        max_depth: int = 4,
+    ) -> Goal:
+        """Create a new goal.
+
+        Args:
+            description: Goal description
+            domain: Problem domain
+            parent_id: Parent goal ID for hierarchical decomposition
+            preconditions: List of preconditions (JSON-serialized)
+            postconditions: List of postconditions (JSON-serialized)
+            success_criteria: List of success criteria (JSON-serialized)
+            max_depth: Maximum recursion depth for this goal tree
+
+        Returns:
+            Created Goal object
+        """
+        goal_id = uuid.uuid4().hex
+        now = int(time.time())
+
+        # Calculate depth from parent
+        depth = 0
+        if parent_id:
+            parent = self.get_goal(parent_id)
+            if parent:
+                depth = parent.depth + 1
+                if depth > 8:
+                    log.warning(f"Goal depth {depth} exceeds max of 8, clamping to 8")
+                    depth = 8
+
+        preconditions = preconditions or []
+        postconditions = postconditions or []
+        success_criteria = success_criteria or []
+
+        try:
+            with self._db.transaction() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO goals
+                    (id, parent_id, depth, description, domain, preconditions,
+                     postconditions, success_criteria, status, confidence,
+                     max_depth, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        goal_id,
+                        parent_id,
+                        depth,
+                        description,
+                        domain,
+                        json.dumps(preconditions),
+                        json.dumps(postconditions),
+                        json.dumps(success_criteria),
+                        GoalStatus.PENDING,
+                        0.0,
+                        max_depth,
+                        now,
+                        now,
+                    ),
+                )
+        except sqlite3.Error as e:
+            log.warning(f"Failed to create goal: {e}")
+            raise
+
+        goal = Goal(
+            id=goal_id,
+            parent_id=parent_id,
+            depth=depth,
+            description=description,
+            domain=domain,
+            preconditions=preconditions,
+            postconditions=postconditions,
+            success_criteria=success_criteria,
+            status=GoalStatus.PENDING,
+            assigned_model=None,
+            result=None,
+            confidence=0.0,
+            max_depth=max_depth,
+            created_at=now,
+            updated_at=now,
+        )
+
+        self._bus.publish("planner.goal.created", {"goal": goal})
+        return goal
+
+    def get_goal(self, goal_id: str) -> Goal | None:
+        """Retrieve a goal by ID.
+
+        Args:
+            goal_id: Goal ID
+
+        Returns:
+            Goal object or None if not found
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    "SELECT * FROM goals WHERE id = ?",
+                    (goal_id,),
+                )
+                row = cursor.fetchone()
+                if row:
+                    return self._row_to_goal(row)
+        except sqlite3.Error as e:
+            log.warning(f"Failed to get goal {goal_id}: {e}")
+
+        return None
+
+    def update_goal(self, goal_id: str, **kwargs: Any) -> Goal | None:
+        """Update goal fields.
+
+        Supported fields: status, result, confidence, assigned_model
+
+        Args:
+            goal_id: Goal ID
+            **kwargs: Fields to update
+
+        Returns:
+            Updated Goal object or None if not found
+        """
+        # Whitelist allowed fields
+        allowed_fields = {"status", "result", "confidence", "assigned_model"}
+        update_fields = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+        if not update_fields:
+            log.warning(f"No valid update fields provided for goal {goal_id}")
+            return self.get_goal(goal_id)
+
+        now = int(time.time())
+
+        # Build dynamic UPDATE query
+        set_clauses = [f"{k} = ?" for k in update_fields.keys()]
+        set_clause = ", ".join(set_clauses)
+        values = list(update_fields.values()) + [now, goal_id]
+
+        try:
+            with self._db.transaction() as conn:
+                conn.execute(
+                    f"UPDATE goals SET {set_clause}, updated_at = ? WHERE id = ?",
+                    values,
+                )
+        except sqlite3.Error as e:
+            log.warning(f"Failed to update goal {goal_id}: {e}")
+            raise
+
+        goal = self.get_goal(goal_id)
+        if goal:
+            self._bus.publish("planner.goal.updated", {"goal": goal})
+
+        return goal
+
+    def delete_goal(self, goal_id: str) -> bool:
+        """Delete a goal (cascades to children via foreign key).
+
+        Args:
+            goal_id: Goal ID
+
+        Returns:
+            True if deleted, False if not found
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    "DELETE FROM goals WHERE id = ?",
+                    (goal_id,),
+                )
+                affected = cursor.rowcount
+
+                if affected > 0:
+                    self._bus.publish("planner.goal.deleted", {"goal_id": goal_id})
+                    return True
+        except sqlite3.Error as e:
+            log.warning(f"Failed to delete goal {goal_id}: {e}")
+            raise
+
+        return False
+
+    def list_goals(
+        self,
+        status: str | None = None,
+        domain: str | None = None,
+        parent_id: str | None = None,
+        limit: int = 100,
+    ) -> list[Goal]:
+        """List goals with optional filtering.
+
+        Args:
+            status: Filter by status
+            domain: Filter by domain
+            parent_id: Filter by parent ID
+            limit: Maximum results
+
+        Returns:
+            List of Goal objects
+        """
+        conditions: list[str] = []
+        params: list[Any] = []
+
+        if status:
+            conditions.append("status = ?")
+            params.append(status)
+
+        if domain:
+            conditions.append("domain = ?")
+            params.append(domain)
+
+        if parent_id is not None:
+            conditions.append("parent_id = ?")
+            params.append(parent_id)
+
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+        try:
+            with self._db.transaction() as conn:
+                query = f"SELECT * FROM goals WHERE {where_clause} LIMIT ?"
+                cursor = conn.execute(query, params + [limit])
+                rows = cursor.fetchall()
+                return [self._row_to_goal(row) for row in rows]
+        except sqlite3.Error as e:
+            log.warning(f"Failed to list goals: {e}")
+            return []
+
+    # ========== Decomposition ==========
+
+    def decompose(
+        self,
+        goal_id: str,
+        subtask_descriptions: list[str],
+        domain: str | None = None,
+    ) -> list[Goal]:
+        """Decompose a goal into subtasks.
+
+        Args:
+            goal_id: Parent goal ID
+            subtask_descriptions: List of subtask descriptions
+            domain: Domain for subtasks (inherits from parent if not specified)
+
+        Returns:
+            List of created subtask Goal objects
+        """
+        parent = self.get_goal(goal_id)
+        if not parent:
+            log.warning(f"Parent goal {goal_id} not found")
+            return []
+
+        # Check depth constraint
+        if parent.depth >= parent.max_depth:
+            log.warning(
+                f"Cannot decompose goal {goal_id}: depth {parent.depth} "
+                f"at max {parent.max_depth}"
+            )
+            return []
+
+        domain = domain or parent.domain
+        subtasks = []
+
+        for description in subtask_descriptions:
+            subtask = self.create_goal(
+                description=description,
+                domain=domain,
+                parent_id=goal_id,
+                max_depth=parent.max_depth,
+            )
+            subtasks.append(subtask)
+
+        self._bus.publish(
+            "planner.goal.decomposed",
+            {"parent_id": goal_id, "subtasks": subtasks},
+        )
+
+        return subtasks
+
+    # ========== Dependencies ==========
+
+    def add_dependency(self, goal_id: str, depends_on_id: str) -> bool:
+        """Add a dependency between goals.
+
+        Args:
+            goal_id: Goal that depends on another
+            depends_on_id: Goal that must complete first
+
+        Returns:
+            True if added, False on conflict or circular dependency
+        """
+        try:
+            with self._db.transaction() as conn:
+                if self._has_circular_dependency(goal_id, depends_on_id, conn):
+                    log.warning(
+                        f"Circular dependency detected: {goal_id} -> {depends_on_id}"
+                    )
+                    return False
+
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO goal_dependencies
+                    (goal_id, depends_on_id)
+                    VALUES (?, ?)
+                    """,
+                    (goal_id, depends_on_id),
+                )
+        except sqlite3.Error as e:
+            log.warning(f"Failed to add dependency: {e}")
+            return False
+
+        self._bus.publish(
+            "planner.dependency.added",
+            {"goal_id": goal_id, "depends_on_id": depends_on_id},
+        )
+
+        return True
+
+    def remove_dependency(self, goal_id: str, depends_on_id: str) -> bool:
+        """Remove a dependency between goals.
+
+        Args:
+            goal_id: Goal ID
+            depends_on_id: Goal ID
+
+        Returns:
+            True if removed, False if not found
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    DELETE FROM goal_dependencies
+                    WHERE goal_id = ? AND depends_on_id = ?
+                    """,
+                    (goal_id, depends_on_id),
+                )
+                affected = cursor.rowcount
+                return affected > 0
+        except sqlite3.Error as e:
+            log.warning(f"Failed to remove dependency: {e}")
+            return False
+
+    def get_dependencies(self, goal_id: str) -> list[Goal]:
+        """Get all goals this goal depends on.
+
+        Args:
+            goal_id: Goal ID
+
+        Returns:
+            List of Goal objects
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT g.* FROM goals g
+                    INNER JOIN goal_dependencies gd ON g.id = gd.depends_on_id
+                    WHERE gd.goal_id = ?
+                    """,
+                    (goal_id,),
+                )
+                rows = cursor.fetchall()
+                return [self._row_to_goal(row) for row in rows]
+        except sqlite3.Error as e:
+            log.warning(f"Failed to get dependencies for {goal_id}: {e}")
+            return []
+
+    def get_dependents(self, goal_id: str) -> list[Goal]:
+        """Get all goals that depend on this goal.
+
+        Args:
+            goal_id: Goal ID
+
+        Returns:
+            List of Goal objects
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT g.* FROM goals g
+                    INNER JOIN goal_dependencies gd ON g.id = gd.goal_id
+                    WHERE gd.depends_on_id = ?
+                    """,
+                    (goal_id,),
+                )
+                rows = cursor.fetchall()
+                return [self._row_to_goal(row) for row in rows]
+        except sqlite3.Error as e:
+            log.warning(f"Failed to get dependents for {goal_id}: {e}")
+            return []
+
+    # ========== Planning ==========
+
+    def get_ready_goals(self) -> list[Goal]:
+        """Get all pending goals where ALL dependencies are completed.
+
+        Returns:
+            List of executable Goal objects
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT DISTINCT g.* FROM goals g
+                    WHERE g.status = ?
+                    AND NOT EXISTS (
+                        SELECT 1 FROM goal_dependencies gd
+                        LEFT JOIN goals dep ON dep.id = gd.depends_on_id
+                        WHERE gd.goal_id = g.id
+                        AND dep.status != ?
+                    )
+                    """,
+                    (GoalStatus.PENDING, GoalStatus.COMPLETED),
+                )
+                rows = cursor.fetchall()
+                return [self._row_to_goal(row) for row in rows]
+        except sqlite3.Error as e:
+            log.warning(f"Failed to get ready goals: {e}")
+            return []
+
+    def get_blocked_goals(self) -> list[Goal]:
+        """Get pending goals where at least one dependency is failed.
+
+        Returns:
+            List of blocked Goal objects
+        """
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT DISTINCT g.* FROM goals g
+                    WHERE g.status = ?
+                    AND EXISTS (
+                        SELECT 1 FROM goal_dependencies gd
+                        INNER JOIN goals dep ON dep.id = gd.depends_on_id
+                        WHERE gd.goal_id = g.id
+                        AND dep.status = ?
+                    )
+                    """,
+                    (GoalStatus.PENDING, GoalStatus.FAILED),
+                )
+                rows = cursor.fetchall()
+                return [self._row_to_goal(row) for row in rows]
+        except sqlite3.Error as e:
+            log.warning(f"Failed to get blocked goals: {e}")
+            return []
+
+    def propagate_failure(self, goal_id: str) -> list[Goal]:
+        """When a goal fails, mark all dependent goals as blocked.
+
+        Args:
+            goal_id: Goal that failed
+
+        Returns:
+            List of newly blocked goals
+        """
+        dependents = self.get_dependents(goal_id)
+        newly_blocked = []
+
+        try:
+            with self._db.transaction() as conn:
+                for dependent in dependents:
+                    if dependent.status not in (GoalStatus.FAILED, GoalStatus.BLOCKED):
+                        conn.execute(
+                            "UPDATE goals SET status = ?, updated_at = ? WHERE id = ?",
+                            (GoalStatus.BLOCKED, int(time.time()), dependent.id),
+                        )
+                        newly_blocked.append(dependent)
+        except sqlite3.Error as e:
+            log.warning(f"Failed to propagate failure for {goal_id}: {e}")
+
+        for goal in newly_blocked:
+            self._bus.publish(
+                "planner.goal.blocked",
+                {"goal_id": goal.id, "reason": "dependency_failed"},
+            )
+
+        return newly_blocked
+
+    def propagate_completion(self, goal_id: str) -> list[Goal]:
+        """When a goal completes, unblock dependents with all deps completed.
+
+        Args:
+            goal_id: Goal that completed
+
+        Returns:
+            List of newly unblocked goals
+        """
+        dependents = self.get_dependents(goal_id)
+        newly_ready = []
+
+        try:
+            with self._db.transaction() as conn:
+                for dependent in dependents:
+                    # Check if ALL dependencies are now completed
+                    cursor = conn.execute(
+                        """
+                        SELECT COUNT(*) as unmet FROM goal_dependencies gd
+                        INNER JOIN goals dep ON dep.id = gd.depends_on_id
+                        WHERE gd.goal_id = ?
+                        AND dep.status != ?
+                        """,
+                        (dependent.id, GoalStatus.COMPLETED),
+                    )
+                    result = cursor.fetchone()
+                    unmet = result["unmet"]
+
+                    # If pending/blocked and all deps met, move to pending
+                    if dependent.status in (GoalStatus.BLOCKED, GoalStatus.PENDING):
+                        if unmet == 0:
+                            conn.execute(
+                                "UPDATE goals SET status = ?, updated_at = ? WHERE id = ?",
+                                (GoalStatus.PENDING, int(time.time()), dependent.id),
+                            )
+                            newly_ready.append(dependent)
+        except sqlite3.Error as e:
+            log.warning(f"Failed to propagate completion for {goal_id}: {e}")
+
+        for goal in newly_ready:
+            self._bus.publish(
+                "planner.goal.unblocked",
+                {"goal_id": goal.id},
+            )
+
+        return newly_ready
+
+    # ========== HTN Tree ==========
+
+    def get_subtree(self, goal_id: str) -> dict[str, Any] | None:
+        """Get recursive subtree structure.
+
+        Args:
+            goal_id: Root goal ID
+
+        Returns:
+            Dict with "goal" and "children" keys, or None if not found
+        """
+        goal = self.get_goal(goal_id)
+        if not goal:
+            return None
+
+        children = self.list_goals(parent_id=goal_id)
+        subtree: dict[str, Any] = {
+            "goal": goal,
+            "children": [],
+        }
+
+        for child in children:
+            child_subtree = self.get_subtree(child.id)
+            if child_subtree:
+                subtree["children"].append(child_subtree)
+
+        return subtree
+
+    def get_root_goals(self) -> list[Goal]:
+        """Get all goals with no parent.
+
+        Returns:
+            List of root Goal objects
+        """
+        return self.list_goals(parent_id=None)
+
+    def execution_order(self) -> list[Goal]:
+        """Topological sort of pending/active goals respecting dependencies.
+
+        Uses Kahn's algorithm on the dependency graph.
+
+        Returns:
+            List of Goal objects in execution order
+        """
+        # Get all pending and active goals
+        try:
+            with self._db.transaction() as conn:
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM goals
+                    WHERE status IN (?, ?)
+                    """,
+                    (GoalStatus.PENDING, GoalStatus.ACTIVE),
+                )
+                goals_data = cursor.fetchall()
+                goals = [self._row_to_goal(row) for row in goals_data]
+
+                if not goals:
+                    return []
+
+                # Build in-degree map
+                in_degree: dict[str, int] = {g.id: 0 for g in goals}
+
+                cursor = conn.execute(
+                    """
+                    SELECT goal_id, depends_on_id FROM goal_dependencies
+                    WHERE goal_id IN ({})
+                    """.format(
+                        ",".join(["?"] * len(goals))
+                    ),
+                    [g.id for g in goals],
+                )
+
+                dependencies = cursor.fetchall()
+                for dep in dependencies:
+                    goal_id = dep["goal_id"]
+                    if goal_id in in_degree:
+                        in_degree[goal_id] += 1
+        except sqlite3.Error as e:
+            log.warning(f"Failed to compute execution order: {e}")
+            return []
+
+        # Kahn's algorithm
+        queue = [g for g in goals if in_degree[g.id] == 0]
+        result: list[Goal] = []
+
+        while queue:
+            current = queue.pop(0)
+            result.append(current)
+
+            # Find dependents and reduce their in-degree
+            for goal in goals:
+                if goal.id not in in_degree:
+                    continue
+
+                deps = self.get_dependencies(goal.id)
+                if any(d.id == current.id for d in deps):
+                    in_degree[goal.id] -= 1
+                    if in_degree[goal.id] == 0:
+                        queue.append(goal)
+
+        return result
+
+    # ========== Introspection ==========
+
+    def summary(self) -> dict[str, Any]:
+        """Get planner summary statistics.
+
+        Returns:
+            Dict with total_goals, by_status, max_depth_used, ready_count, blocked_count
+        """
+        try:
+            with self._db.transaction() as conn:
+                # Total goals
+                cursor = conn.execute("SELECT COUNT(*) as count FROM goals")
+                total = cursor.fetchone()["count"]
+
+                # By status
+                cursor = conn.execute(
+                    """
+                    SELECT status, COUNT(*) as count FROM goals
+                    GROUP BY status
+                    """
+                )
+                by_status = {row["status"]: row["count"] for row in cursor.fetchall()}
+
+                # Max depth
+                cursor = conn.execute("SELECT MAX(depth) as max_depth FROM goals")
+                result = cursor.fetchone()
+                max_depth = result["max_depth"] or 0
+        except sqlite3.Error as e:
+            log.warning(f"Failed to compute summary: {e}")
+            return {
+                "total_goals": 0,
+                "by_status": {},
+                "max_depth_used": 0,
+                "ready_count": 0,
+                "blocked_count": 0,
+            }
+
+        ready_count = len(self.get_ready_goals())
+        blocked_count = len(self.get_blocked_goals())
+
+        return {
+            "total_goals": total,
+            "by_status": by_status,
+            "max_depth_used": max_depth,
+            "ready_count": ready_count,
+            "blocked_count": blocked_count,
+        }
+
+    # ========== Helpers ==========
+
+    def _row_to_goal(self, row: sqlite3.Row) -> Goal:
+        """Convert database row to Goal object.
+
+        Args:
+            row: sqlite3.Row with row_factory set
+
+        Returns:
+            Goal object
+        """
+        return Goal(
+            id=row["id"],
+            parent_id=row["parent_id"],
+            depth=row["depth"],
+            description=row["description"],
+            domain=row["domain"],
+            preconditions=json.loads(row["preconditions"]),
+            postconditions=json.loads(row["postconditions"]),
+            success_criteria=json.loads(row["success_criteria"]),
+            status=row["status"],
+            assigned_model=row["assigned_model"],
+            result=row["result"],
+            confidence=row["confidence"],
+            max_depth=row["max_depth"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+        )
+
+    def _has_circular_dependency(
+        self,
+        goal_id: str,
+        depends_on_id: str,
+        conn: sqlite3.Connection,
+    ) -> bool:
+        """Check for circular dependency using DFS.
+
+        Args:
+            goal_id: Goal that would depend on another
+            depends_on_id: Goal being depended on
+            conn: Database connection
+
+        Returns:
+            True if adding this dependency would create a cycle
+        """
+        # DFS from depends_on_id to see if we can reach goal_id
+        visited: set[str] = set()
+        stack = [depends_on_id]
+
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+
+            visited.add(current)
+
+            if current == goal_id:
+                return True
+
+            # Get dependencies of current goal
+            cursor = conn.execute(
+                """
+                SELECT depends_on_id FROM goal_dependencies
+                WHERE goal_id = ?
+                """,
+                (current,),
+            )
+
+            for row in cursor.fetchall():
+                dep_id = row["depends_on_id"]
+                if dep_id not in visited:
+                    stack.append(dep_id)
+
+        return False
