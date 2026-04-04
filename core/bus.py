@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
 import threading
 from collections import deque
 from typing import Any, Callable
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EventBus:
@@ -28,9 +32,11 @@ class EventBus:
             callbacks = list(self._subscribers.get(topic, []))
             self._history.append({"topic": topic, "data": data})
 
-        print(f"[{topic}] {data}")
         for callback in callbacks:
-            callback(data)
+            try:
+                callback(data)
+            except Exception as exc:
+                LOGGER.warning("EventBus subscriber failed for topic %s: %s", topic, exc)
 
     def publish_nowait(self, topic: str, data: Any = None) -> None:
         self.publish(topic, data)

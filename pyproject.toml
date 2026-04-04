@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "openchimera"
 version = "0.1.0"
-description = "Local-first orchestration runtime for OpenChimera"
+description = "Local-first LLM orchestration runtime with multi-model routing, autonomy scheduling, and MCP integration"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,6 +14,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+redis = [
+	"redis[hiredis]>=5.0,<6",
+]
 dev = [
 	"build>=1.2,<2",
 	"wheel>=0.45,<1",

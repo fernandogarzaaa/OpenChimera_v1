@@ -170,8 +170,21 @@ class QueryRunRequest(OpenChimeraSchema):
     permission_scope: Literal["user", "admin"] = "user"
     max_tokens: int = Field(default=512, ge=1, le=32768)
     allow_tool_planning: bool = True
+    execute_tools: bool = False
+    tool_requests: list[dict[str, Any]] | None = None
     allow_agent_spawn: bool = False
     spawn_job: dict[str, Any] | None = None
+
+
+class ToolExecuteRequest(OpenChimeraSchema):
+    tool_id: str = Field(min_length=1)
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    permission_scope: Literal["user", "admin"] = "user"
+
+
+class AutonomyToolRunRequest(OpenChimeraFlexibleSchema):
+    job_name: str = Field(min_length=1)
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class QuerySessionGetRequest(OpenChimeraSchema):
@@ -375,6 +388,7 @@ POST_BODY_SCHEMAS: dict[str, type[BaseModel]] = {
     "/v1/providers/configure": ProviderConfigureRequest,
     "/v1/model-roles/configure": ModelRolesConfigureRequest,
     "/v1/query/run": QueryRunRequest,
+    "/v1/tools/execute": ToolExecuteRequest,
     "/v1/query/session/get": QuerySessionGetRequest,
     "/v1/onboarding/apply": OnboardingApplyRequest,
     "/v1/onboarding/reset": EmptyRequest,

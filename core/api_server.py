@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import json
 import logging
 import ssl
@@ -18,6 +19,7 @@ from core.auth import RequestAuthorizer
 from core.config import (
     build_runtime_configuration_status,
     get_provider_host,
+    get_provider_max_workers,
     get_provider_port,
     get_provider_tls_certfile,
     get_provider_tls_key_password,
@@ -47,6 +49,9 @@ class RequestValidationFailure(Exception):
 
 
 class _ProviderHTTPServer(ThreadingHTTPServer):
+    daemon_threads = True
+    block_on_close = False
+
     def __init__(
         self,
         server_address: tuple[str, int],
@@ -62,6 +67,18 @@ class _ProviderHTTPServer(ThreadingHTTPServer):
         self.mcp = OpenChimeraMCPServer(provider)
         self.rate_limiter = rate_limiter or RateLimiter()
         self.transport_scheme = "http"
+        max_workers = get_provider_max_workers()
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_workers,
+            thread_name_prefix="oc-request",
+        )
+
+    def process_request(self, request: Any, client_address: Any) -> None:
+        self._executor.submit(self.process_request_thread, request, client_address)
+
+    def server_close(self) -> None:
+        self._executor.shutdown(wait=False, cancel_futures=True)
+        super().server_close()
 
 
 class _ProviderRequestHandler(BaseHTTPRequestHandler):
@@ -319,6 +336,9 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/providers/status":
                 self._write_json(self.server.provider.provider_activation_status())
                 return
+            if path == "/v1/tools/status":
+                self._write_json(self.server.provider.tool_status())
+                return
             if self.path == "/v1/model-roles/status":
                 self._write_json(self.server.provider.model_role_status())
                 return
@@ -550,6 +570,8 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if self.path == "/v1/query/run":
                 raw_messages = payload.get("messages")
                 messages = raw_messages if isinstance(raw_messages, list) else None
+                raw_tool_requests = payload.get("tool_requests")
+                tool_requests = raw_tool_requests if isinstance(raw_tool_requests, list) else None
                 spawn_job = payload.get("spawn_job") if isinstance(payload.get("spawn_job"), dict) else None
                 self._write_json(
                     self.server.provider.run_query(
@@ -559,8 +581,20 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                         permission_scope=str(payload.get("permission_scope", "user")),
                         max_tokens=int(payload.get("max_tokens", 512)),
                         allow_tool_planning=bool(payload.get("allow_tool_planning", True)),
+                        execute_tools=bool(payload.get("execute_tools", False)),
+                        tool_requests=tool_requests,
                         allow_agent_spawn=bool(payload.get("allow_agent_spawn", False)),
                         spawn_job=spawn_job,
+                    )
+                )
+                return
+
+            if self.path == "/v1/tools/execute":
+                self._write_json(
+                    self.server.provider.execute_tool(
+                        str(payload.get("tool_id", "")).strip(),
+                        dict(payload.get("arguments", {})),
+                        permission_scope=str(payload.get("permission_scope", "user")),
                     )
                 )
                 return
@@ -992,8 +1026,9 @@ class OpenChimeraAPIServer:
                 self.server = None
                 return False
 
+        server = self.server
         self.thread = threading.Thread(
-            target=self.server.serve_forever,
+            target=lambda: server.serve_forever(poll_interval=0.1),
             daemon=True,
             name="OpenChimera-API",
         )
@@ -1003,8 +1038,32 @@ class OpenChimeraAPIServer:
         return True
 
     def stop(self) -> None:
-        if self.server is not None:
-            self.server.shutdown()
-            self.server.server_close()
-            self.server = None
+        server = self.server
+        thread = self.thread
+        self.server = None
         self.thread = None
+
+        if server is None:
+            return
+
+        shutdown_complete = threading.Event()
+
+        def _shutdown_server() -> None:
+            try:
+                server.shutdown()
+            finally:
+                shutdown_complete.set()
+
+        shutdown_thread = threading.Thread(
+            target=_shutdown_server,
+            daemon=True,
+            name="OpenChimera-API-Shutdown",
+        )
+        shutdown_thread.start()
+        shutdown_complete.wait(timeout=2.0)
+        server.server_close()
+
+        if thread is not None:
+            thread.join(timeout=2.0)
+            if thread.is_alive():
+                LOGGER.warning("OpenChimera API thread did not terminate cleanly before timeout.")

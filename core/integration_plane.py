@@ -36,20 +36,21 @@ class IntegrationPlane:
             engines["ascension_engine"]["bridge_status"] = self.ascension_status_getter()
         if "context_hub" in engines:
             context_hub = self.context_hub_status()
-            engines["context_hub"]["detected"] = bool(context_hub.get("available"))
-            engines["context_hub"]["integrated_runtime"] = bool(context_hub.get("available"))
-            engines["context_hub"]["bridge_status"] = context_hub
+            self._merge_runtime_bridge_status(engines["context_hub"], context_hub)
         if "deepagents_stack" in engines:
             deepagents_stack = self.deepagents_stack_status()
-            engines["deepagents_stack"]["detected"] = bool(deepagents_stack.get("available"))
-            engines["deepagents_stack"]["integrated_runtime"] = bool(deepagents_stack.get("available"))
-            engines["deepagents_stack"]["bridge_status"] = deepagents_stack
+            self._merge_runtime_bridge_status(engines["deepagents_stack"], deepagents_stack)
         if "aether_operator_stack" in engines:
             aether_operator_stack = self.aether_operator_stack_status()
-            engines["aether_operator_stack"]["detected"] = bool(aether_operator_stack.get("available"))
-            engines["aether_operator_stack"]["integrated_runtime"] = bool(aether_operator_stack.get("available"))
-            engines["aether_operator_stack"]["bridge_status"] = aether_operator_stack
+            self._merge_runtime_bridge_status(engines["aether_operator_stack"], aether_operator_stack)
         return report
+
+    def _merge_runtime_bridge_status(self, entry: dict[str, Any], bridge_status: dict[str, Any]) -> None:
+        bridge_available = bool(bridge_status.get("available"))
+        integrated_runtime = bool(entry.get("integrated_runtime")) or bridge_available
+        entry["detected"] = bool(entry.get("detected")) or integrated_runtime or bridge_available
+        entry["integrated_runtime"] = integrated_runtime
+        entry["bridge_status"] = bridge_status
 
     def qwen_agent_status(self) -> dict[str, Any]:
         appforge_root = get_appforge_root()

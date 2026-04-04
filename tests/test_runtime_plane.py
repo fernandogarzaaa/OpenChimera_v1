@@ -29,6 +29,7 @@ class RuntimePlaneTests(unittest.TestCase):
             query_status_getter=lambda: {},
             model_role_status_getter=lambda: {},
             plugin_status_getter=lambda: {},
+            tool_status_getter=lambda: {},
             subsystem_status_getter=lambda: {},
             onboarding_status_getter=lambda: {},
             integration_status_getter=lambda: {},

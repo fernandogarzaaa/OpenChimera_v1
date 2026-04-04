@@ -521,6 +521,8 @@ class ProviderReasoningTests(unittest.TestCase):
             permission_scope="user",
             max_tokens=256,
             allow_tool_planning=True,
+            execute_tools=False,
+            tool_requests=None,
             allow_agent_spawn=False,
             spawn_job=None,
         )

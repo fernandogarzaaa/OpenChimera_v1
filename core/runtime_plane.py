@@ -35,6 +35,7 @@ class RuntimePlane:
         query_status_getter: Any,
         model_role_status_getter: Any,
         plugin_status_getter: Any,
+        tool_status_getter: Any,
         subsystem_status_getter: Any,
         onboarding_status_getter: Any,
         integration_status_getter: Any,
@@ -58,6 +59,7 @@ class RuntimePlane:
         self.query_status_getter = query_status_getter
         self.model_role_status_getter = model_role_status_getter
         self.plugin_status_getter = plugin_status_getter
+        self.tool_status_getter = tool_status_getter
         self.subsystem_status_getter = subsystem_status_getter
         self.onboarding_status_getter = onboarding_status_getter
         self.integration_status_getter = integration_status_getter
@@ -122,11 +124,12 @@ class RuntimePlane:
         }
 
     def status(self) -> dict[str, Any]:
+        health = self.health()
         return {
-            "online": True,
+            "online": str(health.get("status", "")).lower() == "online",
             "base_url": self.base_url_getter(),
             "deployment": build_deployment_status(),
-            "health": self.health(),
+            "health": health,
             "models": self.list_models().get("data", []),
             "llm": self.llm_manager.get_status(),
             "router": self.router.status(),
@@ -143,6 +146,7 @@ class RuntimePlane:
             "query_engine": self.query_status_getter(),
             "model_roles": self.model_role_status_getter(),
             "plugins": self.plugin_status_getter(),
+            "tools": self.tool_status_getter(),
             "subsystems": self.subsystem_status_getter(),
             "observability": self.observability_status(),
             "onboarding": self.onboarding_status_getter(),

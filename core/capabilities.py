@@ -60,6 +60,7 @@ class CapabilityRegistry:
     def __init__(self, root: Path | None = None):
         self.root = root or ROOT
         self._snapshot: dict[str, Any] | None = None
+        self._kind_cache: dict[str, list[dict[str, Any]]] = {}
 
     def refresh(self) -> dict[str, Any]:
         commands = self._discover_commands()
@@ -67,6 +68,13 @@ class CapabilityRegistry:
         skills = self._discover_skills()
         plugins = self._discover_plugins()
         mcp_servers = self._discover_mcp_servers()
+        self._kind_cache = {
+            "commands": commands,
+            "tools": tools,
+            "skills": skills,
+            "plugins": plugins,
+            "mcp_servers": mcp_servers,
+        }
         self._snapshot = {
             "generated_from": str(self.root),
             "counts": {
@@ -97,12 +105,28 @@ class CapabilityRegistry:
         }
 
     def list_kind(self, kind: str) -> list[dict[str, Any]]:
-        snapshot = self.snapshot()
         normalized = kind.strip().lower()
         key = "mcp_servers" if normalized in {"mcp", "mcp_servers", "mcp-server", "mcp-servers"} else normalized
         if key not in {"commands", "tools", "skills", "plugins", "mcp_servers"}:
             raise ValueError(f"Unsupported capability kind: {kind}")
-        return list(snapshot[key])
+        if self._snapshot is not None and key in self._snapshot:
+            return list(self._snapshot[key])
+        if key not in self._kind_cache:
+            self._kind_cache[key] = self._discover_kind(key)
+        return list(self._kind_cache[key])
+
+    def _discover_kind(self, kind: str) -> list[dict[str, Any]]:
+        if kind == "commands":
+            return self._discover_commands()
+        if kind == "tools":
+            return self._discover_tools()
+        if kind == "skills":
+            return self._discover_skills()
+        if kind == "plugins":
+            return self._discover_plugins()
+        if kind == "mcp_servers":
+            return self._discover_mcp_servers()
+        raise ValueError(f"Unsupported capability kind: {kind}")
 
     def _discover_commands(self) -> list[dict[str, Any]]:
         return [
@@ -154,6 +178,14 @@ class CapabilityRegistry:
                 "surfaces": ["cli", "api"],
                 "kind": "command",
             },
+            {
+                "id": "tools",
+                "name": "Tools",
+                "description": "Inspect or execute validated runtime tools.",
+                "entrypoint": "openchimera tools",
+                "surfaces": ["cli", "api"],
+                "kind": "command",
+            },
         ]
 
     def _discover_tools(self) -> list[dict[str, Any]]:
@@ -191,11 +223,67 @@ class CapabilityRegistry:
                 "kind": "tool",
             },
             {
+                "id": "media.understand_image",
+                "name": "Media Understand Image",
+                "description": "Analyze an image using the configured multimodal backend.",
+                "category": "media",
+                "side_effects": ["artifact", "history"],
+                "kind": "tool",
+            },
+            {
+                "id": "media.generate_image",
+                "name": "Media Generate Image",
+                "description": "Generate an image using the configured multimodal backend.",
+                "category": "media",
+                "side_effects": ["artifact", "history"],
+                "kind": "tool",
+            },
+            {
                 "id": "jobs.create",
                 "name": "Create Operator Job",
                 "description": "Enqueue a durable operator job for asynchronous execution.",
                 "category": "runtime",
                 "side_effects": ["job-queue"],
+                "kind": "tool",
+            },
+            {
+                "id": "autonomy.run_job",
+                "name": "Run Autonomy Job",
+                "description": "Run one autonomy scheduler job immediately through the validated runtime tool registry.",
+                "category": "autonomy",
+                "side_effects": ["artifact", "history", "job"],
+                "kind": "tool",
+            },
+            {
+                "id": "autonomy.preview_self_repair",
+                "name": "Preview Self Repair",
+                "description": "Generate or enqueue the preview-only self-repair plan from the autonomy subsystem.",
+                "category": "autonomy",
+                "side_effects": ["artifact", "history", "job-queue"],
+                "kind": "tool",
+            },
+            {
+                "id": "autonomy.dispatch_operator_digest",
+                "name": "Dispatch Operator Digest",
+                "description": "Generate or enqueue the autonomy operator digest and dispatch it to operator channels.",
+                "category": "autonomy",
+                "side_effects": ["artifact", "history", "network", "job-queue"],
+                "kind": "tool",
+            },
+            {
+                "id": "autonomy.artifact_history",
+                "name": "Autonomy Artifact History",
+                "description": "Inspect recent autonomy artifact history entries.",
+                "category": "autonomy",
+                "side_effects": ["history"],
+                "kind": "tool",
+            },
+            {
+                "id": "autonomy.artifact_get",
+                "name": "Get Autonomy Artifact",
+                "description": "Read one autonomy artifact from the autonomy data root.",
+                "category": "autonomy",
+                "side_effects": ["artifact"],
                 "kind": "tool",
             },
             {
@@ -228,6 +316,14 @@ class CapabilityRegistry:
                 "description": "Route a structured deliberation through the Ascension service.",
                 "category": "reasoning",
                 "side_effects": [],
+                "kind": "tool",
+            },
+            {
+                "id": "subsystems.invoke",
+                "name": "Invoke Subsystem",
+                "description": "Invoke a managed subsystem by id and action.",
+                "category": "subsystem",
+                "side_effects": ["filesystem", "history"],
                 "kind": "tool",
             },
         ]
@@ -276,6 +372,7 @@ class CapabilityRegistry:
 
     def _discover_mcp_servers(self) -> list[dict[str, Any]]:
         servers: dict[str, dict[str, Any]] = {}
+        manifest_paths: list[Path] = []
         health_state_path = self.root / "data" / "mcp_health_state.json"
         if health_state_path.exists():
             try:
@@ -295,7 +392,14 @@ class CapabilityRegistry:
                     "kind": "mcp_server",
                 }
 
-        for manifest_path in sorted(self.root.rglob(".mcp.json")):
+        root_manifest = self.root / ".mcp.json"
+        if root_manifest.exists():
+            manifest_paths.append(root_manifest)
+        skills_root = self.root / "skills"
+        if skills_root.exists():
+            manifest_paths.extend(sorted(skills_root.rglob(".mcp.json")))
+
+        for manifest_path in manifest_paths:
             try:
                 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:

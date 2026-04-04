@@ -58,21 +58,25 @@ class OperatorControlPlane:
     def health(self) -> dict[str, Any]:
         llm_status = self.llm_manager.get_status()
         rag_status = self.rag.get_status()
+        healthy_models = int(llm_status.get("healthy_count", 0) or 0)
+        known_models = int(llm_status.get("total_count", 0) or 0)
+        minimind_available = bool(getattr(self.minimind, "available", False))
+        generation_path_ready = healthy_models > 0 or minimind_available
         return {
-            "status": "online",
+            "status": "online" if generation_path_ready else "degraded",
             "name": "openchimera",
             "base_url": self._base_url_getter(),
             "components": {
-                "local_llm": llm_status.get("healthy_count", 0) > 0,
+                "local_llm": healthy_models > 0,
                 "rag": True,
                 "token_fracture": True,
                 "router": True,
                 "harness_port": self.harness_port.available,
-                "minimind": self.minimind.available,
+                "minimind": minimind_available,
                 "autonomy": self.autonomy.status().get("running", False),
             },
-            "healthy_models": llm_status.get("healthy_count", 0),
-            "known_models": llm_status.get("total_count", 0),
+            "healthy_models": healthy_models,
+            "known_models": known_models,
             "documents": rag_status.get("documents", 0),
             "router": self.router.status(),
         }
@@ -142,14 +146,18 @@ class OperatorControlPlane:
             "degraded_models": [item for item in degraded_models[:3] if item],
         }
 
-    def daily_briefing(self) -> dict[str, Any]:
-        integrations = self.integration_status()
-        onboarding = self.onboarding_status()
-        autonomy = self.autonomy.status()
-        llm_status = self.llm_manager.get_status()
-        registry = self.model_registry.status()
+    def build_daily_briefing(
+        self,
+        *,
+        integrations: dict[str, Any],
+        onboarding: dict[str, Any],
+        autonomy: dict[str, Any],
+        llm_status: dict[str, Any],
+        registry: dict[str, Any],
+        recent_events: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         fallback_learning = self._fallback_learning_summary(registry)
-        recent_events = self.bus.recent_events()[-8:]
+        recent_events = list(recent_events or [])[-8:]
         priorities: list[str] = []
         if onboarding.get("suggested_cloud_models") and onboarding.get("suggested_local_models") == []:
             priorities.append("Provision a cloud fallback provider because the detected hardware is below the preferred local-only range.")
@@ -230,6 +238,16 @@ class OperatorControlPlane:
             "integrations": integrations,
             "recent_events": recent_events,
         }
+
+    def daily_briefing(self) -> dict[str, Any]:
+        return self.build_daily_briefing(
+            integrations=self.integration_status(),
+            onboarding=self.onboarding_status(),
+            autonomy=self.autonomy.status(),
+            llm_status=self.llm_manager.get_status(),
+            registry=self.model_registry.status(),
+            recent_events=self.bus.recent_events(),
+        )
 
     def readiness_status(self, system_status: dict[str, Any] | None = None, *, auth_required: bool = False) -> dict[str, Any]:
         health = self.health()

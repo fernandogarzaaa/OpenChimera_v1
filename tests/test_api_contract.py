@@ -27,6 +27,7 @@ class _FakeProvider:
         self._browser_history = []
         self._query_sessions = []
         self._installed_plugins = set()
+        self._tool_executions = []
         self._onboarding = {"steps": [], "completed": False, "recommendations": {"suggested_local_models": [{"id": "phi-3.5-mini"}]}, "validation": {"missing_required_roots": []}}
         self._providers = [{"id": "local-llama-cpp", "enabled": True, "activation_state": {"enabled": True, "preferred_cloud_provider": False, "prefer_free_models": False}}, {"id": "openai", "enabled": False, "activation_state": {"enabled": False, "preferred_cloud_provider": False, "prefer_free_models": False}}]
         self._preferred_cloud_provider = ""
@@ -160,6 +161,8 @@ class _FakeProvider:
         permission_scope: str = "user",
         max_tokens: int = 512,
         allow_tool_planning: bool = True,
+        execute_tools: bool = False,
+        tool_requests: list[dict[str, object]] | None = None,
         allow_agent_spawn: bool = False,
         spawn_job: dict[str, object] | None = None,
     ) -> dict[str, object]:
@@ -177,9 +180,51 @@ class _FakeProvider:
             "memory_hydration": self.inspect_memory(),
             "role_selection": {"role": "main_loop_model", "model": "qwen2.5-7b", "source": "local-catalog"},
             "suggested_tools": [{"id": "browser.fetch", "requires_admin": True}] if allow_tool_planning else [],
+            "executed_tools": [
+                self.execute_tool(str(item.get("tool_id", "")), dict(item.get("arguments", {})), permission_scope=permission_scope)
+                for item in (tool_requests or [])
+            ] if execute_tools else [],
             "spawned_job": None,
             "response": self.chat_completion(),
         }
+
+    def tool_status(self) -> dict[str, object]:
+        return {
+            "counts": {"total": 2, "admin_required": 1},
+            "tools": [
+                {
+                    "id": "browser.fetch",
+                    "description": "Fetch a web page.",
+                    "category": "browser",
+                    "requires_admin": True,
+                    "executable": True,
+                },
+                {
+                    "id": "ascension.deliberate",
+                    "description": "Run a structured deliberation.",
+                    "category": "reasoning",
+                    "requires_admin": False,
+                    "executable": True,
+                },
+            ],
+        }
+
+    def get_tool(self, tool_id: str) -> dict[str, object]:
+        for item in self.tool_status()["tools"]:
+            if item["id"] == tool_id:
+                return item
+        raise ValueError(f"Unknown tool: {tool_id}")
+
+    def execute_tool(self, tool_id: str, arguments: dict[str, object] | None = None, permission_scope: str = "user") -> dict[str, object]:
+        payload = {
+            "tool_id": tool_id,
+            "status": "ok",
+            "permission_scope": permission_scope,
+            "arguments": arguments or {},
+            "result": {"echo": arguments or {}},
+        }
+        self._tool_executions.append(payload)
+        return payload
 
     def plugin_status(self) -> dict[str, object]:
         return {
@@ -1175,14 +1220,29 @@ class ApiContractTests(unittest.TestCase):
         model_roles = self._get("/v1/model-roles/status")
         self.assertEqual(model_roles["roles"]["main_loop_model"]["model"], "qwen2.5-7b")
 
+        tools = self._get("/v1/tools/status")
+        self.assertEqual(tools["counts"]["total"], 2)
+        self.assertTrue(any(item["id"] == "browser.fetch" for item in tools["tools"]))
+
         configured_roles = self._post("/v1/model-roles/configure", {"overrides": {"fast_model": "llama-3.2-3b"}})
         self.assertEqual(configured_roles["roles"]["fast_model"]["model"], "llama-3.2-3b")
 
         query = self._post("/v1/query/run", {"query": "Summarize runtime state", "permission_scope": "user"})
         self.assertTrue(query["session_id"])
 
+        query_with_tools = self._post(
+            "/v1/query/run",
+            {
+                "query": "Fetch runtime docs and summarize them",
+                "permission_scope": "admin",
+                "execute_tools": True,
+                "tool_requests": [{"tool_id": "browser.fetch", "arguments": {"url": "https://example.com", "max_chars": 512}}],
+            },
+        )
+        self.assertEqual(query_with_tools["executed_tools"][0]["tool_id"], "browser.fetch")
+
         sessions = self._get("/v1/query/sessions")
-        self.assertEqual(len(sessions["data"]), 1)
+        self.assertEqual(len(sessions["data"]), 2)
 
         session = self._post("/v1/query/session/get", {"session_id": query["session_id"]})
         self.assertEqual(session["session_id"], query["session_id"])
@@ -1211,6 +1271,13 @@ class ApiContractTests(unittest.TestCase):
 
         invoked = self._post("/v1/subsystems/invoke", {"subsystem_id": "ascension_engine", "action": "deliberate", "payload": {"prompt": "next step"}})
         self.assertEqual(invoked["status"], "ok")
+
+        tool_execution = self._post(
+            "/v1/tools/execute",
+            {"tool_id": "ascension.deliberate", "permission_scope": "user", "arguments": {"prompt": "derive next step", "max_tokens": 128}},
+        )
+        self.assertEqual(tool_execution["tool_id"], "ascension.deliberate")
+        self.assertEqual(tool_execution["status"], "ok")
 
     def test_minimind_endpoints_round_trip(self) -> None:
         self.assertTrue(self._get("/v1/minimind/status")["available"])

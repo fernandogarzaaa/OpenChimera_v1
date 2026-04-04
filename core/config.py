@@ -26,19 +26,19 @@ def _resolve_workspace_root() -> Path:
 
 
 ROOT = _resolve_workspace_root()
-DEFAULT_AETHER_ROOT = Path(r"D:\Project AETHER")
-DEFAULT_WRAITH_ROOT = Path(r"D:\Project Wraith")
-DEFAULT_EVO_ROOT = Path(r"D:\project-evo")
-DEFAULT_APPFORGE_ROOT = Path("external") / "appforge"
-DEFAULT_AEGIS_MOBILE_ROOT = Path("external") / "aegis-mobile"
-DEFAULT_LEGACY_WORKSPACE_ROOT = Path(r"D:\openclaw")
+DEFAULT_AETHER_ROOT = ROOT / "external" / "aether"
+DEFAULT_WRAITH_ROOT = ROOT / "external" / "wraith"
+DEFAULT_EVO_ROOT = ROOT / "external" / "evo"
+DEFAULT_APPFORGE_ROOT = ROOT / "external" / "appforge"
+DEFAULT_AEGIS_MOBILE_ROOT = ROOT / "external" / "aegis-mobile"
+DEFAULT_LEGACY_WORKSPACE_ROOT = ROOT / "external" / "legacy-workspace"
 DEFAULT_OPENCLAW_ROOT = DEFAULT_LEGACY_WORKSPACE_ROOT
 DEFAULT_AEGIS_ROOT = DEFAULT_LEGACY_WORKSPACE_ROOT / "aegis_swarm"
 DEFAULT_ASCENSION_ROOT = DEFAULT_AEGIS_ROOT
 DEFAULT_ABO_ROOT = DEFAULT_LEGACY_WORKSPACE_ROOT / "abo"
-DEFAULT_HARNESS_REPO_ROOT = Path(r"D:\repos\upstream-harness-repo")
+DEFAULT_HARNESS_REPO_ROOT = ROOT / "external" / "upstream-harness-repo"
 DEFAULT_LEGACY_HARNESS_SNAPSHOT_ROOT = DEFAULT_LEGACY_WORKSPACE_ROOT / "integrations" / "legacy-harness-snapshot"
-DEFAULT_MINIMIND_ROOT = DEFAULT_LEGACY_WORKSPACE_ROOT / "research" / "minimind"
+DEFAULT_MINIMIND_ROOT = ROOT / "external" / "minimind"
 DEFAULT_PROVIDER_HOST = "127.0.0.1"
 DEFAULT_PROVIDER_PORT = 7870
 DEFAULT_API_AUTH_HEADER = "Authorization"
@@ -494,6 +494,15 @@ def get_provider_port() -> int:
         return int(raw_port)
     except ValueError:
         return DEFAULT_PROVIDER_PORT
+
+
+def get_provider_max_workers() -> int:
+    raw = os.getenv("OPENCHIMERA_MAX_WORKERS", "").strip()
+    try:
+        value = int(raw)
+        return max(1, value)
+    except ValueError:
+        return 32
 
 
 def is_provider_tls_enabled() -> bool:

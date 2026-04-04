@@ -39,17 +39,17 @@ class OpenChimeraKernel:
         LOGGER.info("Booting OpenChimera...")
         self._running = True
 
-        api_online = self.api_server.start()
-        if not api_online:
-            self._running = False
-            raise RuntimeError("OpenChimera API server failed to start")
-
         try:
             self.provider.start()
         except Exception:
-            self.api_server.stop()
             self._running = False
             raise
+
+        api_online = self.api_server.start()
+        if not api_online:
+            self.provider.stop()
+            self._running = False
+            raise RuntimeError("OpenChimera API server failed to start")
 
         if self.aether.start():
             self.bus.publish_nowait("system/runtime", self.aether.status())

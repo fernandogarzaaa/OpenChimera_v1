@@ -37,7 +37,7 @@
       "minimind"
     ],
     "preferred_cloud_provider": "",
-    "prefer_free_models": false
+    "prefer_free_models": true
   },
   "onboarding": {
     "completed_at": null,
@@ -46,12 +46,14 @@
   },
   "hardware": {
     "cpu_count": 4,
-    "ram_gb": 0.0,
+    "ram_gb": 16.0,
     "gpu": {
-      "available": false,
-      "name": "unknown",
-      "vram_gb": 0.0,
-      "device_count": 0
+      "available": true,
+      "name": "NVIDIA GeForce RTX 2060",
+      "vram_gb": 6.0,
+      "device_count": 1,
+      "vulkan": true,
+      "intel_igpu": "Intel UHD Graphics 630"
     }
   },
   "local_runtime": {
@@ -87,7 +89,7 @@
       "enabled": true,
       "auto_start": false,
       "shutdown_with_manager": false,
-      "llama_server_path": "",
+      "llama_server_path": "C:\\Users\\garza\\AppData\\Local\\Microsoft\\WinGet\\Packages\\ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe\\llama-server.exe",
       "shared_args": [],
       "model_args": {}
     }

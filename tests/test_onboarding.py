@@ -272,6 +272,7 @@ class OnboardingTests(unittest.TestCase):
             steps = {step["id"]: step for step in status["steps"]}
             self.assertFalse(steps["local-model"]["completed"])
             self.assertIn("No local GGUF model assets are configured or discovered", status["blockers"][0])
+            self.assertFalse(any("Required runtime roots" in blocker for blocker in status["blockers"]))
             self.assertTrue(any("openchimera channels --channel filesystem" in action for action in status["next_actions"]))
             self.assertTrue(any("--register-local-model-path" in action for action in status["next_actions"]))
             self.assertIn("provider_activation", status)

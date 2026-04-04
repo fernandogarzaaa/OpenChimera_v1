@@ -139,6 +139,7 @@ class OpenChimeraCLITests(unittest.TestCase):
 
         self.assertFalse(payload["checks"]["external_bind_protected"])
         self.assertTrue(any("bind beyond localhost without API auth" in warning for warning in payload["warnings"]))
+        self.assertTrue(any("OPENCHIMERA_API_TOKEN" in action for action in payload["next_actions"]))
 
     def test_config_command_emits_sanitized_snapshot(self) -> None:
         payload = {
@@ -167,6 +168,9 @@ class OpenChimeraCLITests(unittest.TestCase):
                 "local_model_assets_available": False,
             },
             "warnings": ["No local GGUF model assets were found in the configured or discovered search roots."],
+            "next_actions": [
+                "Place a GGUF under one of the configured model roots or run: openchimera onboard --register-local-model-path <path-to-model.gguf> [--register-local-model-id <model-id>]"
+            ],
             "local_model_discovery": {
                 "search_roots": ["D:/OpenChimera/models", "D:/models"],
                 "discovered_files": [],
@@ -181,11 +185,17 @@ class OpenChimeraCLITests(unittest.TestCase):
         rendered = output.getvalue()
         self.assertIn("Local model search roots:", rendered)
         self.assertIn("D:/OpenChimera/models", rendered)
+        self.assertIn("Next actions:", rendered)
+        self.assertIn("openchimera onboard --register-local-model-path", rendered)
 
     def test_validate_command_reports_release_validation_summary(self) -> None:
         validation_result = {
             "command": [sys.executable, "-m", "unittest"],
             "pattern": "test_*.py",
+            "suite": "release",
+            "module_count": 14,
+            "modules": ["tests.test_api_contract"],
+            "suite_path": "config/release_validation_modules.txt",
             "passed": True,
             "returncode": 0,
             "stdout": "Ran 3 tests in 0.123s\n\nOK\n",
@@ -202,16 +212,93 @@ class OpenChimeraCLITests(unittest.TestCase):
                 exit_code = run.main(["validate"])
 
         self.assertEqual(exit_code, 0)
-        validation_mock.assert_called_once_with(test_pattern="test_*.py", stream_output=True)
+        validation_mock.assert_called_once_with(test_pattern=None, stream_output=False)
         rendered = output.getvalue()
         self.assertIn("OpenChimera validate: ok", rendered)
+        self.assertIn("Validation suite: release (14 modules)", rendered)
         self.assertIn("Tests passed: True", rendered)
         self.assertIn("Validation gate: passed", rendered)
+        self.assertNotIn("Ran 3 tests in 0.123s", rendered)
+
+    def test_validate_command_can_stream_verbose_test_output(self) -> None:
+        validation_result = {
+            "command": [sys.executable, "-m", "unittest"],
+            "pattern": "test_*.py",
+            "suite": "release",
+            "module_count": 14,
+            "modules": ["tests.test_api_contract"],
+            "suite_path": "config/release_validation_modules.txt",
+            "passed": True,
+            "returncode": 0,
+            "stdout": "Ran 3 tests in 0.123s\n\nOK\n",
+            "stderr": "",
+            "streamed": True,
+        }
+        with patch.object(run, "_doctor_payload", return_value={"status": "ok", "warnings": []}), patch.object(
+            run,
+            "_run_validation_tests",
+            return_value=validation_result,
+        ) as validation_mock:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = run.main(["validate", "--verbose-tests"])
+
+        self.assertEqual(exit_code, 0)
+        validation_mock.assert_called_once_with(test_pattern=None, stream_output=True)
+
+    def test_validate_command_surfaces_doctor_warning_digest(self) -> None:
+        validation_result = {
+            "command": [sys.executable, "-m", "unittest"],
+            "pattern": "test_*.py",
+            "suite": "release",
+            "module_count": 14,
+            "modules": ["tests.test_api_contract"],
+            "suite_path": "config/release_validation_modules.txt",
+            "passed": True,
+            "returncode": 0,
+            "stdout": "Ran 3 tests in 0.123s\n\nOK\n",
+            "stderr": "",
+            "streamed": False,
+        }
+        doctor_payload = {
+            "status": "warning",
+            "warnings": [
+                "Harness repo root is missing or not in the supported Python-port layout.",
+                "Legacy workflow snapshot not found; compatibility evidence will be reduced.",
+                "MiniMind workspace not found; reasoning engine features will run in degraded mode.",
+                "No local GGUF model assets were found in the configured or discovered search roots.",
+            ],
+            "next_actions": [
+                "Set OPENCHIMERA_HARNESS_ROOT or update config/runtime_profile.local.json so the upstream harness Python-port repo points at a supported layout.",
+                "Place a GGUF under one of the configured model roots or run: openchimera onboard --register-local-model-path <path-to-model.gguf> [--register-local-model-id <model-id>]",
+                "Set MINIMIND_ROOT or update config/runtime_profile.local.json so the MiniMind workspace is available for reasoning features.",
+            ],
+        }
+        with patch.object(run, "_doctor_payload", return_value=doctor_payload), patch.object(
+            run,
+            "_run_validation_tests",
+            return_value=validation_result,
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = run.main(["validate"])
+
+        self.assertEqual(exit_code, 0)
+        rendered = output.getvalue()
+        self.assertIn("Doctor warnings: 4", rendered)
+        self.assertIn("Harness repo root is missing or not in the supported Python-port layout.", rendered)
+        self.assertIn("Doctor next actions:", rendered)
+        self.assertIn("Set OPENCHIMERA_HARNESS_ROOT", rendered)
+        self.assertIn("- ... 1 more", rendered)
 
     def test_validate_command_returns_nonzero_when_tests_fail(self) -> None:
         validation_result = {
             "command": [sys.executable, "-m", "unittest"],
             "pattern": "test_cli.py",
+            "suite": "discover",
+            "module_count": 0,
+            "modules": [],
+            "suite_path": "",
             "passed": False,
             "returncode": 1,
             "stdout": "FAILED (failures=1)\n",
@@ -230,17 +317,22 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         rendered = output.getvalue()
         self.assertIn("OpenChimera validate: error", rendered)
+        self.assertIn("Validation suite: discover", rendered)
         self.assertIn("Test pattern: test_cli.py", rendered)
         self.assertIn("Validation gate: failed", rendered)
 
-    def test_validate_command_emits_json_with_captured_test_output(self) -> None:
+    def test_validate_command_emits_compact_json_by_default(self) -> None:
         validation_result = {
             "command": [sys.executable, "-m", "unittest"],
             "pattern": "test_cli.py",
+            "suite": "discover",
+            "module_count": 0,
+            "modules": [],
+            "suite_path": "",
             "passed": False,
             "returncode": 1,
-            "stdout": "FAILED (failures=1)\n",
-            "stderr": "traceback",
+            "stdout": "",
+            "stderr": "traceback\n----------------------------------------------------------------------\nRan 3 tests in 0.123s\n\nFAILED (failures=1)\n",
             "streamed": False,
         }
         with patch.object(run, "_doctor_payload", return_value={"status": "ok", "warnings": []}), patch.object(
@@ -255,8 +347,81 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         validation_mock.assert_called_once_with(test_pattern="test_cli.py", stream_output=False)
         payload = json.loads(output.getvalue())
-        self.assertEqual(payload["tests"]["stderr"], "traceback")
+        self.assertEqual(payload["tests"]["stderr"], "")
+        self.assertEqual(payload["tests"]["stdout"], "")
+        self.assertFalse(payload["tests"]["output_included"])
+        self.assertIn("FAILED (failures=1)", payload["tests"]["stderr_excerpt"])
+        self.assertEqual(payload["tests"]["stdout_excerpt"], "")
+        self.assertEqual(payload["tests"]["total_tests"], 3)
+        self.assertEqual(payload["tests"]["duration_seconds"], 0.123)
+        self.assertEqual(payload["tests"]["failure_count"], 1)
+        self.assertEqual(payload["tests"]["error_count"], 0)
         self.assertFalse(payload["tests"]["streamed"])
+
+    def test_validate_command_can_include_full_test_output_in_json(self) -> None:
+        validation_result = {
+            "command": [sys.executable, "-m", "unittest"],
+            "pattern": "test_cli.py",
+            "suite": "discover",
+            "module_count": 0,
+            "modules": [],
+            "suite_path": "",
+            "passed": False,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "traceback\n----------------------------------------------------------------------\nRan 3 tests in 0.123s\n\nFAILED (failures=1)\n",
+            "streamed": False,
+        }
+        with patch.object(run, "_doctor_payload", return_value={"status": "ok", "warnings": []}), patch.object(
+            run,
+            "_run_validation_tests",
+            return_value=validation_result,
+        ):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = run.main(["validate", "--json", "--include-test-output", "--pattern", "test_cli.py"])
+
+        self.assertEqual(exit_code, 1)
+        payload = json.loads(output.getvalue())
+        self.assertTrue(payload["tests"]["output_included"])
+        self.assertIn("traceback", payload["tests"]["stderr"])
+        self.assertEqual(payload["tests"]["stdout"], "")
+        self.assertEqual(payload["tests"]["total_tests"], 3)
+        self.assertEqual(payload["tests"]["duration_seconds"], 0.123)
+        self.assertEqual(payload["tests"]["failure_count"], 1)
+
+    def test_build_validation_command_uses_release_suite_manifest_for_default_pattern(self) -> None:
+        with patch.object(run, "_load_release_validation_modules", return_value=["tests.test_api_contract", "tests.test_cli"]), patch.object(
+            run, "_get_release_validation_suite_path", return_value=Path("D:/OpenChimera/config/release_validation_modules.txt")
+        ):
+            command_spec = run._build_validation_command()
+
+        self.assertEqual(command_spec["suite"], "release")
+        self.assertEqual(command_spec["module_count"], 2)
+        self.assertEqual(
+            command_spec["command"],
+            [sys.executable, "-m", "unittest", "tests.test_api_contract", "tests.test_cli"],
+        )
+
+    def test_build_validation_command_uses_discover_for_explicit_pattern(self) -> None:
+        with patch.object(run, "_load_release_validation_modules", return_value=["tests.test_api_contract"]):
+            command_spec = run._build_validation_command("test_cli.py")
+
+        self.assertEqual(command_spec["suite"], "discover")
+        self.assertEqual(
+            command_spec["command"],
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_cli.py"],
+        )
+
+    def test_build_validation_command_uses_discover_for_explicit_full_sweep_pattern(self) -> None:
+        with patch.object(run, "_load_release_validation_modules", return_value=["tests.test_api_contract"]):
+            command_spec = run._build_validation_command("test_*.py")
+
+        self.assertEqual(command_spec["suite"], "discover")
+        self.assertEqual(
+            command_spec["command"],
+            [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+        )
 
     def test_briefing_command_reports_fallback_leaders(self) -> None:
         fake_provider = SimpleNamespace(
@@ -660,6 +825,7 @@ class OpenChimeraCLITests(unittest.TestCase):
                 return_value={
                     "session_id": "qs-1",
                     "query_type": "general",
+                    "executed_tools": [],
                     "response": {"choices": [{"message": {"content": "ok"}}]},
                 }
             ),
@@ -685,6 +851,86 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertIn("openchimera-core", plugins_output.getvalue())
         self.assertEqual(mcp_exit, 0)
         self.assertIn("context_hub", mcp_output.getvalue())
+
+    def test_query_command_can_execute_explicit_tool_requests(self) -> None:
+        fake_provider = SimpleNamespace(
+            run_query=MagicMock(
+                return_value={
+                    "session_id": "qs-2",
+                    "query_type": "general",
+                    "executed_tools": [{"tool_id": "browser.fetch", "status": "ok"}],
+                    "response": {"choices": [{"message": {"content": "tool-backed answer"}}]},
+                }
+            )
+        )
+        with patch.object(run, "_build_provider", return_value=fake_provider):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                exit_code = run.main(
+                    [
+                        "query",
+                        "--text",
+                        "Fetch the page",
+                        "--permission-scope",
+                        "admin",
+                        "--execute-tools",
+                        "--tool-request-json",
+                        '{"tool_id":"browser.fetch","arguments":{"url":"https://example.com","max_chars":512}}',
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        fake_provider.run_query.assert_called_once_with(
+            query="Fetch the page",
+            session_id=None,
+            permission_scope="admin",
+            execute_tools=True,
+            tool_requests=[{"tool_id": "browser.fetch", "arguments": {"url": "https://example.com", "max_chars": 512}}],
+        )
+        rendered = output.getvalue()
+        self.assertIn("Executed tools:", rendered)
+        self.assertIn("browser.fetch: ok", rendered)
+
+    def test_tools_command_can_show_and_execute_runtime_tools(self) -> None:
+        fake_provider = SimpleNamespace(
+            tool_status=MagicMock(return_value={"counts": {"total": 2}, "tools": [{"id": "browser.fetch", "description": "Fetch a page."}, {"id": "autonomy.artifact_get", "description": "Read an autonomy artifact."}]}),
+            get_tool=MagicMock(return_value={"id": "browser.fetch", "category": "browser", "requires_admin": True, "description": "Fetch a page."}),
+            execute_tool=MagicMock(return_value={"tool_id": "browser.fetch", "status": "ok", "result": {"text_preview": "Example"}}),
+        )
+        with patch.object(run, "_build_provider", return_value=fake_provider):
+            list_output = io.StringIO()
+            with redirect_stdout(list_output):
+                list_exit = run.main(["tools"])
+
+            inspect_output = io.StringIO()
+            with redirect_stdout(inspect_output):
+                inspect_exit = run.main(["tools", "--id", "browser.fetch"])
+
+            execute_output = io.StringIO()
+            with redirect_stdout(execute_output):
+                execute_exit = run.main(["tools", "--id", "browser.fetch", "--execute", "--permission-scope", "admin", "--arguments-json", '{"url":"https://example.com","max_chars":256}'])
+
+        self.assertEqual(list_exit, 0)
+        self.assertIn("browser.fetch", list_output.getvalue())
+        self.assertIn("autonomy.artifact_get", list_output.getvalue())
+        self.assertEqual(inspect_exit, 0)
+        self.assertIn("Requires admin: True", inspect_output.getvalue())
+        self.assertEqual(execute_exit, 0)
+        fake_provider.execute_tool.assert_called_once_with(
+            "browser.fetch",
+            {"url": "https://example.com", "max_chars": 256},
+            permission_scope="admin",
+        )
+        self.assertIn("Executed tool: browser.fetch", execute_output.getvalue())
+
+    def test_tools_command_rejects_invalid_arguments_json(self) -> None:
+        fake_provider = SimpleNamespace(execute_tool=MagicMock())
+        with patch.object(run, "_build_provider", return_value=fake_provider), patch("sys.stderr", new_callable=io.StringIO) as stderr_output:
+            exit_code = run.main(["tools", "--id", "browser.fetch", "--execute", "--arguments-json", "{not-json}"])
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Expecting property name enclosed in double quotes", stderr_output.getvalue())
+        fake_provider.execute_tool.assert_not_called()
 
     def test_mcp_command_can_manage_registry_and_descriptors(self) -> None:
         with patch.object(

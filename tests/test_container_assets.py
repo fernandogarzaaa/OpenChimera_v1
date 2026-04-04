@@ -34,6 +34,8 @@ class ContainerAssetTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "python-ci.yml").read_text(encoding="utf-8")
         self.assertIn("python -m pre_commit run --all-files", workflow)
         self.assertIn("python run.py validate", workflow)
+        self.assertIn("python run.py validate --pattern test_*.py", workflow)
+        self.assertIn("Full discovery sweep", workflow)
         self.assertIn("openchimera doctor --production --json", workflow)
         self.assertIn("openchimera backup create --json", workflow)
 

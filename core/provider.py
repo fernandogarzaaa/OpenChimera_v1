@@ -54,6 +54,23 @@ from core.router import OpenChimeraRouter
 from core.runtime_plane import RuntimePlane
 from core.service_plane import ServicePlane
 from core.subsystems import ManagedSubsystemRegistry
+from core.tool_runtime import RuntimeToolRegistry, RuntimeToolSpec
+from core.schemas import (
+    ArtifactGetQuery,
+    ArtifactHistoryQuery,
+    AutonomyToolRunRequest,
+    BrowserFetchRequest,
+    BrowserSubmitFormRequest,
+    ChannelDispatchRequest,
+    JobCreateRequest,
+    MediaGenerateImageRequest,
+    MediaSynthesizeRequest,
+    MediaTranscribeRequest,
+    MediaUnderstandImageRequest,
+    OperatorDigestDispatchRequest,
+    PreviewRepairRequest,
+    SubsystemInvokeRequest,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -81,6 +98,221 @@ class OpenChimeraProvider:
         self.router = OpenChimeraRouter(self.llm_manager, self.model_roles)
         self.plugins = PluginManager(self.capabilities)
         self.capability_plane = CapabilityPlane(capabilities=self.capabilities, plugins=self.plugins, bus=self.bus)
+        self.tool_runtime = RuntimeToolRegistry(
+            capability_registry=self.capabilities,
+            bus=self.bus,
+            specs=[
+                RuntimeToolSpec(
+                    tool_id="browser.fetch",
+                    name="Browser Fetch",
+                    description="Fetch a web page through the browser service.",
+                    schema=BrowserFetchRequest,
+                    executor=lambda arguments: self.browser_fetch(
+                        url=str(arguments.get("url", "")),
+                        max_chars=int(arguments.get("max_chars", 4000)),
+                    ),
+                    requires_admin=True,
+                    category="browser",
+                ),
+                RuntimeToolSpec(
+                    tool_id="browser.submit_form",
+                    name="Browser Submit Form",
+                    description="Submit a form through the browser service.",
+                    schema=BrowserSubmitFormRequest,
+                    executor=lambda arguments: self.browser_submit_form(
+                        url=str(arguments.get("url", "")),
+                        form_data=dict(arguments.get("form_data", {})),
+                        method=str(arguments.get("method", "POST")),
+                        max_chars=int(arguments.get("max_chars", 4000)),
+                    ),
+                    requires_admin=True,
+                    category="browser",
+                ),
+                RuntimeToolSpec(
+                    tool_id="media.transcribe",
+                    name="Media Transcribe",
+                    description="Transcribe local text or audio payloads.",
+                    schema=MediaTranscribeRequest,
+                    executor=lambda arguments: self.media_transcribe(
+                        audio_text=str(arguments.get("audio_text", "")),
+                        audio_base64=str(arguments.get("audio_base64", "")),
+                        language=str(arguments.get("language", "en")),
+                    ),
+                    requires_admin=True,
+                    category="media",
+                ),
+                RuntimeToolSpec(
+                    tool_id="media.synthesize",
+                    name="Media Synthesize",
+                    description="Synthesize local speech audio artifacts.",
+                    schema=MediaSynthesizeRequest,
+                    executor=lambda arguments: self.media_synthesize(
+                        text=str(arguments.get("text", "")),
+                        voice=str(arguments.get("voice", "openchimera-default")),
+                        audio_format=str(arguments.get("audio_format", "wav")),
+                        sample_rate_hz=int(arguments.get("sample_rate_hz", 16000)),
+                    ),
+                    requires_admin=True,
+                    category="media",
+                ),
+                RuntimeToolSpec(
+                    tool_id="media.understand_image",
+                    name="Media Understand Image",
+                    description="Analyze an image using the configured multimodal backend.",
+                    schema=MediaUnderstandImageRequest,
+                    executor=lambda arguments: self.media_understand_image(
+                        prompt=str(arguments.get("prompt", "")),
+                        image_path=str(arguments.get("image_path", "")),
+                        image_base64=str(arguments.get("image_base64", "")),
+                    ),
+                    requires_admin=True,
+                    category="media",
+                ),
+                RuntimeToolSpec(
+                    tool_id="media.generate_image",
+                    name="Media Generate Image",
+                    description="Generate an image through the configured multimodal backend.",
+                    schema=MediaGenerateImageRequest,
+                    executor=lambda arguments: self.media_generate_image(
+                        prompt=str(arguments.get("prompt", "")),
+                        width=int(arguments.get("width", 1024)),
+                        height=int(arguments.get("height", 1024)),
+                        style=str(arguments.get("style", "schematic")),
+                    ),
+                    requires_admin=True,
+                    category="media",
+                ),
+                RuntimeToolSpec(
+                    tool_id="jobs.create",
+                    name="Create Operator Job",
+                    description="Enqueue a durable operator job.",
+                    schema=JobCreateRequest,
+                    executor=lambda arguments: self.create_operator_job(
+                        job_type=str(arguments.get("job_type", "autonomy")),
+                        payload=dict(arguments.get("payload", {})),
+                        max_attempts=int(arguments.get("max_attempts", 3)),
+                    ),
+                    requires_admin=True,
+                    category="runtime",
+                ),
+                RuntimeToolSpec(
+                    tool_id="autonomy.run_job",
+                    name="Run Autonomy Job",
+                    description="Run one autonomy scheduler job immediately through the validated runtime tool registry.",
+                    schema=AutonomyToolRunRequest,
+                    executor=lambda arguments: self.run_autonomy_job(
+                        str(arguments.get("job_name", "")),
+                        payload=dict(arguments.get("payload", {})),
+                    ),
+                    requires_admin=True,
+                    category="autonomy",
+                ),
+                RuntimeToolSpec(
+                    tool_id="autonomy.preview_self_repair",
+                    name="Preview Self Repair",
+                    description="Generate or enqueue the preview-only self-repair plan through autonomy.",
+                    schema=PreviewRepairRequest,
+                    executor=lambda arguments: self.preview_self_repair(
+                        target_project=str(arguments.get("target_project", "")).strip() or None,
+                        enqueue=bool(arguments.get("enqueue", False)),
+                        max_attempts=int(arguments.get("max_attempts", 3)),
+                    ),
+                    requires_admin=True,
+                    category="autonomy",
+                ),
+                RuntimeToolSpec(
+                    tool_id="autonomy.dispatch_operator_digest",
+                    name="Dispatch Operator Digest",
+                    description="Generate or enqueue the autonomy operator digest dispatch.",
+                    schema=OperatorDigestDispatchRequest,
+                    executor=lambda arguments: self.dispatch_operator_digest(
+                        enqueue=bool(arguments.get("enqueue", False)),
+                        max_attempts=int(arguments.get("max_attempts", 3)),
+                        history_limit=int(arguments.get("history_limit", 0)) or None,
+                        dispatch_topic=str(arguments.get("dispatch_topic", "")).strip() or None,
+                    ),
+                    requires_admin=True,
+                    category="autonomy",
+                ),
+                RuntimeToolSpec(
+                    tool_id="autonomy.artifact_history",
+                    name="Autonomy Artifact History",
+                    description="Inspect recent autonomy artifact history through the validated runtime tool registry.",
+                    schema=ArtifactHistoryQuery,
+                    executor=lambda arguments: self.autonomy_artifact_history(
+                        artifact_name=str(arguments.get("artifact", "")).strip() or None,
+                        limit=int(arguments.get("limit", 20)),
+                    ),
+                    category="autonomy",
+                ),
+                RuntimeToolSpec(
+                    tool_id="autonomy.artifact_get",
+                    name="Get Autonomy Artifact",
+                    description="Read one autonomy artifact through the validated runtime tool registry.",
+                    schema=ArtifactGetQuery,
+                    executor=lambda arguments: self.autonomy_artifact(str(arguments.get("artifact", "")).strip()),
+                    category="autonomy",
+                ),
+                RuntimeToolSpec(
+                    tool_id="channels.dispatch_topic",
+                    name="Dispatch Channel Topic",
+                    description="Dispatch a topic payload to configured channels.",
+                    schema=ChannelDispatchRequest,
+                    executor=lambda arguments: self.dispatch_channel(
+                        topic=str(arguments.get("topic", "")),
+                        payload=dict(arguments.get("payload", {})),
+                    ),
+                    requires_admin=True,
+                    category="channels",
+                ),
+                RuntimeToolSpec(
+                    tool_id="channels.dispatch_daily_briefing",
+                    name="Dispatch Daily Briefing",
+                    description="Dispatch the current daily briefing to configured channels.",
+                    schema=None,
+                    executor=lambda arguments: self.dispatch_daily_briefing(),
+                    requires_admin=True,
+                    category="channels",
+                ),
+                RuntimeToolSpec(
+                    tool_id="aegis.run_workflow",
+                    name="Run Aegis Workflow",
+                    description="Run an Aegis workflow preview or execution.",
+                    schema=None,
+                    executor=lambda arguments: self.run_aegis_workflow(
+                        target_project=str(arguments.get("target_project", "")).strip() or None,
+                        preview=bool(arguments.get("preview", True)),
+                    ),
+                    requires_admin=True,
+                    category="subsystem",
+                ),
+                RuntimeToolSpec(
+                    tool_id="ascension.deliberate",
+                    name="Ascension Deliberation",
+                    description="Run a structured deliberation through Ascension.",
+                    schema=None,
+                    executor=lambda arguments: self.deliberate(
+                        prompt=str(arguments.get("prompt", "")),
+                        perspectives=[str(item) for item in arguments.get("perspectives", [])] if isinstance(arguments.get("perspectives", []), list) else None,
+                        max_tokens=int(arguments.get("max_tokens", 256)),
+                    ),
+                    category="reasoning",
+                ),
+                RuntimeToolSpec(
+                    tool_id="subsystems.invoke",
+                    name="Invoke Subsystem",
+                    description="Invoke a managed subsystem by id and action.",
+                    schema=SubsystemInvokeRequest,
+                    executor=lambda arguments: self.invoke_subsystem(
+                        subsystem_id=str(arguments.get("subsystem_id", "")),
+                        action=str(arguments.get("action", "status")),
+                        payload=dict(arguments.get("payload", {})),
+                    ),
+                    requires_admin=True,
+                    category="subsystem",
+                ),
+            ],
+        )
         self.job_queue = PersistentJobQueue(self.bus, executor=lambda job: self.autonomy_plane.execute_operator_job(job), database=self.database)
         self.observability = ObservabilityStore(
             recent_limit=get_observability_recent_limit(),
@@ -176,6 +408,7 @@ class OpenChimeraProvider:
         self.query_engine = QueryEngine(
             capability_registry=self.capabilities,
             model_roles=self.model_roles,
+            tool_registry=self.tool_runtime,
             completion_callback=self.chat_completion,
             job_submitter=self.create_operator_job,
             database=self.database,
@@ -247,6 +480,7 @@ class OpenChimeraProvider:
             query_status_getter=self.query_status,
             model_role_status_getter=self.model_role_status,
             plugin_status_getter=self.plugin_status,
+            tool_status_getter=self.tool_status,
             subsystem_status_getter=self.subsystem_status,
             onboarding_status_getter=self.onboarding_status,
             integration_status_getter=self.integration_status,
@@ -462,6 +696,22 @@ class OpenChimeraProvider:
     def query_status(self) -> dict[str, Any]:
         return self.interaction_plane.query_status()
 
+    def tool_status(self) -> dict[str, Any]:
+        tools = self.tool_runtime.list_tools()
+        return {
+            "counts": {
+                "total": len(tools),
+                "admin_required": sum(1 for item in tools if bool(item.get("requires_admin"))),
+            },
+            "tools": tools,
+        }
+
+    def get_tool(self, tool_id: str) -> dict[str, Any]:
+        return self.tool_runtime.get_tool(tool_id)
+
+    def execute_tool(self, tool_id: str, arguments: dict[str, Any] | None = None, permission_scope: str = "user") -> dict[str, Any]:
+        return self.tool_runtime.execute(tool_id, arguments, permission_scope=permission_scope)
+
     def list_query_sessions(self, limit: int = 20) -> list[dict[str, Any]]:
         return self.interaction_plane.list_query_sessions(limit=limit)
 
@@ -479,6 +729,8 @@ class OpenChimeraProvider:
         permission_scope: str = "user",
         max_tokens: int = 512,
         allow_tool_planning: bool = True,
+        execute_tools: bool = False,
+        tool_requests: list[dict[str, Any]] | None = None,
         allow_agent_spawn: bool = False,
         spawn_job: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -489,6 +741,8 @@ class OpenChimeraProvider:
             permission_scope=permission_scope,
             max_tokens=max_tokens,
             allow_tool_planning=allow_tool_planning,
+            execute_tools=execute_tools,
+            tool_requests=tool_requests,
             allow_agent_spawn=allow_agent_spawn,
             spawn_job=spawn_job,
         )
@@ -656,7 +910,14 @@ class OpenChimeraProvider:
         return self.service_plane.deliberate(prompt=prompt, perspectives=perspectives, max_tokens=max_tokens)
 
     def daily_briefing(self) -> dict[str, Any]:
-        return self.control_plane.daily_briefing()
+        return self.control_plane.build_daily_briefing(
+            integrations=self.integration_status(),
+            onboarding=self.onboarding_status(),
+            autonomy=self.autonomy_status(),
+            llm_status=self.llm_manager.get_status(),
+            registry=self.model_registry.status(),
+            recent_events=self.bus.recent_events(),
+        )
 
     def control_plane_readiness(self, system_status: dict[str, Any] | None = None, auth_required: bool = False) -> dict[str, Any]:
         return self.control_plane.readiness_status(system_status=system_status, auth_required=auth_required)

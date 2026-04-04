@@ -1,0 +1,20 @@
+# Canonical release validation suite for `python run.py validate`.
+#
+# Keep this list focused on operator-facing runtime, packaging, onboarding,
+# and contract coverage. Use `python run.py validate --pattern test_*.py`
+# when you want the full unittest discovery sweep.
+
+tests.test_api_contract
+tests.test_cli
+tests.test_sandbox_install_simulation
+tests.test_smoke_windows
+tests.test_container_assets
+tests.test_kernel
+tests.test_onboarding
+tests.test_provider_reasoning
+tests.test_capabilities
+tests.test_mcp_server
+tests.test_model_registry
+tests.test_runtime_profile
+tests.test_autonomy
+tests.test_job_queue

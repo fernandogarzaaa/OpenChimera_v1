@@ -125,6 +125,8 @@ class InteractionPlane:
         permission_scope: str = "user",
         max_tokens: int = 512,
         allow_tool_planning: bool = True,
+        execute_tools: bool = False,
+        tool_requests: list[dict[str, Any]] | None = None,
         allow_agent_spawn: bool = False,
         spawn_job: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -135,6 +137,8 @@ class InteractionPlane:
             permission_scope=permission_scope,
             max_tokens=max_tokens,
             allow_tool_planning=allow_tool_planning,
+            execute_tools=execute_tools,
+            tool_requests=tool_requests,
             allow_agent_spawn=allow_agent_spawn,
             spawn_job=spawn_job,
         )

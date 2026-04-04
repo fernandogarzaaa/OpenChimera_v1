@@ -6,9 +6,11 @@ from importlib.metadata import PackageNotFoundError, version as package_version
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import threading
+import time
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -17,6 +19,7 @@ from core.bootstrap import bootstrap_workspace
 from core.bus import EventBus
 from core.aether_service import AetherService
 from core.config import (
+    ROOT,
     build_runtime_configuration_status,
     build_deployment_status,
     build_identity_snapshot,
@@ -79,12 +82,51 @@ def _openchimera_version() -> str:
             return "0.1.0"
 
 
+def _get_release_validation_suite_path() -> Path:
+    return Path(__file__).resolve().parent / "config" / "release_validation_modules.txt"
+
+
+def _load_release_validation_modules() -> list[str]:
+    suite_path = _get_release_validation_suite_path()
+    if not suite_path.exists():
+        return []
+    modules: list[str] = []
+    for raw_line in suite_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        modules.append(line)
+    return modules
+
+
+def _build_validation_command(test_pattern: str | None = None) -> dict[str, Any]:
+    normalized_pattern = str(test_pattern or "").strip()
+    release_modules = _load_release_validation_modules() if not normalized_pattern else []
+    if release_modules:
+        return {
+            "command": [sys.executable, "-m", "unittest", *release_modules],
+            "pattern": "test_*.py",
+            "suite": "release",
+            "modules": release_modules,
+            "module_count": len(release_modules),
+            "suite_path": str(_get_release_validation_suite_path()),
+        }
+    return {
+        "command": [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", normalized_pattern or "test_*.py"],
+        "pattern": normalized_pattern or "test_*.py",
+        "suite": "discover",
+        "modules": [],
+        "module_count": 0,
+        "suite_path": "",
+    }
+
+
 def _database_path(database_path: Path | None = None) -> Path:
-    return Path(database_path) if database_path is not None else (Path(__file__).resolve().parent / "data" / "openchimera.db")
+    return Path(database_path) if database_path is not None else (ROOT / "data" / "openchimera.db")
 
 
 def _backup_root(backup_root: Path | None = None) -> Path:
-    return Path(backup_root) if backup_root is not None else (Path(__file__).resolve().parent / "data" / "backups")
+    return Path(backup_root) if backup_root is not None else (ROOT / "data" / "backups")
 
 
 def _build_provider() -> OpenChimeraProvider:
@@ -95,14 +137,16 @@ def _build_provider() -> OpenChimeraProvider:
 
 def _build_status_snapshot(provider: OpenChimeraProvider | None = None) -> dict[str, Any]:
     provider = provider or _build_provider()
+    runtime = provider.status()
     return {
         "aether": AetherService().status(),
         "wraith": WraithService().status(),
         "evo": EvoService().status(),
         "aegis": provider.aegis_status(),
         "ascension": provider.ascension_status(),
-        "provider_online": True,
-        "deployment": build_deployment_status(),
+        "provider_online": bool(runtime.get("online", False)),
+        "runtime": runtime,
+        "deployment": runtime.get("deployment", build_deployment_status()),
         "onboarding": provider.onboarding_status(),
         "integrations": provider.integration_status(),
     }
@@ -221,7 +265,9 @@ def _build_parser() -> argparse.ArgumentParser:
     config_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     validate_parser = subparsers.add_parser("validate", help="Run the canonical release validation path.")
-    validate_parser.add_argument("--pattern", default="test_*.py", help="Unittest discovery pattern to run. Defaults to the full release suite.")
+    validate_parser.add_argument("--pattern", default="", help="Unittest discovery pattern to run. By default OpenChimera uses the curated release suite; pass test_*.py explicitly for the full discovery sweep.")
+    validate_parser.add_argument("--verbose-tests", action="store_true", help="Stream raw unittest output while the validation suite runs.")
+    validate_parser.add_argument("--include-test-output", action="store_true", help="Include full captured unittest stdout and stderr in JSON output.")
     validate_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     onboard_parser = subparsers.add_parser("onboard", help="Show onboarding recommendations and blockers.")
@@ -241,7 +287,16 @@ def _build_parser() -> argparse.ArgumentParser:
     query_parser.add_argument("--text", default="", help="User query text.")
     query_parser.add_argument("--session-id", default="", help="Resume an existing query session.")
     query_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
+    query_parser.add_argument("--execute-tools", action="store_true", help="Execute the supplied tool requests before model completion.")
+    query_parser.add_argument("--tool-request-json", action="append", default=[], help="Repeatable JSON object describing a tool request with tool_id and arguments.")
     query_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    tools_parser = subparsers.add_parser("tools", help="Inspect or execute runtime tools.")
+    tools_parser.add_argument("--id", default="", help="Tool id to inspect or execute.")
+    tools_parser.add_argument("--arguments-json", default="", help="JSON object of tool arguments when executing a tool.")
+    tools_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
+    tools_parser.add_argument("--execute", action="store_true", help="Execute the selected tool instead of listing metadata.")
+    tools_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     sessions_parser = subparsers.add_parser("sessions", help="Inspect resumable query sessions.")
     sessions_parser.add_argument("--session-id", default="", help="Show a specific session.")
@@ -655,6 +710,12 @@ def _jobs_command(job_id: str, status_filter: str, job_type: str, limit: int, ca
     return 0
 
 
+def _append_unique_action(actions: list[str], action: str) -> None:
+    normalized = str(action).strip()
+    if normalized and normalized not in actions:
+        actions.append(normalized)
+
+
 def _doctor_payload(*, production: bool = False, database_path: Path | None = None) -> dict[str, Any]:
     bootstrap_report = bootstrap_workspace()
     profile = load_runtime_profile()
@@ -709,6 +770,48 @@ def _doctor_payload(*, production: bool = False, database_path: Path | None = No
     if not checks["external_bind_protected"]:
         warnings.append("OpenChimera is configured to bind beyond localhost without API auth. Set OPENCHIMERA_API_TOKEN and OPENCHIMERA_ADMIN_TOKEN before exposing the runtime.")
 
+    next_actions: list[str] = []
+    if not checks["harness_repo_supported"]:
+        _append_unique_action(
+            next_actions,
+            "Set OPENCHIMERA_HARNESS_ROOT or update config/runtime_profile.local.json so the upstream harness Python-port repo points at a supported layout.",
+        )
+    if not checks["legacy_snapshot_available"]:
+        _append_unique_action(
+            next_actions,
+            "Set OPENCHIMERA_LEGACY_HARNESS_ROOT or update config/runtime_profile.local.json if you want legacy workflow snapshot evidence available.",
+        )
+    if not checks["minimind_workspace_available"]:
+        _append_unique_action(
+            next_actions,
+            "Set MINIMIND_ROOT or update config/runtime_profile.local.json so the MiniMind workspace is available for reasoning features.",
+        )
+    if not checks["aether_immune_loop_available"]:
+        _append_unique_action(
+            next_actions,
+            "Install the missing AETHER immune-loop dependencies in the external workspace and verify modules like psutil are available there.",
+        )
+    if not checks["local_llama_server_available"]:
+        _append_unique_action(
+            next_actions,
+            "Install or point OpenChimera at a working llama-server binary before expecting managed GGUF launches.",
+        )
+    if not checks["local_model_assets_available"]:
+        _append_unique_action(
+            next_actions,
+            "Place a GGUF under one of the configured model roots or run: openchimera onboard --register-local-model-path <path-to-model.gguf> [--register-local-model-id <model-id>]",
+        )
+    if is_api_auth_enabled() and not get_api_admin_token():
+        _append_unique_action(
+            next_actions,
+            "Set OPENCHIMERA_ADMIN_TOKEN before using protected mutating routes or production deployments.",
+        )
+    if not checks["external_bind_protected"]:
+        _append_unique_action(
+            next_actions,
+            "Set OPENCHIMERA_API_TOKEN and OPENCHIMERA_ADMIN_TOKEN before binding beyond localhost.",
+        )
+
     auth = {
         "enabled": is_api_auth_enabled(),
         "header": get_api_auth_header(),
@@ -762,6 +865,7 @@ def _doctor_payload(*, production: bool = False, database_path: Path | None = No
             "local_override": str(get_runtime_profile_override_path()),
         },
         "warnings": warnings,
+        "next_actions": next_actions,
         "profile": {
             "providers_enabled": profile.get("providers", {}).get("enabled", []),
             "preferred_cloud_provider": profile.get("providers", {}).get("preferred_cloud_provider", ""),
@@ -805,6 +909,10 @@ def _doctor_command(as_json: bool) -> int:
         print("Warnings:")
         for warning in payload["warnings"]:
             print(f"- {warning}")
+    if payload.get("next_actions"):
+        print("Next actions:")
+        for action in payload.get("next_actions", [])[:5]:
+            print(f"- {action}")
     discovery = payload.get("local_model_discovery", {}) if isinstance(payload.get("local_model_discovery", {}), dict) else {}
     search_roots = discovery.get("search_roots", []) if isinstance(discovery.get("search_roots", []), list) else []
     discovered_files = discovery.get("discovered_files", []) if isinstance(discovery.get("discovered_files", []), list) else []
@@ -912,12 +1020,72 @@ def _backup_command(action: str, file: str, as_json: bool) -> int:
     return 0
 
 
-def _validate_payload(test_pattern: str = "test_*.py") -> dict[str, Any]:
+def _validate_payload(test_pattern: str | None = None) -> dict[str, Any]:
     return _validate_payload_with_options(test_pattern=test_pattern, stream_output=False)
 
 
-def _run_validation_tests(test_pattern: str = "test_*.py", *, stream_output: bool = False) -> dict[str, Any]:
-    command = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", test_pattern]
+def _parse_unittest_summary_counts(fragment: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in str(fragment or "").split(","):
+        key, separator, value = item.strip().partition("=")
+        if not separator:
+            continue
+        normalized_key = key.strip().replace(" ", "_")
+        try:
+            counts[normalized_key] = int(value.strip())
+        except ValueError:
+            continue
+    return counts
+
+
+def _attach_validation_metrics(result: dict[str, Any]) -> dict[str, Any]:
+    enriched = dict(result)
+    combined_output = "\n".join(
+        item for item in [str(enriched.get("stdout") or ""), str(enriched.get("stderr") or "")] if item
+    )
+    ran_match = re.search(r"Ran\s+(\d+)\s+tests?\s+in\s+([0-9.]+)s", combined_output)
+    failed_match = re.search(r"FAILED\s*\(([^)]+)\)", combined_output)
+    ok_match = re.search(r"OK\s*\(([^)]+)\)", combined_output)
+    summary_counts = _parse_unittest_summary_counts(failed_match.group(1) if failed_match else ok_match.group(1) if ok_match else "")
+    enriched["total_tests"] = int(ran_match.group(1)) if ran_match else None
+    enriched["duration_seconds"] = float(ran_match.group(2)) if ran_match else None
+    enriched["failure_count"] = int(summary_counts.get("failures", 0))
+    enriched["error_count"] = int(summary_counts.get("errors", 0))
+    enriched["skipped_count"] = int(summary_counts.get("skipped", 0))
+    enriched["expected_failures_count"] = int(summary_counts.get("expected_failures", 0))
+    enriched["unexpected_successes_count"] = int(summary_counts.get("unexpected_successes", 0))
+    if "execution_seconds" not in enriched:
+        enriched["execution_seconds"] = None
+    return enriched
+
+
+def _run_validation_tests(test_pattern: str | None = None, *, stream_output: bool = False) -> dict[str, Any]:
+    command_spec = _build_validation_command(test_pattern)
+    command = list(command_spec["command"])
+    started_at = time.perf_counter()
+    if not stream_output:
+        completed = subprocess.run(
+            command,
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return _attach_validation_metrics({
+            "command": command,
+            "pattern": command_spec["pattern"],
+            "suite": command_spec["suite"],
+            "modules": list(command_spec.get("modules", [])),
+            "module_count": int(command_spec.get("module_count", 0) or 0),
+            "suite_path": str(command_spec.get("suite_path", "")),
+            "passed": completed.returncode == 0,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout,
+            "stderr": completed.stderr,
+            "streamed": False,
+            "execution_seconds": round(time.perf_counter() - started_at, 3),
+        })
+
     process = subprocess.Popen(
         command,
         cwd=Path(__file__).resolve().parent,
@@ -960,20 +1128,63 @@ def _run_validation_tests(test_pattern: str = "test_*.py", *, stream_output: boo
     stdout_thread.join()
     stderr_thread.join()
 
-    return {
+    return _attach_validation_metrics({
         "command": command,
-        "pattern": test_pattern,
+        "pattern": command_spec["pattern"],
+        "suite": command_spec["suite"],
+        "modules": list(command_spec.get("modules", [])),
+        "module_count": int(command_spec.get("module_count", 0) or 0),
+        "suite_path": str(command_spec.get("suite_path", "")),
         "passed": returncode == 0,
         "returncode": returncode,
         "stdout": "".join(stdout_lines),
         "stderr": "".join(stderr_lines),
         "streamed": stream_output,
-    }
+        "execution_seconds": round(time.perf_counter() - started_at, 3),
+    })
 
 
-def _validate_payload_with_options(test_pattern: str = "test_*.py", *, stream_output: bool = False) -> dict[str, Any]:
+def _summarize_validation_output(text: str, *, max_lines: int = 12, max_chars: int = 1200) -> str:
+    normalized = str(text or "").strip()
+    if not normalized:
+        return ""
+    lines = normalized.splitlines()
+    tail_lines = lines[-max_lines:]
+    excerpt = "\n".join(tail_lines)
+    if len(excerpt) > max_chars:
+        excerpt = excerpt[-max_chars:]
+    if len(lines) > max_lines or len(normalized) > len(excerpt):
+        excerpt = "...\n" + excerpt.lstrip()
+    return excerpt
+
+
+def _compact_validation_test_output(tests: dict[str, Any]) -> dict[str, Any]:
+    compact = _attach_validation_metrics(tests)
+    stdout = str(tests.get("stdout") or "")
+    stderr = str(tests.get("stderr") or "")
+    compact["output_included"] = False
+    compact["stdout_length"] = len(stdout)
+    compact["stderr_length"] = len(stderr)
+    compact["stdout_excerpt"] = _summarize_validation_output(stdout)
+    compact["stderr_excerpt"] = _summarize_validation_output(stderr)
+    compact["stdout"] = ""
+    compact["stderr"] = ""
+    return compact
+
+
+def _validate_payload_with_options(
+    test_pattern: str | None = None,
+    *,
+    stream_output: bool = False,
+    include_test_output: bool = False,
+) -> dict[str, Any]:
     doctor = _doctor_payload()
-    tests = _run_validation_tests(test_pattern=test_pattern, stream_output=stream_output)
+    tests = _attach_validation_metrics(_run_validation_tests(test_pattern=test_pattern, stream_output=stream_output))
+    if not stream_output and not include_test_output:
+        tests = _compact_validation_test_output(tests)
+    else:
+        tests = dict(tests)
+        tests["output_included"] = True
     tests_passed = bool(tests.get("passed"))
     if tests_passed and doctor.get("status") == "ok":
         status = "ok"
@@ -988,22 +1199,51 @@ def _validate_payload_with_options(test_pattern: str = "test_*.py", *, stream_ou
     }
 
 
-def _validate_command(as_json: bool, test_pattern: str = "test_*.py") -> int:
-    payload = _validate_payload_with_options(test_pattern=test_pattern, stream_output=not as_json)
+def _validate_command(
+    as_json: bool,
+    test_pattern: str | None = None,
+    verbose_tests: bool = False,
+    include_test_output: bool = False,
+) -> int:
+    payload = _validate_payload_with_options(
+        test_pattern=test_pattern,
+        stream_output=bool(verbose_tests and not as_json),
+        include_test_output=bool(include_test_output and as_json),
+    )
     if as_json:
         _print_payload(payload, as_json=True)
         return 0 if payload["tests"].get("passed") else 1
 
     print(f"OpenChimera validate: {payload['status']}")
     print(f"Doctor status: {payload['doctor'].get('status')}")
+    doctor_warnings = payload["doctor"].get("warnings", []) if isinstance(payload["doctor"], dict) else []
+    if doctor_warnings:
+        print(f"Doctor warnings: {len(doctor_warnings)}")
+        for warning in doctor_warnings[:3]:
+            print(f"- {warning}")
+        remaining = len(doctor_warnings) - 3
+        if remaining > 0:
+            print(f"- ... {remaining} more")
+    doctor_actions = payload["doctor"].get("next_actions", []) if isinstance(payload["doctor"], dict) else []
+    if doctor_actions:
+        print("Doctor next actions:")
+        for action in doctor_actions[:2]:
+            print(f"- {action}")
+        remaining_actions = len(doctor_actions) - 2
+        if remaining_actions > 0:
+            print(f"- ... {remaining_actions} more")
+    if payload["tests"].get("suite") == "release":
+        print(f"Validation suite: release ({payload['tests'].get('module_count')} modules)")
+    else:
+        print("Validation suite: discover")
     print(f"Test pattern: {payload['tests'].get('pattern')}")
     print(f"Tests passed: {payload['tests'].get('passed')}")
     print(f"Validation gate: {'passed' if payload['tests'].get('passed') else 'failed'}")
     stdout = str(payload["tests"].get("stdout") or "").strip()
     stderr = str(payload["tests"].get("stderr") or "").strip()
-    if stdout and not payload["tests"].get("streamed"):
+    if not payload["tests"].get("passed") and stdout and not payload["tests"].get("streamed"):
         print(stdout)
-    if stderr and not payload["tests"].get("streamed"):
+    if not payload["tests"].get("passed") and stderr and not payload["tests"].get("streamed"):
         print(stderr)
     return 0 if payload["tests"].get("passed") else 1
 
@@ -1066,12 +1306,36 @@ def _capabilities_command(kind: str | None, as_json: bool) -> int:
     return 0
 
 
-def _query_command(text: str, session_id: str | None, permission_scope: str, as_json: bool) -> int:
+def _parse_json_object(value: str, *, label: str) -> dict[str, Any]:
+    normalized = str(value or "").strip()
+    if not normalized:
+        return {}
+    parsed = json.loads(normalized)
+    if not isinstance(parsed, dict):
+        raise ValueError(f"{label} must decode to a JSON object")
+    return parsed
+
+
+def _query_command(
+    text: str,
+    session_id: str | None,
+    permission_scope: str,
+    execute_tools: bool,
+    tool_request_items: list[str],
+    as_json: bool,
+) -> int:
     provider = _build_provider()
+    try:
+        tool_requests = [_parse_json_object(item, label="tool-request-json") for item in tool_request_items if str(item).strip()]
+    except (ValueError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     payload = provider.run_query(
         query=text,
         session_id=session_id or None,
         permission_scope=permission_scope,
+        execute_tools=bool(execute_tools),
+        tool_requests=tool_requests or None,
     )
     if as_json:
         _print_payload(payload, as_json=True)
@@ -1079,7 +1343,52 @@ def _query_command(text: str, session_id: str | None, permission_scope: str, as_
 
     print(f"Session: {payload.get('session_id')}")
     print(f"Query type: {payload.get('query_type')}")
+    executed_tools = payload.get("executed_tools", []) if isinstance(payload.get("executed_tools", []), list) else []
+    if executed_tools:
+        print("Executed tools:")
+        for item in executed_tools:
+            print(f"- {item.get('tool_id')}: {item.get('status')}")
     print(payload.get("response", {}).get("choices", [{}])[0].get("message", {}).get("content", ""))
+    return 0
+
+
+def _tools_command(tool_id: str, arguments_json: str, permission_scope: str, execute: bool, as_json: bool) -> int:
+    provider = _build_provider()
+    if execute:
+        if not str(tool_id).strip():
+            print("Tool execution requires --id.", file=sys.stderr)
+            return 2
+        try:
+            arguments = _parse_json_object(arguments_json, label="arguments-json") if str(arguments_json).strip() else {}
+        except (ValueError, json.JSONDecodeError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        payload = provider.execute_tool(str(tool_id).strip(), arguments, permission_scope=permission_scope)
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Executed tool: {payload.get('tool_id')}")
+        print(f"Status: {payload.get('status')}")
+        return 0
+
+    if str(tool_id).strip():
+        payload = provider.get_tool(str(tool_id).strip())
+    else:
+        payload = provider.tool_status()
+    if as_json:
+        _print_payload(payload, as_json=True)
+        return 0
+
+    if str(tool_id).strip():
+        print(f"Tool: {payload.get('id')}")
+        print(f"Category: {payload.get('category')}")
+        print(f"Requires admin: {payload.get('requires_admin')}")
+        print(payload.get("description", ""))
+        return 0
+
+    print(f"Runtime tools: {payload.get('counts', {}).get('total', 0)}")
+    for item in payload.get("tools", [])[:50]:
+        print(f"- {item.get('id')}: {item.get('description', '')}")
     return 0
 
 
@@ -1410,7 +1719,9 @@ def main(argv: list[str] | None = None) -> int:
     if command == "validate":
         return _validate_command(
             as_json=bool(args.json),
-            test_pattern=str(getattr(args, "pattern", "test_*.py") or "test_*.py"),
+            test_pattern=str(getattr(args, "pattern", "")).strip() or None,
+            verbose_tests=bool(getattr(args, "verbose_tests", False)),
+            include_test_output=bool(getattr(args, "include_test_output", False)),
         )
     if command == "onboard":
         return _onboard_command(
@@ -1425,6 +1736,16 @@ def main(argv: list[str] | None = None) -> int:
             text=str(getattr(args, "text", "")),
             session_id=str(getattr(args, "session_id", "")).strip() or None,
             permission_scope=str(getattr(args, "permission_scope", "user")),
+            execute_tools=bool(getattr(args, "execute_tools", False)),
+            tool_request_items=list(getattr(args, "tool_request_json", [])),
+            as_json=bool(args.json),
+        )
+    if command == "tools":
+        return _tools_command(
+            tool_id=str(getattr(args, "id", "")).strip(),
+            arguments_json=str(getattr(args, "arguments_json", "")),
+            permission_scope=str(getattr(args, "permission_scope", "user")),
+            execute=bool(getattr(args, "execute", False)),
             as_json=bool(args.json),
         )
     if command == "sessions":

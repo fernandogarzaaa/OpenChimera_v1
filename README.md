@@ -126,6 +126,8 @@ Container defaults:
 
 ## Deployment
 
+The deployment helpers below are source-checkout utilities. They are present in the repository and source distribution, but they are not installed into your working directory by the `openchimera` wheel entry point.
+
 For a persistent Windows host, use the built-in Task Scheduler deployment path instead of launching the server manually in a shell.
 
 Install the startup task from an elevated PowerShell session:
@@ -154,10 +156,14 @@ If you prefer to run under a specific service account instead of `SYSTEM`, pass 
 
 For repository automation, GitHub Actions now treats OpenChimera as a Python service release:
 
-- `.github/workflows/python-ci.yml` runs the test suite and package build checks on push and pull request.
+- `.github/workflows/python-ci.yml` runs the curated release validation gate on Windows and Ubuntu, then performs a separate Ubuntu full-discovery unittest sweep before package build checks.
 - `.github/workflows/deploy.yml` builds `sdist` and wheel artifacts, smoke-installs them on Windows and Ubuntu, and publishes a GitHub release when you push a version tag like `v0.1.0`.
 
 For local operator and developer validation, use the repo-native quality gate scripts so the same checks are easy to run outside CI:
+
+`python run.py validate` now executes the curated release validation suite defined in `config/release_validation_modules.txt` with a concise success summary by default, including a short doctor-warning digest and bounded remediation hints when the runtime configuration is degraded.
+Use `python run.py validate --verbose-tests` when you want raw unittest output streamed live, or `python run.py validate --pattern test_*.py` when you explicitly want the full unittest discovery sweep.
+`python run.py validate --json` now emits a compact automation-friendly payload by default, including machine-readable test metrics such as counts and duration; add `--include-test-output` when you need the full captured unittest stdout and stderr in the JSON response.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\run-quality-gate.ps1
@@ -179,6 +185,7 @@ openchimera doctor
 openchimera config --json
 openchimera onboard
 openchimera capabilities
+openchimera tools
 openchimera query --text "summarize the current runtime"
 openchimera sessions
 openchimera memory
@@ -197,11 +204,13 @@ Command summary:
 
 - `openchimera bootstrap` creates missing local directories and baseline JSON state.
 - `openchimera doctor` checks config sources, auth state, and optional integration roots without printing secret values.
+- `openchimera doctor` now also prints bounded next-action guidance for common degraded states such as missing GGUF assets, unsupported harness roots, or unsafe public binds.
 - `openchimera config` prints the sanitized effective configuration snapshot, including deployment mode, auth state, TLS state, structured logging, and override-profile status.
 - `openchimera onboard` shows onboarding completion, blockers, and next actions.
 - onboarding can persist a `prefer_free_models` preference so fallback planning can bias no-cost models before paid providers.
 - `openchimera capabilities` lists commands, tools, skills, plugins, and MCP inventory.
-- `openchimera query` runs work through the query engine with resumable sessions.
+- `openchimera tools` lists validated runtime tools, inspects one tool contract, or executes a tool with explicit JSON arguments, including autonomy jobs and autonomy artifact inspection.
+- `openchimera query` runs work through the query engine with resumable sessions and can execute explicit tool requests before completion when you pass `--execute-tools` with one or more `--tool-request-json` payloads.
 - `openchimera sessions` inspects persisted query sessions.
 - `openchimera memory` shows hydrated user, repo, and session memory summaries.
 - `openchimera model-roles` inspects or overrides explicit model-role routing.
@@ -239,6 +248,7 @@ Selected routes:
 - `GET /v1/onboarding/status`
 - `GET /v1/model-registry/status`
 - `GET /v1/providers/status`
+- `GET /v1/tools/status`
 - `GET /v1/autonomy/diagnostics`
 - `GET /v1/autonomy/artifacts/history`
 - `GET /v1/autonomy/artifacts/get`
@@ -250,6 +260,7 @@ Selected routes:
 - `GET /v1/capabilities/skills`
 - `GET /v1/capabilities/plugins`
 - `GET /v1/capabilities/mcp`
+- `POST /v1/tools/execute`
 - `GET /v1/mcp/status`
 - `GET /v1/mcp/registry`
 - `GET /mcp`

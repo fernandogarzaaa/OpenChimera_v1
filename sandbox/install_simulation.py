@@ -18,6 +18,40 @@ from core.bootstrap import bootstrap_workspace
 from core.config import ROOT, default_runtime_profile
 
 
+SANDBOX_RUNTIME_PATHS: tuple[str, ...] = (
+    ".dockerignore",
+    ".env.example",
+    ".gitignore",
+    ".mcp.json",
+    ".python-version",
+    "CLAUDE_OPENCLAW_OPENCHIMERA_COMPARISON.md",
+    "Dockerfile",
+    "LEGACY_INTEGRATIONS.md",
+    "LICENSE",
+    "MANIFEST.in",
+    "README.md",
+    "SECURITY.md",
+    "chimera_kb.json",
+    "docker-compose.yml",
+    "math_engine.py",
+    "pyproject.toml",
+    "rag_storage.json",
+    "requirements-dev.in",
+    "requirements-dev.lock",
+    "requirements-dev.txt",
+    "requirements-prod.lock",
+    "requirements-prod.txt",
+    "requirements.in",
+    "requirements.txt",
+    "run.py",
+    "assets",
+    "config",
+    "core",
+    "sandbox",
+    "scripts",
+)
+
+
 @dataclass(frozen=True)
 class SandboxHTTPResponse:
     status_code: int
@@ -99,34 +133,47 @@ def allocate_free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _copy_runtime_subset(destination_root: Path) -> None:
+    for relative_path in SANDBOX_RUNTIME_PATHS:
+        source_path = ROOT / relative_path
+        destination_path = destination_root / relative_path
+        if not source_path.exists():
+            continue
+        if source_path.is_dir():
+            shutil.copytree(
+                source_path,
+                destination_path,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns(
+                    ".git",
+                    ".venv",
+                    ".pytest_cache",
+                    "__pycache__",
+                    "*.pyc",
+                    "*.db",
+                    "*.db-shm",
+                    "*.db-wal",
+                    "build",
+                    "dist",
+                    "logs",
+                    "tmp_sandbox_debug",
+                    "tmp_sandbox_helper",
+                    "tmp_sandbox_timing",
+                    "tmp_session_test",
+                ),
+            )
+        else:
+            destination_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source_path, destination_path)
+
+
 def prepare_sandbox_workspace(destination: str | Path | None = None) -> dict[str, Any]:
     sandbox_root = Path(destination) if destination is not None else Path(tempfile.mkdtemp(prefix="openchimera-sandbox-"))
     if sandbox_root.exists() and any(sandbox_root.iterdir()):
         workspace_root = sandbox_root / "workspace"
     else:
         workspace_root = sandbox_root / "workspace"
-    shutil.copytree(
-        ROOT,
-        workspace_root,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(
-            ".git",
-            ".venv",
-            ".pytest_cache",
-            "__pycache__",
-            "*.pyc",
-            "*.db",
-            "*.db-shm",
-            "*.db-wal",
-            "build",
-            "dist",
-            "logs",
-            "tmp_sandbox_debug",
-            "tmp_sandbox_helper",
-            "tmp_sandbox_timing",
-            "tmp_session_test",
-        ),
-    )
+    _copy_runtime_subset(workspace_root)
 
     # Reset copied runtime state so sandbox tests exercise a clean first-boot install,
     # not the operator data from the source workspace.
@@ -231,10 +278,18 @@ def prepare_sandbox_workspace(destination: str | Path | None = None) -> dict[str
 
     profile_path = workspace_root / "config" / "runtime_profile.json"
     profile = default_runtime_profile()
+    sandbox_model_path = workspace_root / "models" / "phi-3.5-mini-instruct-q4_k_m.gguf"
+    sandbox_model_path.parent.mkdir(parents=True, exist_ok=True)
+    sandbox_model_path.write_text("sandbox gguf stub\n", encoding="utf-8")
     profile["local_runtime"]["launcher"]["enabled"] = False
+    profile["local_runtime"]["preferred_local_models"] = ["phi-3.5-mini"]
     profile["local_runtime"]["reasoning_engine_config"]["python_executable"] = sys.executable
     profile["local_runtime"]["reasoning_engine_config"]["training_save_dir"] = str(workspace_root / "data" / "minimind")
     profile["model_inventory"]["models_dir"] = str(workspace_root / "models")
+    profile["model_inventory"]["available_models"] = ["phi-3.5-mini"]
+    profile["model_inventory"]["model_files"] = {"phi-3.5-mini": str(sandbox_model_path)}
+    profile["model_inventory"]["known_models"] = {"phi-3.5-mini": True}
+    profile["model_inventory"]["search_roots"] = [str(sandbox_model_path.parent)]
     profile_path.write_text(json.dumps(profile, indent=2), encoding="utf-8")
 
     env = {

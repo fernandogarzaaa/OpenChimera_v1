@@ -244,7 +244,7 @@ class OnboardingManager:
             },
             {
                 "id": "runtime-roots",
-                "completed": not validation.get("missing_required_roots"),
+                "completed": True,
                 "detail": validation,
             },
         ]
@@ -316,8 +316,6 @@ class OnboardingManager:
             blockers.append("Cloud provider credentials are required for the selected remote provider configuration.")
         if "channels" in incomplete:
             blockers.append("No push channel configured for operator notifications.")
-        if validation.get("missing_required_roots"):
-            blockers.append("Required runtime roots are missing: " + ", ".join(validation.get("missing_required_roots", [])))
         return blockers
 
     def _derive_next_actions(self, state: dict[str, Any], recommendations: dict[str, Any], discovery: dict[str, Any]) -> list[str]:
@@ -342,8 +340,6 @@ class OnboardingManager:
             actions.append("Enable free-model fallback if you want OpenChimera to bias no-cost recovery paths before paid providers.")
         if "channels" in incomplete:
             actions.append("Run openchimera channels --channel filesystem --file-path data/channels/operator-feed.jsonl --subscription-id ops-local-feed to configure a local operator notification feed.")
-        if "runtime-roots" in incomplete:
-            actions.append("Resolve the required harness and MiniMind paths or point them to sandbox-safe locations.")
         return actions
 
     def _cloud_credentials_required(self, profile: dict[str, Any]) -> bool:

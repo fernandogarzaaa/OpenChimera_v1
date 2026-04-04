@@ -194,8 +194,10 @@ class RuntimeProfileTests(unittest.TestCase):
         example_path = Path(__file__).resolve().parents[1] / "config" / "runtime_profile.local.example.json"
         payload = json.loads(example_path.read_text(encoding="utf-8"))
 
-        self.assertTrue(payload["api"]["auth"]["enabled"])
-        self.assertEqual(payload["providers"]["preferred_cloud_provider"], "openai")
+        # auth disabled by default — users opt in when exposing beyond loopback
+        self.assertFalse(payload["api"]["auth"]["enabled"])
+        # prefer_free_models is the safe out-of-the-box default
+        self.assertTrue(payload["providers"]["prefer_free_models"])
 
 
 if __name__ == "__main__":

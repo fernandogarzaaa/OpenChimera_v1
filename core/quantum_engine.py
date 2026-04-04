@@ -1,0 +1,385 @@
+"""OpenChimera Quantum Engine — async-first consensus voting.
+
+Promoted from chimera.quantum_engine (Upgrade 2A) and adapted for
+the OpenChimera control plane.
+
+Provides weighted multi-agent consensus with:
+  - Speculative gather: returns as soon as quorum + early-exit confidence met,
+    skipping stragglers to reduce tail latency
+  - Weighted voting: dynamic per-agent reputation via exponential moving average,
+    updated on feedback
+  - Answer fingerprint similarity for soft deduplication and vote grouping
+  - Hard timeout with partial-result consensus fallback
+"""
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import inspect
+import logging
+import time
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional
+
+log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Data transfer objects
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AgentResponse:
+    """Single agent answer with latency and optional confidence estimate."""
+    agent_id: str
+    answer: Any
+    latency_ms: float
+    confidence: float = 1.0
+
+    def answer_hash(self) -> str:
+        """Stable fingerprint for dedup / similarity grouping."""
+        return hashlib.sha256(str(self.answer).encode("utf-8")).hexdigest()
+
+
+@dataclass
+class ConsensusResult:
+    """Final result returned by QuantumEngine.gather()."""
+    answer: Any
+    confidence: float
+    participating: int
+    total_invited: int
+    latency_ms: float
+    vote_breakdown: Dict[str, float] = field(default_factory=dict)
+    early_exit: bool = False
+    partial: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Reputation / weight tracking
+# ---------------------------------------------------------------------------
+
+class AgentReputation:
+    """
+    Exponential moving average of each agent's answer quality.
+    Updated after ground-truth or user-feedback scoring via .update().
+    """
+
+    def __init__(self, alpha: float = 0.15, default_weight: float = 0.7) -> None:
+        self._alpha = alpha
+        self._default = default_weight
+        self._scores: Dict[str, float] = {}
+
+    def weight(self, agent_id: str) -> float:
+        """Return the current reputation weight (0-1) for an agent."""
+        return self._scores.get(agent_id, self._default)
+
+    def update(self, agent_id: str, correct: bool) -> None:
+        """Update EMA reputation for agent_id based on correctness feedback."""
+        old = self._scores.get(agent_id, self._default)
+        signal = 1.0 if correct else 0.0
+        new_score = old * (1 - self._alpha) + signal * self._alpha
+        self._scores[agent_id] = new_score
+        log.debug(
+            "[Reputation] %s: %.3f → %.3f (%s)",
+            agent_id, old, new_score, "correct" if correct else "wrong",
+        )
+
+    def snapshot(self) -> Dict[str, float]:
+        """Return a copy of all current scores."""
+        return dict(self._scores)
+
+
+# ---------------------------------------------------------------------------
+# Core engine
+# ---------------------------------------------------------------------------
+
+class QuantumEngine:
+    """
+    Runs speculative multi-agent consensus.
+
+    Key parameters
+    ──────────────
+    quorum          Minimum number of responses before voting can begin.
+    early_exit_conf Confidence threshold for early exit (0–1). When the
+                    current quorum reaches this confidence, remaining agents
+                    are not awaited.
+    hard_timeout_ms Absolute wall-clock timeout in ms. Partial consensus is
+                    returned if this fires before quorum.
+    similarity_fn   Optional callable(a, b) → float in [0,1]. Defaults to
+                    exact-string equality. Used to group semantically
+                    equivalent answers for dedup before weighted voting.
+    reputation      Optional AgentReputation instance shared across rounds.
+    """
+
+    _round: int = 0
+
+    def __init__(
+        self,
+        quorum: int = 2,
+        early_exit_conf: float = 0.8,
+        hard_timeout_ms: int = 5000,
+        similarity_fn: Optional[Callable[[Any, Any], float]] = None,
+        reputation: Optional[AgentReputation] = None,
+    ) -> None:
+        self.quorum = max(1, quorum)
+        self.early_exit_conf = float(early_exit_conf)
+        self.hard_timeout_ms = int(hard_timeout_ms)
+        self.similarity_fn: Callable[[Any, Any], float] = similarity_fn or self._exact_sim
+        self.reputation = reputation or AgentReputation()
+
+    async def gather(
+        self,
+        task: Any,
+        agents: Dict[str, Callable[..., Any]],
+        context: Optional[dict] = None,
+    ) -> ConsensusResult:
+        """
+        Dispatch `task` to all agents concurrently.
+        Return ConsensusResult as soon as quorum + early-exit conditions are met.
+        """
+        QuantumEngine._round += 1
+        round_id = QuantumEngine._round
+        invited = list(agents.keys())
+        timeout_s = self.hard_timeout_ms / 1000.0
+
+        log.info(
+            "[QE round=%d] Dispatching to %d agents (quorum=%d timeout=%dms)",
+            round_id, len(invited), self.quorum, self.hard_timeout_ms,
+        )
+
+        start = time.perf_counter()
+        responses: List[AgentResponse] = []
+        pending_tasks: List[asyncio.Task] = []
+        early_exit = False
+
+        # Launch all agents concurrently
+        loop = asyncio.get_event_loop()
+        futures = {
+            agent_id: loop.create_task(
+                self._timed_call(agent_id, fn, task, context or {})
+            )
+            for agent_id, fn in agents.items()
+        }
+
+        # Speculative gather: collect results as they arrive
+        deadline = start + timeout_s
+        remaining = list(futures.keys())
+        done_ids: set[str] = set()
+
+        while remaining:
+            now = time.perf_counter()
+            time_left = deadline - now
+            if time_left <= 0:
+                # Hard timeout: cancel pending tasks
+                for aid in remaining:
+                    if aid not in done_ids:
+                        futures[aid].cancel()
+                log.warning(
+                    "[QE round=%d] Hard timeout hit with %d pending",
+                    round_id, len(remaining),
+                )
+                break
+
+            # Wait for the next task to finish (with remaining deadline)
+            done, _ = await asyncio.wait(
+                [futures[aid] for aid in remaining if aid not in done_ids],
+                timeout=time_left,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if not done:
+                # Timeout fired
+                for aid in remaining:
+                    if aid not in done_ids:
+                        futures[aid].cancel()
+                break
+
+            for task_obj in done:
+                # Identify which agent_id this task belongs to
+                for aid, ft in futures.items():
+                    if ft is task_obj and aid not in done_ids:
+                        done_ids.add(aid)
+                        result = task_obj.result()
+                        if result is not None:
+                            responses.append(result)
+                        break
+
+            remaining = [aid for aid in invited if aid not in done_ids]
+
+            # Check for early exit
+            if len(responses) >= self.quorum:
+                conf = self._compute_confidence(responses)
+                if conf >= self.early_exit_conf:
+                    early_exit = True
+                    log.info(
+                        "[QE round=%d] Early exit at conf=%.2f with %d/%d responses",
+                        round_id, conf, len(responses), len(invited),
+                    )
+                    # Cancel remaining tasks
+                    for aid in remaining:
+                        futures[aid].cancel()
+                    break
+
+        wall_ms = (time.perf_counter() - start) * 1000.0
+
+        if not responses:
+            raise ConsensusFailure(
+                f"[QE round={round_id}] All {len(invited)} agents failed or timed out"
+            )
+
+        partial = len(responses) < self.quorum
+        result = self._vote(responses, invited, wall_ms, early_exit)
+        result.partial = partial
+
+        log.info(
+            "[QE round=%d] Consensus: conf=%.2f latency=%.0fms early_exit=%s partial=%s",
+            round_id, result.confidence, result.latency_ms, early_exit, partial,
+        )
+        return result
+
+    async def _timed_call(
+        self,
+        agent_id: str,
+        fn: Callable[..., Any],
+        task: Any,
+        context: dict,
+    ) -> Optional[AgentResponse]:
+        """Run a single agent callable; return AgentResponse or None on failure."""
+        t0 = time.perf_counter()
+        try:
+            if inspect.iscoroutinefunction(fn):
+                answer = await fn(task, context)
+            else:
+                answer = await asyncio.get_event_loop().run_in_executor(None, fn, task, context)
+            latency_ms = (time.perf_counter() - t0) * 1000.0
+            return AgentResponse(
+                agent_id=agent_id,
+                answer=answer,
+                latency_ms=latency_ms,
+                confidence=1.0,
+            )
+        except Exception as exc:
+            log.warning("[QE] Agent '%s' failed: %s", agent_id, exc)
+            return None
+
+    def _vote(
+        self,
+        responses: List[AgentResponse],
+        invited: List[str],
+        wall_ms: float,
+        early_exit: bool,
+    ) -> ConsensusResult:
+        """
+        Weighted voting:
+          score(answer) = Σ reputation(agent) × response.confidence
+        Answers are grouped by similarity before scoring.
+        """
+        # Group by similarity: map each response to a canonical index
+        groups: List[List[AgentResponse]] = []
+        for resp in responses:
+            placed = False
+            for group in groups:
+                if self.similarity_fn(resp.answer, group[0].answer) >= 0.9:
+                    group.append(resp)
+                    placed = True
+                    break
+            if not placed:
+                groups.append([resp])
+
+        # Score each group
+        group_scores: List[tuple[float, Any, List[AgentResponse]]] = []
+        for group in groups:
+            score = sum(
+                self.reputation.weight(r.agent_id) * r.confidence
+                for r in group
+            )
+            group_scores.append((score, group[0].answer, group))
+
+        group_scores.sort(key=lambda x: x[0], reverse=True)
+        best_score, best_answer, best_group = group_scores[0]
+
+        total_weight = sum(s for s, _, _ in group_scores)
+        confidence = best_score / total_weight if total_weight > 0 else 0.0
+
+        vote_breakdown: Dict[str, float] = {
+            str(ans): round(s / total_weight, 4) if total_weight > 0 else 0.0
+            for s, ans, _ in group_scores
+        }
+
+        return ConsensusResult(
+            answer=best_answer,
+            confidence=min(1.0, confidence),
+            participating=len(responses),
+            total_invited=len(invited),
+            latency_ms=wall_ms,
+            vote_breakdown=vote_breakdown,
+            early_exit=early_exit,
+        )
+
+    def _compute_confidence(self, responses: List[AgentResponse]) -> float:
+        """Quick confidence estimate during streaming (before final vote)."""
+        if not responses:
+            return 0.0
+        weights = [self.reputation.weight(r.agent_id) * r.confidence for r in responses]
+        return sum(weights) / len(weights)
+
+    @staticmethod
+    def _exact_sim(a: Any, b: Any) -> float:
+        """Default similarity: exact string equality."""
+        return 1.0 if str(a).strip() == str(b).strip() else 0.0
+
+
+# ---------------------------------------------------------------------------
+# Exception
+# ---------------------------------------------------------------------------
+
+class ConsensusFailure(RuntimeError):
+    """Raised when no quorum can be formed before timeout."""
+
+
+# ---------------------------------------------------------------------------
+# Profiler
+# ---------------------------------------------------------------------------
+
+class ConsensusProfiler:
+    """
+    Collects per-round stats. Access via `profiler.summary()` for dashboards.
+    """
+
+    def __init__(self) -> None:
+        self._rounds: List[dict] = []
+
+    def record(self, result: ConsensusResult) -> None:
+        self._rounds.append({
+            "latency_ms": result.latency_ms,
+            "confidence": result.confidence,
+            "participating": result.participating,
+            "early_exit": result.early_exit,
+            "partial": result.partial,
+        })
+
+    def summary(self) -> dict:
+        if not self._rounds:
+            return {
+                "rounds": 0,
+                "p50_latency_ms": 0.0,
+                "p95_latency_ms": 0.0,
+                "avg_confidence": 0.0,
+                "early_exit_pct": 0.0,
+                "partial_pct": 0.0,
+            }
+        latencies = sorted(r["latency_ms"] for r in self._rounds)
+        n = len(latencies)
+        p50 = latencies[int(n * 0.50)]
+        p95 = latencies[min(int(n * 0.95), n - 1)]
+        avg_conf = sum(r["confidence"] for r in self._rounds) / n
+        early_pct = 100.0 * sum(1 for r in self._rounds if r["early_exit"]) / n
+        partial_pct = 100.0 * sum(1 for r in self._rounds if r["partial"]) / n
+        return {
+            "rounds": n,
+            "p50_latency_ms": round(p50, 1),
+            "p95_latency_ms": round(p95, 1),
+            "avg_confidence": round(avg_conf, 4),
+            "early_exit_pct": round(early_pct, 1),
+            "partial_pct": round(partial_pct, 1),
+        }

@@ -101,3 +101,4 @@ class CapabilityRegistryTests(unittest.TestCase):
 
         self.assertTrue(any(item["id"] == "capabilities" for item in commands))
         self.assertTrue(any(item["id"] == "browser.fetch" for item in tools))
+        self.assertTrue(any(item["id"] == "autonomy.run_job" for item in tools))

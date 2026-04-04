@@ -33,7 +33,13 @@ models/
 checkpoints/
 rag_storage.json
 chimera_kb.json
+# Exclude runtime-mutated data files but keep committed seed configs
 data/
+!data/model_registry.json
+!data/mcp_registry.json
+!data/onboarding_state.json
+!data/local_llm_route_memory.json
+!data/mcp_health_state.json
 tmp_sandbox_debug/
 tmp_sandbox_helper/
 tmp_sandbox_timing/

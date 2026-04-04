@@ -17,6 +17,7 @@ class QueryEngine:
         self,
         capability_registry: CapabilityRegistry,
         model_roles: ModelRoleManager,
+        tool_registry: Any | None,
         completion_callback: Callable[..., dict[str, Any]],
         job_submitter: Callable[[str, dict[str, Any], int], dict[str, Any]] | None = None,
         sessions_path: Path | None = None,
@@ -26,6 +27,7 @@ class QueryEngine:
     ):
         self.capability_registry = capability_registry
         self.model_roles = model_roles
+        self.tool_registry = tool_registry
         self.completion_callback = completion_callback
         self.job_submitter = job_submitter
         self.sessions_path = sessions_path or (ROOT / "data" / "query_sessions.json")
@@ -64,6 +66,8 @@ class QueryEngine:
         permission_scope: str = "user",
         max_tokens: int = 512,
         allow_tool_planning: bool = True,
+        execute_tools: bool = False,
+        tool_requests: list[dict[str, Any]] | None = None,
         allow_agent_spawn: bool = False,
         spawn_job: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
@@ -74,7 +78,18 @@ class QueryEngine:
         memory = self.inspect_memory()
         role_selection = self.model_roles.select_model_for_query_type(query_type=query_type)
         suggested_tools = self._suggest_tools(user_query) if allow_tool_planning else []
-        hydrated_messages = self._hydrate_messages(session=session, payload_messages=payload_messages, memory=memory, role_selection=role_selection)
+        executed_tools = self._execute_requested_tools(
+            tool_requests=tool_requests,
+            execute_tools=execute_tools,
+            permission_scope=permission_scope,
+        )
+        hydrated_messages = self._hydrate_messages(
+            session=session,
+            payload_messages=payload_messages,
+            memory=memory,
+            role_selection=role_selection,
+            executed_tools=executed_tools,
+        )
         completion = self.completion_callback(
             messages=hydrated_messages,
             model="openchimera-local",
@@ -87,6 +102,15 @@ class QueryEngine:
             "session_id": session["session_id"],
             "query_type": query_type,
             "suggested_tools": suggested_tools,
+            "requested_tools": list(tool_requests or []),
+            "executed_tools": [
+                {
+                    "tool_id": item.get("tool_id"),
+                    "status": item.get("status"),
+                    "permission_scope": item.get("permission_scope"),
+                }
+                for item in executed_tools
+            ],
             "recorded_at": int(time.time()),
         }
         self._append_tool_event(tool_event)
@@ -107,6 +131,7 @@ class QueryEngine:
                 "permission_scope": permission_scope,
                 "role_selection": role_selection,
                 "suggested_tools": suggested_tools,
+                "executed_tools": [item.get("tool_id") for item in executed_tools],
                 "spawned_job": spawned_job,
             }
         )
@@ -128,6 +153,7 @@ class QueryEngine:
             "memory_hydration": memory,
             "role_selection": role_selection,
             "suggested_tools": suggested_tools,
+            "executed_tools": executed_tools,
             "spawned_job": spawned_job,
             "response": completion,
         }
@@ -191,6 +217,7 @@ class QueryEngine:
         payload_messages: list[dict[str, Any]],
         memory: dict[str, Any],
         role_selection: dict[str, Any],
+        executed_tools: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = []
         summaries = memory.get("summaries", []) if isinstance(memory.get("summaries", []), list) else []
@@ -199,6 +226,14 @@ class QueryEngine:
         role = str(role_selection.get("role") or "main_loop_model")
         model = str(role_selection.get("model") or "unresolved")
         messages.append({"role": "system", "content": f"Preferred model role for this task: {role} -> {model}"})
+        if executed_tools:
+            rendered_tools: list[str] = []
+            for item in executed_tools[:4]:
+                result = item.get("result") if isinstance(item.get("result"), dict) else {}
+                preview = json.dumps(result, default=str)[:400]
+                rendered_tools.append(f"{item.get('tool_id')}: {preview}")
+            if rendered_tools:
+                messages.append({"role": "system", "content": "Executed tools:\n- " + "\n- ".join(rendered_tools)})
         history_turns = session.get("turns", []) if isinstance(session.get("turns", []), list) else []
         for turn in history_turns[-8:]:
             if not isinstance(turn, dict):
@@ -206,6 +241,26 @@ class QueryEngine:
             messages.append({"role": str(turn.get("role", "user")), "content": str(turn.get("content", ""))})
         messages.extend(payload_messages)
         return messages
+
+    def _execute_requested_tools(
+        self,
+        *,
+        tool_requests: list[dict[str, Any]] | None,
+        execute_tools: bool,
+        permission_scope: str,
+    ) -> list[dict[str, Any]]:
+        if not execute_tools or not tool_requests or self.tool_registry is None:
+            return []
+        executed: list[dict[str, Any]] = []
+        for request in tool_requests[:4]:
+            if not isinstance(request, dict):
+                continue
+            tool_id = str(request.get("tool_id") or request.get("id") or "").strip()
+            if not tool_id:
+                continue
+            arguments = request.get("arguments", {}) if isinstance(request.get("arguments", {}), dict) else {}
+            executed.append(self.tool_registry.execute(tool_id, arguments, permission_scope=permission_scope))
+        return executed
 
     def _suggest_tools(self, query: str) -> list[dict[str, Any]]:
         lowered = query.lower()

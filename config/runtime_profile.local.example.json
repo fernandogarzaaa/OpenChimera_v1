@@ -1,10 +1,12 @@
 {
+  "_comment": "Copy this file to config/runtime_profile.local.json and customize for your machine. Keys here are merged on top of config/runtime_profile.json at startup. Only override what you need.",
   "api": {
     "auth": {
-      "enabled": true,
+      "_comment": "Set enabled=true and supply tokens to protect the API when binding beyond loopback.",
+      "enabled": false,
       "header": "Authorization",
-      "token": "replace-with-user-token",
-      "admin_token": "replace-with-admin-token"
+      "token": "",
+      "admin_token": ""
     },
     "tls": {
       "enabled": false,
@@ -14,31 +16,39 @@
     }
   },
   "providers": {
+    "_comment": "Remove providers you do not have credentials for. 'openchimera-gateway' and 'local-llama-cpp' work without any API keys.",
     "enabled": [
       "openchimera-gateway",
       "local-llama-cpp",
-      "minimind",
-      "openai"
+      "minimind"
     ],
-    "preferred_cloud_provider": "openai",
-    "prefer_free_models": false
+    "preferred_cloud_provider": "",
+    "prefer_free_models": true
   },
   "logging": {
     "level": "INFO",
     "structured": {
-      "enabled": true,
+      "enabled": false,
       "path": "logs/openchimera-runtime.jsonl"
     }
   },
   "local_runtime": {
     "context_length": 4096,
     "launcher": {
-      "enabled": true,
+      "_comment": "Set llama_server_path to the absolute path of your llama-server binary. Leave empty to skip local model launching.",
+      "enabled": false,
       "auto_start": false,
       "shutdown_with_manager": false,
       "llama_server_path": "",
       "shared_args": [],
       "model_args": {}
     }
+  },
+  "external_roots": {
+    "_comment": "Override any external integration roots here. Paths are relative to the workspace root unless absolute. All are optional.",
+    "aether": "external/aether",
+    "wraith": "external/wraith",
+    "evo": "external/evo",
+    "minimind": "external/minimind"
   }
 }

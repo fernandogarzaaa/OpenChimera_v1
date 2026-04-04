@@ -8,18 +8,18 @@ include run.py
 recursive-include core *.py
 recursive-include core/migrations *.sql
 recursive-include sandbox *.py
+recursive-include assets *
+recursive-include scripts *.ps1 *.sh
 global-exclude __pycache__ *.py[cod]
 prune .git
 prune .github
 prune .venv
-prune assets
 prune checkpoints
 prune data
 prune logs
 prune memory
 prune models
 prune openchimera
-prune scripts
 prune skills
 prune swarms
 prune tests

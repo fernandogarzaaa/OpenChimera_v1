@@ -108,6 +108,21 @@ class OperatorControlPlaneTests(unittest.TestCase):
         self.assertEqual(snapshot["deployment"]["mode"], "docker")
         self.assertTrue(snapshot["deployment"]["transport"]["tls_enabled"])
 
+    def test_health_degrades_without_any_generation_path(self) -> None:
+        control_plane = self._build_control_plane()
+        control_plane.llm_manager.get_status.return_value = {
+            "healthy_count": 0,
+            "total_count": 0,
+            "runtime": {"models": {}},
+        }
+        control_plane.minimind.available = False
+
+        payload = control_plane.health()
+
+        self.assertEqual(payload["status"], "degraded")
+        self.assertFalse(payload["components"]["local_llm"])
+        self.assertFalse(payload["components"]["minimind"])
+
 
 if __name__ == "__main__":
     unittest.main()
