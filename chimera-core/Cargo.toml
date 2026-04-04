@@ -9,7 +9,7 @@ name = "chimera_core"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.21", features = ["extension-module", "abi3-py311"] }
+pyo3 = { version = "0.24", features = ["extension-module", "abi3-py311"] }
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
