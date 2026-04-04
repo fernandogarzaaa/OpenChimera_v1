@@ -12,7 +12,7 @@ celery==5.2.7
 
 # Authentication and Security
 django-allauth==0.54.0
-djangorestframework-simplejwt==5.2.2
+djangorestframework-simplejwt==5.5.1
 cryptography==40.0.1
 bcrypt==4.0.1
 
