@@ -17,7 +17,7 @@ Every command below runs without API keys, paid accounts, or external services.
 
 ```bash
 # 1. Clone and enter the repo
-git clone https://github.com/YOUR_HANDLE/openchimera.git
+git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
 cd openchimera
 
 # 2. Create a virtual environment and install

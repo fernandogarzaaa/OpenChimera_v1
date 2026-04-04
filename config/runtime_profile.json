@@ -45,15 +45,15 @@
     "selected_cloud_provider": ""
   },
   "hardware": {
-    "cpu_count": 4,
-    "ram_gb": 16.0,
+    "cpu_count": 0,
+    "ram_gb": 0.0,
     "gpu": {
-      "available": true,
-      "name": "NVIDIA GeForce RTX 2060",
-      "vram_gb": 6.0,
-      "device_count": 1,
-      "vulkan": true,
-      "intel_igpu": "Intel UHD Graphics 630"
+      "available": false,
+      "name": "",
+      "vram_gb": 0.0,
+      "device_count": 0,
+      "vulkan": false,
+      "intel_igpu": ""
     }
   },
   "local_runtime": {
@@ -86,10 +86,10 @@
       "training_save_dir": "data/minimind"
     },
     "launcher": {
-      "enabled": true,
+      "enabled": false,
       "auto_start": false,
       "shutdown_with_manager": false,
-      "llama_server_path": "C:\\Users\\garza\\AppData\\Local\\Microsoft\\WinGet\\Packages\\ggml.llamacpp_Microsoft.Winget.Source_8wekyb3d8bbwe\\llama-server.exe",
+      "llama_server_path": "",
       "shared_args": [],
       "model_args": {}
     }
