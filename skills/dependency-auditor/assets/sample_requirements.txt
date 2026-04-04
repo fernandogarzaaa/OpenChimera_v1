@@ -19,7 +19,7 @@ bcrypt==4.0.1
 # HTTP and API clients
 requests==2.28.2
 httpx==0.24.1
-urllib3==1.26.15
+urllib3==2.6.3
 
 # Data processing and analysis
 pandas==2.0.1
