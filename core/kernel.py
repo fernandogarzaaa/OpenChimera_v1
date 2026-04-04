@@ -8,6 +8,7 @@ from core.api_server import OpenChimeraAPIServer
 from core.aether_service import AetherService
 from core.bus import EventBus
 from core.config import build_identity_snapshot, get_watch_files
+from core.consensus_plane import ConsensusPlane
 from core.evo_service import EvoService
 from core.fim_daemon import FIMDaemon
 from core.personality import Personality
@@ -30,6 +31,7 @@ class OpenChimeraKernel:
         self.wraith = WraithService()
         self.evo = EvoService()
         self.provider = OpenChimeraProvider(self.bus, self.personality)
+        self.consensus_plane = ConsensusPlane(profile=self.identity_snapshot, bus=self.bus)
         self.api_server = OpenChimeraAPIServer(self.provider, system_status_provider=self.status_snapshot)
         self._fim_thread: threading.Thread | None = None
         self._supervisor_thread: threading.Thread | None = None
@@ -60,6 +62,40 @@ class OpenChimeraKernel:
             self.bus.publish_nowait("system/wraith", self.wraith.status())
         if self.evo.start():
             self.bus.publish_nowait("system/evo", self.evo.status())
+
+        # Wire consensus agents after core services are started
+        try:
+            _llm_mgr = getattr(self.provider, "llm_manager", None)
+            if _llm_mgr is not None:
+                def _local_llm_agent(task: str, context: dict) -> str:
+                    ranked = _llm_mgr.get_ranked_models(query_type="general")
+                    model = ranked[0] if ranked else "phi-3.5-mini"
+                    result = _llm_mgr.chat_completion(
+                        messages=[{"role": "user", "content": task}],
+                        model=model,
+                        query_type="general",
+                        max_tokens=256,
+                        timeout=15.0,
+                    )
+                    return str(result.get("content") or result.get("choices", [{}])[0].get("message", {}).get("content", ""))
+                self.consensus_plane.register_agent("local-llm", _local_llm_agent)
+        except Exception:
+            pass
+
+        try:
+            _minimind = getattr(self.provider, "minimind", None)
+            if _minimind is not None:
+                def _minimind_agent(task: str, context: dict) -> str:
+                    result = _minimind.reasoning_completion(
+                        messages=[{"role": "user", "content": task}],
+                        temperature=0.4,
+                        max_tokens=256,
+                        timeout=30.0,
+                    )
+                    return str(result.get("content", ""))
+                self.consensus_plane.register_agent("minimind", _minimind_agent)
+        except Exception:
+            pass
 
         self._start_fim_daemon()
         self._start_runtime_supervisor()

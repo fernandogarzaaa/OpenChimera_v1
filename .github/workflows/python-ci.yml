@@ -25,12 +25,22 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build chimera-core (Rust → Python extension)
+        run: |
+          python -m pip install maturin
+          maturin develop --release
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-dev.txt
           python -m pip install pip-audit
-          python -m pip install -e .
+
+      - name: Run Rust tests
+        run: cargo test -p chimera-core --release
 
       - name: Audit Python dependencies for CVEs
         run: python -m pip_audit --requirement requirements.txt --strict

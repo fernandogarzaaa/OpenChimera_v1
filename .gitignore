@@ -3,6 +3,9 @@ dist/
 build/
 *.spec
 openchimera.egg-info/
+target/
+Cargo.lock
+.coverage
 
 # Python artifacts
 *.pyc

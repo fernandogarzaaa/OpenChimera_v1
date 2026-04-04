@@ -246,5 +246,72 @@ class WindowsSmokeTests(unittest.TestCase):
                 self.assertTrue((workspace_root / "data" / "openchimera.db").exists())
 
 
+class SmokeModuleTests(unittest.TestCase):
+    """Fast unit-level smoke tests — no sandbox, no HTTP, <100 ms each."""
+
+    def test_core_modules_importable(self) -> None:
+        """core.bus, core.database, and core.config are all importable without error."""
+        import core.bus  # noqa: F401
+        import core.database  # noqa: F401
+        import core.config  # noqa: F401
+
+    def test_rate_limiter_in_memory_backend_instantiates(self) -> None:
+        """RateLimiter picks the in-memory backend when Redis is not configured."""
+        from core.rate_limiter import RateLimiter, _InMemoryRateLimiterBackend
+        limiter = RateLimiter()
+        self.assertIsInstance(limiter.backend, _InMemoryRateLimiterBackend)
+
+    def test_credential_store_status_returns_dict_with_providers(self) -> None:
+        """CredentialStore.status() returns a dict with a 'providers' key."""
+        import tempfile
+        from pathlib import Path
+        from core.credential_store import CredentialStore
+
+        with tempfile.TemporaryDirectory() as tmp:
+            store = CredentialStore(database_path=Path(tmp) / "creds.db")
+            result = store.status()
+            self.assertIsInstance(result, dict)
+            self.assertIn("providers", result)
+
+    def test_query_engine_status_returns_expected_keys(self) -> None:
+        """QueryEngine.status() returns a dict with session_count, memory, etc."""
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import MagicMock
+        from core.query_engine import QueryEngine
+
+        with tempfile.TemporaryDirectory() as tmp:
+            model_roles = MagicMock()
+            model_roles.status.return_value = {"roles": {}}
+            engine = QueryEngine(
+                capability_registry=MagicMock(),
+                model_roles=model_roles,
+                tool_registry=None,
+                completion_callback=lambda **kwargs: {},
+                database_path=Path(tmp) / "qe.db",
+                sessions_path=Path(tmp) / "sessions.json",
+            )
+            result = engine.status()
+            self.assertIsInstance(result, dict)
+            for key in ("session_count", "active_session_ids", "tool_history_events", "memory"):
+                self.assertIn(key, result)
+
+    def test_multimodal_service_status_returns_expected_keys(self) -> None:
+        """MultimodalService.status() returns a dict with enabled & backends keys."""
+        import tempfile
+        from pathlib import Path
+        from core.multimodal_service import MultimodalService
+
+        with tempfile.TemporaryDirectory() as tmp:
+            svc = MultimodalService(
+                artifact_root=Path(tmp) / "artifacts",
+                history_path=Path(tmp) / "media.json",
+            )
+            result = svc.status()
+            self.assertIsInstance(result, dict)
+            for key in ("enabled", "backends", "supported_actions", "unavailable_actions"):
+                self.assertIn(key, result)
+
+
 if __name__ == "__main__":
     unittest.main()

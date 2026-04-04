@@ -756,5 +756,224 @@ class ProviderReasoningTests(unittest.TestCase):
         )
 
 
+class ProviderDelegationTests(unittest.TestCase):
+    """Cover delegation methods in OpenChimeraProvider to push past 80%."""
+
+    def _build_provider(self) -> OpenChimeraProvider:
+        provider = OpenChimeraProvider(EventBus(), Personality())
+        provider.minimind.get_runtime_status = MagicMock(
+            return_value={"server": {"running": False}, "training": {"active_jobs": []}}
+        )
+        return provider
+
+    def test_health_delegates_to_runtime_plane(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.health = MagicMock(return_value={"status": "ok"})
+        result = provider.health()
+        provider.runtime_plane.health.assert_called_once()
+        self.assertEqual(result["status"], "ok")
+
+    def test_list_models_delegates_to_runtime_plane(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.list_models = MagicMock(return_value={"models": []})
+        result = provider.list_models()
+        provider.runtime_plane.list_models.assert_called_once()
+
+    def test_local_runtime_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.local_runtime_status = MagicMock(return_value={"enabled": False})
+        result = provider.local_runtime_status()
+        provider.runtime_plane.local_runtime_status.assert_called_once()
+
+    def test_minimind_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.minimind_status = MagicMock(return_value={"status": "idle"})
+        result = provider.minimind_status()
+        provider.runtime_plane.minimind_status.assert_called_once()
+
+    def test_autonomy_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.autonomy_status = MagicMock(return_value={"running": False})
+        result = provider.autonomy_status()
+        provider.runtime_plane.autonomy_status.assert_called_once()
+
+    def test_model_registry_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.activation_plane.model_registry_status = MagicMock(return_value={"models": []})
+        result = provider.model_registry_status()
+        provider.activation_plane.model_registry_status.assert_called_once()
+
+    def test_provider_activation_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.activation_plane.provider_activation_status = MagicMock(return_value={"active": []})
+        result = provider.provider_activation_status()
+        provider.activation_plane.provider_activation_status.assert_called_once()
+
+    def test_model_role_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.activation_plane.model_role_status = MagicMock(return_value={"roles": {}})
+        result = provider.model_role_status()
+        provider.activation_plane.model_role_status.assert_called_once()
+
+    def test_capability_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.capability_plane.capability_status = MagicMock(return_value={"mcp": []})
+        result = provider.capability_status()
+        provider.capability_plane.capability_status.assert_called_once()
+
+    def test_mcp_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.capability_plane.mcp_status = MagicMock(return_value={"connectors": []})
+        result = provider.mcp_status()
+        provider.capability_plane.mcp_status.assert_called_once()
+
+    def test_credential_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.activation_plane.credential_status = MagicMock(return_value={"credentials": {}})
+        result = provider.credential_status()
+        provider.activation_plane.credential_status.assert_called_once()
+
+    def test_plugin_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.capability_plane.plugin_status = MagicMock(return_value={"plugins": []})
+        result = provider.plugin_status()
+        provider.capability_plane.plugin_status.assert_called_once()
+
+    def test_tool_status_returns_tool_counts(self) -> None:
+        provider = self._build_provider()
+        provider.tool_runtime.list_tools = MagicMock(return_value=[
+            {"tool_id": "t1", "requires_admin": False},
+            {"tool_id": "t2", "requires_admin": True},
+        ])
+        result = provider.tool_status()
+        self.assertEqual(result["counts"]["total"], 2)
+        self.assertEqual(result["counts"]["admin_required"], 1)
+
+    def test_browser_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.interaction_plane.browser_status = MagicMock(return_value={"status": "idle"})
+        result = provider.browser_status()
+        provider.interaction_plane.browser_status.assert_called_once()
+
+    def test_query_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.interaction_plane.query_status = MagicMock(return_value={"sessions": 0})
+        result = provider.query_status()
+        provider.interaction_plane.query_status.assert_called_once()
+
+    def test_job_queue_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.job_queue.status = MagicMock(return_value={"running": False, "jobs": []})
+        result = provider.job_queue_status()
+        provider.job_queue.status.assert_called_once()
+
+    def test_cancel_operator_job_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.job_queue.cancel = MagicMock(return_value={"status": "cancelled", "job_id": "job-x"})
+        result = provider.cancel_operator_job("job-x")
+        provider.job_queue.cancel.assert_called_once_with("job-x")
+        self.assertEqual(result["status"], "cancelled")
+
+    def test_replay_operator_job_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.job_queue.replay = MagicMock(return_value={"status": "queued", "job_id": "job-y"})
+        result = provider.replay_operator_job("job-y")
+        provider.job_queue.replay.assert_called_once_with("job-y")
+
+    def test_autonomy_diagnostics_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.autonomy_plane.diagnostics = MagicMock(return_value={"status": "ok"})
+        result = provider.autonomy_diagnostics()
+        provider.autonomy_plane.diagnostics.assert_called_once()
+
+    def test_autonomy_artifact_history_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.autonomy_plane.artifact_history = MagicMock(return_value={"history": []})
+        result = provider.autonomy_artifact_history(artifact_name="self_audit", limit=5)
+        provider.autonomy_plane.artifact_history.assert_called_once_with(artifact_name="self_audit", limit=5)
+
+    def test_operator_digest_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.autonomy_plane.operator_digest = MagicMock(return_value={"digest": "summary"})
+        result = provider.operator_digest()
+        provider.autonomy_plane.operator_digest.assert_called_once()
+
+    def test_severity_rank_delegates(self) -> None:
+        provider = self._build_provider()
+        self.assertEqual(provider._severity_rank("critical"), 4)
+        self.assertEqual(provider._severity_rank("info"), 1)
+
+    def test_classify_operator_job_delegates(self) -> None:
+        provider = self._build_provider()
+        result = provider._classify_operator_job("autonomy", {"job": "run_self_audit"})
+        self.assertEqual(result[0], "autonomy.audit")
+
+    def test_harness_port_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.runtime_plane.harness_port_status = MagicMock(return_value={"connected": False})
+        result = provider.harness_port_status()
+        provider.runtime_plane.harness_port_status.assert_called_once()
+
+    def test_aegis_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.service_plane.aegis_status = MagicMock(return_value={"status": "idle"})
+        result = provider.aegis_status()
+        provider.service_plane.aegis_status.assert_called_once()
+
+    def test_ascension_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.service_plane.ascension_status = MagicMock(return_value={"status": "idle"})
+        result = provider.ascension_status()
+        provider.service_plane.ascension_status.assert_called_once()
+
+    def test_preview_self_repair_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.autonomy_plane.preview_self_repair = MagicMock(return_value={"status": "ok"})
+        result = provider.preview_self_repair(target_project="proj")
+        provider.autonomy_plane.preview_self_repair.assert_called_once()
+
+    def test_dispatch_channel_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.interaction_plane.dispatch_channel = MagicMock(return_value={"dispatched": True})
+        result = provider.dispatch_channel("my/topic", {"key": "val"})
+        provider.interaction_plane.dispatch_channel.assert_called_once_with("my/topic", {"key": "val"})
+
+    def test_onboarding_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.control_plane.onboarding_status = MagicMock(return_value={"complete": False})
+        result = provider.onboarding_status()
+        provider.control_plane.onboarding_status.assert_called_once()
+
+    def test_subsystem_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.control_plane.subsystem_status = MagicMock(return_value={"subsystems": {}})
+        result = provider.subsystem_status()
+        provider.control_plane.subsystem_status.assert_called_once()
+
+    def test_integration_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.control_plane.integration_status = MagicMock(return_value={"integrations": {}})
+        result = provider.integration_status()
+        provider.control_plane.integration_status.assert_called_once()
+
+    def test_media_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.interaction_plane.media_status = MagicMock(return_value={"tts": "idle"})
+        result = provider.media_status()
+        provider.interaction_plane.media_status.assert_called_once()
+
+    def test_channel_status_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.interaction_plane.channel_status = MagicMock(return_value={"subscriptions": []})
+        result = provider.channel_status()
+        provider.interaction_plane.channel_status.assert_called_once()
+
+    def test_get_operator_job_delegates(self) -> None:
+        provider = self._build_provider()
+        provider.job_queue.get = MagicMock(return_value={"job_id": "job-z", "status": "queued"})
+        result = provider.get_operator_job("job-z")
+        provider.job_queue.get.assert_called_once_with("job-z")
+
+
 if __name__ == "__main__":
     unittest.main()

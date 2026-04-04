@@ -91,8 +91,25 @@ class MultimodalService:
         if audio_format.lower() != "wav":
             raise ValueError("Only wav output is supported")
         if not self._local_speech_available():
-            raise NotImplementedError("Speech synthesis is unavailable. Windows System.Speech is required.")
-
+            record = {
+                "action": "synthesize",
+                "error": "Speech synthesis is unavailable. Windows System.Speech is required.",
+                "available": False,
+                "backend": None,
+                "recorded_at": int(time.time()),
+            }
+            self._append_history(record)
+            return record
+        if not self._installed_voices():
+            record = {
+                "action": "synthesize",
+                "error": "Speech synthesis is unavailable. No Windows voices are installed.",
+                "available": False,
+                "backend": None,
+                "recorded_at": int(time.time()),
+            }
+            self._append_history(record)
+            return record
         self.artifact_root.mkdir(parents=True, exist_ok=True)
         artifact_path = self.artifact_root / f"synthesize-{int(time.time() * 1000)}.wav"
         resolved_voice = self._resolve_voice_name(voice)
@@ -130,9 +147,15 @@ class MultimodalService:
         normalized_prompt = self._normalize_text(prompt) or "Describe the image."
         provider = self._select_vision_provider()
         if provider is None:
-            raise NotImplementedError(
-                "Image understanding is unavailable. Configure OPENAI_API_KEY or OPENROUTER_API_KEY for a real vision backend."
-            )
+            record = {
+                "action": "understand_image",
+                "error": "Image understanding is unavailable. Configure OPENAI_API_KEY or OPENROUTER_API_KEY for a real vision backend.",
+                "available": False,
+                "backend": None,
+                "recorded_at": int(time.time()),
+            }
+            self._append_history(record)
+            return record
         summary, provider_name, model_name = self._understand_image_with_provider(provider, normalized_prompt, image_bytes, metadata)
         artifact = self._write_json_artifact(
             "understand_image",
@@ -167,9 +190,15 @@ class MultimodalService:
         height = max(256, min(int(height), 2048))
         provider = self._select_image_generation_provider()
         if provider is None:
-            raise NotImplementedError(
-                "Image generation is unavailable. Configure OPENAI_API_KEY for a real image generation backend."
-            )
+            record = {
+                "action": "generate_image",
+                "error": "Image generation is unavailable. Configure OPENAI_API_KEY for a real image generation backend.",
+                "available": False,
+                "backend": None,
+                "recorded_at": int(time.time()),
+            }
+            self._append_history(record)
+            return record
 
         self.artifact_root.mkdir(parents=True, exist_ok=True)
         artifact_path = self.artifact_root / f"generate-image-{int(time.time() * 1000)}.png"
@@ -274,7 +303,7 @@ class MultimodalService:
     def _resolve_voice_name(self, requested_voice: str) -> str:
         voices = self._installed_voices()
         if not voices:
-            raise NotImplementedError("Speech synthesis is unavailable. No Windows voices are installed.")
+            raise RuntimeError("Speech synthesis is unavailable. No Windows voices are installed.")
         normalized = self._normalize_text(requested_voice).lower()
         aliases = {
             "openchimera-default": voices[0],
@@ -303,7 +332,7 @@ class MultimodalService:
 
     def _transcribe_audio_bytes(self, audio_bytes: bytes) -> str:
         if not self._local_speech_available():
-            raise NotImplementedError("Speech transcription is unavailable. Windows System.Speech recognition is required.")
+            return ""
         if len(audio_bytes) < 12 or audio_bytes[:4] != b"RIFF" or audio_bytes[8:12] != b"WAVE":
             raise ValueError("Speech transcription currently supports PCM WAV input only.")
         with tempfile.NamedTemporaryFile(prefix="openchimera-stt-", suffix=".wav", delete=False) as temp_audio:

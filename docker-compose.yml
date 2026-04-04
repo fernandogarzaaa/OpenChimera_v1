@@ -6,6 +6,8 @@ services:
     image: openchimera:local
     container_name: openchimera
     restart: unless-stopped
+    depends_on:
+      - redis
     ports:
       - "7870:7870"
     environment:
@@ -17,6 +19,7 @@ services:
       OPENCHIMERA_STRUCTURED_LOG_ENABLED: "1"
       OPENCHIMERA_STRUCTURED_LOG_PATH: /app/logs/openchimera-runtime.jsonl
       OPENCHIMERA_RUNTIME_PROFILE: /app/config/runtime_profile.local.json
+      OPENCHIMERA_REDIS_URL: redis://redis:6379
     volumes:
       - openchimera-data:/app/data
       - openchimera-logs:/app/logs
@@ -29,7 +32,19 @@ services:
       start_period: 20s
       retries: 3
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   openchimera-data:
   openchimera-logs:
   openchimera-models:
+  redis_data:

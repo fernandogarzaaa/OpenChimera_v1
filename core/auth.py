@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Mapping
+from typing import Any, Mapping
 
 from core.config import get_api_admin_token, get_api_auth_header, get_api_auth_token, is_api_auth_enabled
 
@@ -60,11 +60,12 @@ class AuthDecision:
 
 
 class RequestAuthorizer:
-    def __init__(self):
+    def __init__(self, bus: Any = None):
         self.auth_enabled = is_api_auth_enabled()
         self.auth_header = get_api_auth_header()
         self.user_token = get_api_auth_token().strip()
         self.admin_token = get_api_admin_token().strip()
+        self._bus = bus
 
     def is_public_path(self, path: str) -> bool:
         return path in PUBLIC_PATHS
@@ -81,20 +82,31 @@ class RequestAuthorizer:
     def authorize(self, method: str, path: str, headers: Mapping[str, str]) -> AuthDecision:
         required_permission = self.required_permission(method, path)
         if required_permission is None:
-            return AuthDecision(True, HTTPStatus.OK, None, self.auth_enabled, None, None)
+            decision = AuthDecision(True, HTTPStatus.OK, None, self.auth_enabled, None, None)
+            self._emit_auth_event(
+                allowed=True,
+                path=path,
+                scope=None,
+                reason="public_path" if self.is_public_path(path) else "no_auth",
+            )
+            return decision
 
         supplied = headers.get(self.auth_header, "")
         if supplied.startswith("Bearer "):
             supplied = supplied[7:]
         supplied = supplied.strip()
         if not supplied:
+            self._emit_auth_event(allowed=False, path=path, scope=required_permission, reason="no_token")
             return AuthDecision(False, HTTPStatus.UNAUTHORIZED, "Unauthorized", True, required_permission, None)
 
         granted_permission = self._permission_for_token(supplied)
         if granted_permission is None:
+            self._emit_auth_event(allowed=False, path=path, scope=required_permission, reason="invalid_token")
             return AuthDecision(False, HTTPStatus.UNAUTHORIZED, "Unauthorized", True, required_permission, None)
         if required_permission == "admin" and granted_permission != "admin":
+            self._emit_auth_event(allowed=False, path=path, scope=required_permission, reason="insufficient_permission")
             return AuthDecision(False, HTTPStatus.FORBIDDEN, "Forbidden", True, required_permission, granted_permission)
+        self._emit_auth_event(allowed=True, path=path, scope=granted_permission, reason="valid_token")
         return AuthDecision(True, HTTPStatus.OK, None, True, required_permission, granted_permission)
 
     def _permission_for_token(self, supplied: str) -> str | None:
@@ -105,3 +117,18 @@ class RequestAuthorizer:
         if self.auth_enabled and not self.user_token and self.admin_token and hmac.compare_digest(supplied, self.admin_token):
             return "admin"
         return None
+
+    def _emit_auth_event(self, *, allowed: bool, path: str, scope: str | None, reason: str) -> None:
+        try:
+            if self._bus is not None:
+                self._bus.publish_nowait(
+                    "system/auth/decision",
+                    {
+                        "allowed": allowed,
+                        "path": path,
+                        "scope": scope,
+                        "reason": reason,
+                    },
+                )
+        except Exception:
+            pass
