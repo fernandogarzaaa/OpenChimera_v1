@@ -12,6 +12,8 @@ The project is designed to be safe to publish and safe to run from source: the c
 
 - Local-first OpenAI-compatible provider on `http://127.0.0.1:7870`
 - Managed local model routing with adaptive prompt strategy learning
+- **Recursive Intelligence Loop** — five interlocking subsystems for self-improving AGI (memory, deliberation, goal planning, evolution, metacognition)
+- **Quantum Consensus Engine** — async-first weighted multi-agent voting with speculative gather, destructive interference, domain-aware reputation, embedding similarity, and optional persistence
 - Scheduled autonomy jobs for discovery, learned fallback ranking, self-audit, degradation detection, repair previews, and dataset refresh
 - MiniMind lifecycle management for reasoning and training workflows
 - RAG-backed fallback answers with weighted runtime-aware retrieval
@@ -19,6 +21,32 @@ The project is designed to be safe to publish and safe to run from source: the c
 - Safe local config overrides through `config/runtime_profile.local.json`
 - Structured JSONL runtime logs at `logs/openchimera-runtime.jsonl` with request correlation
 - Operator CLI surface for bootstrap, onboarding, status, query sessions, memory, model roles, plugins, subsystems, MCP, and serving
+
+## Architecture
+
+### Recursive Intelligence Loop
+
+Five interlocking subsystems that form the self-improving core:
+
+| Subsystem | Module | Purpose |
+|-----------|--------|---------|
+| **Memory System** | `core/memory/` | Episodic (SQL + embeddings), semantic (NetworkX graph), and working (LRU) memory with a unified facade |
+| **Deliberation Engine** | `core/deliberation.py` | Hypothesis/contradiction graph with max-flow consensus and Jaccard cross-check |
+| **HTN Goal Planner** | `core/goal_planner.py` | CRUD goals with decomposition, dependencies, and Kahn topological sort for execution ordering |
+| **Evolution Engine** | `core/evolution.py` | DPO training pair generation with 0.85 cosine similarity gate and domain fitness tracking |
+| **Metacognition Engine** | `core/metacognition.py` | Expected Calibration Error (ECE), overconfidence ratio, and domain drift detection |
+
+### Quantum Consensus Engine
+
+Async-first weighted multi-agent voting in `core/quantum_engine.py`:
+
+- **Speculative gather** — returns as soon as quorum + early-exit confidence is met, cancelling stragglers
+- **Weighted voting** — per-agent reputation via exponential moving average, updated on feedback
+- **Destructive interference** — contradicting high-weight groups (negation pairs, >20% numerical divergence) reduce winner confidence
+- **Domain-aware reputation** — scores keyed by `(agent_id, domain)` with general-domain fallback
+- **Embedding similarity** — optional sentence-transformers cosine similarity for soft dedup (thread-safe lazy singleton, falls back to exact match)
+- **Persistence** — optional reputation persistence to SemanticMemory with auto-save every 10 updates
+- **Profiler** — built-in `ConsensusProfiler` with p50/p95 latency, avg confidence, early-exit %, and contradiction counts
 
 ## Install
 
