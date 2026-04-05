@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 import time
 import uuid
@@ -711,7 +712,7 @@ class GoalPlanner:
         if goal.preconditions:
             for precondition in goal.preconditions:
                 if not isinstance(precondition, str) or not precondition.strip():
-                    log.warning("Goal %s has unmet precondition: %r", goal_id, precondition)
+                    log.warning("Goal %s has an empty or invalid precondition entry: %r", goal_id, precondition)
 
         try:
             self.update_goal(goal_id, status=GoalStatus.ACTIVE)
@@ -749,7 +750,6 @@ class GoalPlanner:
         Returns:
             List of created child goal IDs
         """
-        import re
         goal = self.get_goal(goal_id)
         if goal is None:
             log.warning("auto_decompose: goal %s not found", goal_id)

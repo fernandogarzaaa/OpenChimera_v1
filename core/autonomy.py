@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -14,7 +15,9 @@ from core.config import ROOT, get_legacy_workspace_root, load_runtime_profile
 from core.harness_port import HarnessPortAdapter
 from core.minimind_service import MiniMindService
 from core.transactions import atomic_write_json
-from core.transfer_learning import TransferLearning
+from core.transfer_learning import PatternType, TransferLearning
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -104,8 +107,7 @@ class AutonomyScheduler:
             self._causal = CausalReasoning(bus=self.bus)
             self._transfer = TransferLearning(bus=self.bus)
         except Exception as _exc:
-            import logging as _log_mod
-            _log_mod.getLogger(__name__).warning("Failed to init causal/transfer subsystems: %s", _exc)
+            log.warning("Failed to init causal/transfer subsystems: %s", _exc)
             self._causal = None
             self._transfer = None
 
@@ -346,7 +348,6 @@ class AutonomyScheduler:
         self._write_artifact("learned_fallback_rankings", payload, job_name="learn_fallback_rankings")
         if self._transfer is not None:
             try:
-                from core.transfer_learning import PatternType
                 keywords = list(query_types.keys()) + ["fallback", "ranking", "model"]
                 avg_success = 0.0
                 total_entries = sum(len(entries) for entries in query_types.values())
@@ -366,8 +367,7 @@ class AutonomyScheduler:
                     metadata={"query_type_count": len(query_types), "degraded_model_count": len(degraded_models)},
                 )
             except Exception as _exc:
-                import logging as _log_mod
-                _log_mod.getLogger(__name__).warning("Transfer pattern registration failed: %s", _exc)
+                log.warning("Transfer pattern registration failed: %s", _exc)
         return {
             "status": "ok",
             "target": str(target_path),
@@ -473,8 +473,7 @@ class AutonomyScheduler:
                             confidence=0.7,
                         )
             except Exception as _exc:
-                import logging as _log_mod
-                _log_mod.getLogger(__name__).warning("Causal edge recording failed: %s", _exc)
+                log.warning("Causal edge recording failed: %s", _exc)
         return {
             "status": report["status"],
             "target": str(self.data_root / "degradation_chains.json"),
@@ -496,8 +495,7 @@ class AutonomyScheduler:
             try:
                 result["causal_graph"] = self._causal.summary()
             except Exception as _exc:
-                import logging as _log_mod
-                _log_mod.getLogger(__name__).warning("Causal summary failed: %s", _exc)
+                log.warning("Causal summary failed: %s", _exc)
         return result
 
     def _preview_self_repair(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
