@@ -227,6 +227,10 @@ class InterventionSimulator:
     def simulate(self, intervention: dict[str, Any]) -> dict[str, Any]:
         """Predict the outcome of a proposed intervention.
 
+        Uses the causal graph topology to propagate effects and compute
+        risk based on actual node health and edge weights rather than
+        hardcoded action-to-outcome mapping.
+
         Parameters
         ──────────
         intervention  Dict with keys:
@@ -246,29 +250,69 @@ class InterventionSimulator:
         target: str = str(intervention.get("target", ""))
         action: str = str(intervention.get("action", ""))
 
-        known_nodes: set[str] = set(self._wm._graph.keys())  # noqa: SLF001
+        graph = self._wm._graph  # noqa: SLF001
+        known_nodes: set[str] = set(graph.keys())
 
-        # Compute affected neighbours
-        neighbours = self._wm._neighbours(target)  # noqa: SLF001
-        affected_nodes: list[str] = neighbours if neighbours else [target]
+        # --- Traverse causal graph to find all affected nodes ---
+        affected_set: set[str] = set()
+        visited: set[str] = set()
+        frontier: list[str] = [target] if target in known_nodes else []
+        while frontier:
+            node = frontier.pop(0)
+            if node in visited:
+                continue
+            visited.add(node)
+            neighbours = self._wm._neighbours(node)  # noqa: SLF001
+            for nbr in neighbours:
+                affected_set.add(nbr)
+                if nbr in known_nodes and nbr not in visited:
+                    frontier.append(nbr)
+        affected_nodes: list[str] = sorted(affected_set) if affected_set else [target]
 
-        # Prediction logic
+        # --- Compute confidence from target node health and edge weights ---
         if target not in known_nodes:
-            predicted_outcome = "unknown"
-            confidence = 0.1
-            risk = "high"
-        elif action == "clear":
-            predicted_outcome = "improvement"
-            confidence = 0.7
-            risk = "low"
-        elif action == "reload":
-            predicted_outcome = "reset"
-            confidence = 0.8
-            risk = "medium"
-        else:
+            return {
+                "predicted_outcome": "unknown",
+                "confidence": 0.1,
+                "affected_nodes": affected_nodes,
+                "risk": "high",
+            }
+
+        node_data = graph[target]
+        health: float = float(node_data.get("health", 0.5))
+        edges = node_data.get("edges", [])
+
+        # Average edge weight outgoing from target
+        avg_edge_weight = (
+            sum(float(e.get("weight", 0.5)) for e in edges) / len(edges)
+            if edges else 0.5
+        )
+
+        # Risk is proportional to the number of downstream affected nodes
+        # and inversely proportional to current health
+        cascade_factor = min(1.0, len(affected_nodes) / max(len(known_nodes), 1))
+        risk_score = cascade_factor * (1.0 - health)
+        risk = "low" if risk_score < 0.3 else ("medium" if risk_score < 0.6 else "high")
+
+        # Outcome prediction based on health trajectory
+        has_degraded_edges = any(
+            str(e.get("effect", "")).lower() == "degraded" for e in edges
+        )
+        has_improved_edges = any(
+            str(e.get("effect", "")).lower() == "improved" for e in edges
+        )
+
+        if health < 0.4 and has_degraded_edges:
+            predicted_outcome = "improvement" if action in ("clear", "reload", "restart") else "degradation"
+            confidence = round(0.6 + (1.0 - health) * 0.3, 4)
+        elif health >= 0.8 and has_improved_edges:
             predicted_outcome = "neutral"
-            confidence = 0.5
-            risk = "medium"
+            confidence = round(0.7 + health * 0.2, 4)
+        else:
+            predicted_outcome = "partial_improvement"
+            confidence = round(0.4 + avg_edge_weight * 0.4, 4)
+
+        confidence = min(1.0, max(0.0, confidence))
 
         return {
             "predicted_outcome": predicted_outcome,

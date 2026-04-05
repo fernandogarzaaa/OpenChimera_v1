@@ -32,9 +32,13 @@ Usage::
 from __future__ import annotations
 
 import json
+import logging
 import time
+import zlib
 from pathlib import Path
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -162,6 +166,12 @@ class UserPreferences:
 
 _SESSION_FILE_VERSION = 1
 
+# Guard-rails for runaway sessions
+_MAX_TURNS = 10_000
+_MAX_TOOL_EVENTS = 5_000
+_MAX_SNAPSHOTS = 500
+_COMPRESS_THRESHOLD_BYTES = 512 * 1024  # 512 KB — use zlib above this
+
 
 class SessionMemory:
     """Unified session memory facade.
@@ -218,10 +228,15 @@ class SessionMemory:
     def append_turn(self, role: str, content: str) -> dict[str, Any]:
         """Append a turn to the episodic history.
 
+        If the history exceeds *_MAX_TURNS*, the oldest 10 % is trimmed.
         Returns the appended turn dict.
         """
         turn = {"role": str(role), "content": str(content), "ts": time.time()}
         self._turns.append(turn)
+        if len(self._turns) > _MAX_TURNS:
+            trim = max(1, _MAX_TURNS // 10)
+            self._turns = self._turns[trim:]
+            _log.debug("[SessionMemory] Trimmed %d oldest turns", trim)
         return dict(turn)
 
     def get_turns(self, limit: int | None = None) -> list[dict[str, Any]]:
@@ -267,6 +282,9 @@ class SessionMemory:
         """Record a tool execution event."""
         stamped = {"recorded_at": time.time(), **dict(event)}
         self._tool_events.append(stamped)
+        if len(self._tool_events) > _MAX_TOOL_EVENTS:
+            trim = max(1, _MAX_TOOL_EVENTS // 10)
+            self._tool_events = self._tool_events[trim:]
         return dict(stamped)
 
     def list_tool_events(self, limit: int = 20) -> list[dict[str, Any]]:
@@ -281,13 +299,31 @@ class SessionMemory:
     def save(self) -> Path:
         """Persist this session to ``{store_root}/{session_id}.json``.
 
+        If the serialised payload exceeds *_COMPRESS_THRESHOLD_BYTES* the
+        file is written as zlib-compressed JSON with a ``.json.z`` suffix.
         Returns the path the snapshot was written to.
         """
         self._store_root.mkdir(parents=True, exist_ok=True)
         payload = self._to_payload()
-        self._snapshot_path.write_text(
-            json.dumps(payload, indent=2, default=str), encoding="utf-8"
-        )
+        raw = json.dumps(payload, indent=2, default=str).encode("utf-8")
+
+        if len(raw) > _COMPRESS_THRESHOLD_BYTES:
+            compressed_path = self._snapshot_path.with_suffix(".json.z")
+            compressed_path.write_bytes(zlib.compress(raw, level=6))
+            # Remove uncompressed copy if it exists
+            if self._snapshot_path.exists():
+                self._snapshot_path.unlink()
+            _log.info(
+                "[SessionMemory] Saved compressed snapshot (%d → %d bytes): %s",
+                len(raw), compressed_path.stat().st_size, compressed_path,
+            )
+            return compressed_path
+
+        self._snapshot_path.write_text(raw.decode("utf-8"), encoding="utf-8")
+        # Remove compressed copy if it exists
+        compressed_path = self._snapshot_path.with_suffix(".json.z")
+        if compressed_path.exists():
+            compressed_path.unlink()
         return self._snapshot_path
 
     def _to_payload(self) -> dict[str, Any]:
@@ -310,19 +346,30 @@ class SessionMemory:
     ) -> "SessionMemory":
         """Load a previously saved session from disk.
 
-        Raises ``FileNotFoundError`` if no snapshot exists for *session_id*.
+        Supports both plain JSON (``.json``) and zlib-compressed
+        (``.json.z``) snapshots.  Raises ``FileNotFoundError`` if neither
+        exists for *session_id*.
         Raises ``ValueError`` if the file is corrupt or has an unknown version.
         """
         root = store_root or Path("data") / "sessions"
         path = root / f"{session_id}.json"
-        if not path.exists():
+        compressed_path = root / f"{session_id}.json.z"
+
+        if compressed_path.exists():
+            try:
+                raw = zlib.decompress(compressed_path.read_bytes())
+                payload = json.loads(raw)
+            except (zlib.error, json.JSONDecodeError) as exc:
+                raise ValueError(f"Corrupt compressed session snapshot at {compressed_path}: {exc}") from exc
+        elif path.exists():
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Corrupt session snapshot at {path}: {exc}") from exc
+        else:
             raise FileNotFoundError(
                 f"No session snapshot found for {session_id!r} at {path}"
             )
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Corrupt session snapshot at {path}: {exc}") from exc
         if not isinstance(payload, dict):
             raise ValueError(f"Session snapshot is not a JSON object: {path}")
         version = payload.get("version", 0)
@@ -387,4 +434,4 @@ class SessionMemory:
     def exists(session_id: str, store_root: Path | None = None) -> bool:
         """Return True if a snapshot exists for *session_id*."""
         root = store_root or Path("data") / "sessions"
-        return (root / f"{session_id}.json").exists()
+        return (root / f"{session_id}.json").exists() or (root / f"{session_id}.json.z").exists()

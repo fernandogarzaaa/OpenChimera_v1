@@ -88,9 +88,11 @@ class OpenChimeraKernel:
         try:
             _llm_mgr = getattr(self.provider, "llm_manager", None)
             if _llm_mgr is not None:
+                _fallback_model = self.identity_snapshot.get("local_model_fallback", "phi-3.5-mini")
+
                 def _local_llm_agent(task: str, context: dict) -> str:
                     ranked = _llm_mgr.get_ranked_models(query_type="general")
-                    model = ranked[0] if ranked else "phi-3.5-mini"
+                    model = ranked[0] if ranked else _fallback_model
                     result = _llm_mgr.chat_completion(
                         messages=[{"role": "user", "content": task}],
                         model=model,
@@ -100,8 +102,8 @@ class OpenChimeraKernel:
                     )
                     return str(result.get("content") or result.get("choices", [{}])[0].get("message", {}).get("content", ""))
                 self.consensus_plane.register_agent("local-llm", _local_llm_agent)
-        except Exception:
-            pass
+        except Exception as exc:
+            LOGGER.warning("Failed to wire local-llm consensus agent: %s", exc)
 
         try:
             _minimind = getattr(self.provider, "minimind", None)
@@ -115,8 +117,8 @@ class OpenChimeraKernel:
                     )
                     return str(result.get("content", ""))
                 self.consensus_plane.register_agent("minimind", _minimind_agent)
-        except Exception:
-            pass
+        except Exception as exc:
+            LOGGER.warning("Failed to wire minimind consensus agent: %s", exc)
 
         # --- Wire AGI cognitive modules to bus events ---
         self._wire_cognitive_modules()

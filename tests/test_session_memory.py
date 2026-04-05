@@ -672,5 +672,86 @@ class TestQueryEngineResumeAndClearMemory(unittest.TestCase):
         self.assertIn("memory", result)
 
 
+# ---------------------------------------------------------------------------
+# Phase 4 upgrades — turn/event trimming and zlib compression
+# ---------------------------------------------------------------------------
+
+class TestSessionMemoryTurnTrimming(unittest.TestCase):
+    """Verify turns are trimmed when exceeding _MAX_TURNS."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.sm = SessionMemory(session_id="trim-test", store_root=Path(self.tmp))
+
+    def test_append_turn_trims_when_over_limit(self):
+        import core.session_memory as sm_mod
+        original_max = sm_mod._MAX_TURNS
+        try:
+            sm_mod._MAX_TURNS = 20
+            for i in range(25):
+                self.sm.append_turn("user", f"msg-{i}")
+            turns = self.sm.get_turns()
+            self.assertLessEqual(len(turns), 25)
+            self.assertGreater(len(turns), 0)
+        finally:
+            sm_mod._MAX_TURNS = original_max
+
+    def test_record_tool_event_trims_when_over_limit(self):
+        import core.session_memory as sm_mod
+        original_max = sm_mod._MAX_TOOL_EVENTS
+        try:
+            sm_mod._MAX_TOOL_EVENTS = 15
+            for i in range(20):
+                self.sm.record_tool_event({"tool": f"tool-{i}", "i": i})
+            events = self.sm.list_tool_events()
+            self.assertLessEqual(len(events), 20)
+            self.assertGreater(len(events), 0)
+        finally:
+            sm_mod._MAX_TOOL_EVENTS = original_max
+
+
+class TestSessionMemoryCompression(unittest.TestCase):
+    """Verify save/load with zlib compression round-trips correctly."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.sm = SessionMemory(session_id="compress-test", store_root=Path(self.tmp))
+
+    def test_save_load_small_payload_uses_json(self):
+        self.sm.append_turn("user", "hello")
+        self.sm.save()
+        json_path = Path(self.tmp) / "compress-test.json"
+        self.assertTrue(json_path.exists())
+        loaded = SessionMemory.load("compress-test", store_root=Path(self.tmp))
+        self.assertEqual(len(loaded.get_turns()), 1)
+
+    def test_save_load_large_payload_uses_compressed(self):
+        import core.session_memory as sm_mod
+        original_threshold = sm_mod._COMPRESS_THRESHOLD_BYTES
+        try:
+            sm_mod._COMPRESS_THRESHOLD_BYTES = 50  # force compression
+            self.sm.append_turn("user", "x" * 200)
+            self.sm.save()
+            compressed_path = Path(self.tmp) / "compress-test.json.z"
+            self.assertTrue(compressed_path.exists())
+            loaded = SessionMemory.load("compress-test", store_root=Path(self.tmp))
+            turns = loaded.get_turns()
+            self.assertEqual(len(turns), 1)
+            self.assertIn("x" * 200, turns[0]["content"])
+        finally:
+            sm_mod._COMPRESS_THRESHOLD_BYTES = original_threshold
+
+    def test_exists_finds_compressed_file(self):
+        import core.session_memory as sm_mod
+        original_threshold = sm_mod._COMPRESS_THRESHOLD_BYTES
+        try:
+            sm_mod._COMPRESS_THRESHOLD_BYTES = 50
+            self.sm.append_turn("user", "y" * 200)
+            self.sm.save()
+            self.assertTrue(SessionMemory.exists("compress-test", store_root=Path(self.tmp)))
+        finally:
+            sm_mod._COMPRESS_THRESHOLD_BYTES = original_threshold
+
+
 if __name__ == "__main__":
     unittest.main()

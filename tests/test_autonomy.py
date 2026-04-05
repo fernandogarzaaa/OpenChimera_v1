@@ -358,5 +358,44 @@ class AutonomySchedulerTests(unittest.TestCase):
             self.assertIn("operator-channel-missing", finding_ids)
 
 
+class TestRecordLearning(unittest.TestCase):
+    """Phase 7 — _record_learning feeds causal and transfer subsystems."""
+
+    def _make_sched(self, tmp_root: Path):
+        profile = {"autonomy": {"enabled": True, "auto_start": False, "jobs": {}}, "model_inventory": {}}
+        with patch("core.autonomy.ROOT", tmp_root), \
+             patch("core.autonomy.load_runtime_profile", return_value=profile), \
+             patch("core.autonomy.get_legacy_workspace_root", return_value=tmp_root / "legacy"):
+            return AutonomyScheduler(EventBus(), harness_port=object(), minimind=_FakeMiniMind(), identity_snapshot={})
+
+    def test_record_learning_calls_causal_on_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sched = self._make_sched(Path(tmp))
+            from unittest.mock import MagicMock
+            sched._causal = MagicMock()
+            sched._transfer = MagicMock()
+            sched._record_learning("discover_free_models", {"ok": True}, success=True)
+            sched._causal.record_observation.assert_called_once()
+            sched._transfer.register_pattern.assert_called_once()
+
+    def test_record_learning_skips_transfer_on_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sched = self._make_sched(Path(tmp))
+            from unittest.mock import MagicMock
+            sched._causal = MagicMock()
+            sched._transfer = MagicMock()
+            sched._record_learning("discover_free_models", {"err": "boom"}, success=False)
+            sched._causal.record_observation.assert_called_once()
+            sched._transfer.register_pattern.assert_not_called()
+
+    def test_record_learning_tolerates_none_subsystems(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            sched = self._make_sched(Path(tmp))
+            sched._causal = None
+            sched._transfer = None
+            # Should not raise
+            sched._record_learning("discover_free_models", {}, success=True)
+
+
 if __name__ == "__main__":
     unittest.main()

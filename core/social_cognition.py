@@ -244,6 +244,11 @@ class RelationshipMemory:
         """
         with self._lock:
             rec = self._get_or_create(agent_id)
+            # Apply time-based trust decay before adding the new delta
+            if rec.last_interaction > 0:
+                elapsed = time.time() - rec.last_interaction
+                decay = self._TRUST_DECAY_RATE * (elapsed / 3600.0)  # per-hour decay
+                rec.trust = float(max(0.0, rec.trust - decay))
             rec.sentiment = float(max(-1.0, min(1.0, rec.sentiment + sentiment_delta)))
             rec.trust = float(max(0.0, min(1.0, rec.trust + trust_delta)))
             rec.interaction_count += 1
@@ -439,6 +444,12 @@ class SocialNormRegistry:
     def evaluate(self, action_description: str) -> dict[str, Any]:
         """Score an action description against all registered norms.
 
+        Uses a two-layer approach:
+        1. *Keyword violation* — fast-fail on well-known violating phrases.
+        2. *Semantic overlap* — word-level overlap between the action and
+           the norm's rule text produces a continuous compliance score
+           rather than a binary 0/1.
+
         Returns a dict with a ``total_score`` in [0, 1] (higher = more
         norm-compliant) and per-norm breakdowns.
         """
@@ -450,11 +461,22 @@ class SocialNormRegistry:
             "reciprocity": ["ignore help", "refuse to return", "take without giving"],
         }
         action_lower = action_description.lower()
+        action_words = set(action_lower.split())
         results: list[dict[str, Any]] = []
         with self._lock:
             for name, norm in self._norms.items():
+                # Layer 1: keyword violation → score = 0
                 violated = any(kw in action_lower for kw in keywords_violating.get(name, []))
-                score = 0.0 if violated else 1.0
+                if violated:
+                    score = 0.0
+                else:
+                    # Layer 2: semantic overlap with the norm's rule text
+                    rule_words = set(norm.rule.lower().split())
+                    overlap = len(action_words & rule_words)
+                    rule_len = max(len(rule_words), 1)
+                    alignment = min(1.0, overlap / rule_len)
+                    # High alignment with a positive rule → compliant
+                    score = round(0.6 + 0.4 * alignment, 4)
                 results.append({"norm": name, "weight": norm.weight, "score": score, "violated": violated})
 
         total_weight = sum(r["weight"] for r in results) or 1.0

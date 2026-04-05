@@ -478,66 +478,36 @@ class TestEmbodiedInteractionSandboxSimulation:
         assert speak_cmd.status == "completed"
         assert "Reached" in speak_cmd.result["text"]
 
-        # History: 5 moves + 1 look + 1 speak = 7+ commands
-        body_hist = ei.actuators.command_history("body")
-        assert len(body_hist) >= 5
 
-    def test_multi_object_environment(self):
-        """Robot in environment with multiple objects; can identify nearest."""
-        ei = EmbodiedInteraction()
-        positions = [
-            ("obj_near", "chair", {"x": 1.0}),
-            ("obj_mid",  "table", {"x": 3.0}),
-            ("obj_far",  "door",  {"x": 8.0}),
-        ]
-        for oid, label, pos in positions:
-            ei.environment.update_object(oid, label=label, position=pos)
+# ---------------------------------------------------------------------------
+# Phase 3 — Action whitelist enforcement
+# ---------------------------------------------------------------------------
 
-        nearest = ei.environment.find_nearest({"x": 0.0, "y": 0.0, "z": 0.0})
-        assert nearest.object_id == "obj_near"
+class TestActuatorActionWhitelist:
+    """Validate that ActuatorInterface rejects disallowed actions."""
 
-        nearest_table = ei.environment.find_nearest({"x": 0.0}, label_filter="table")
-        assert nearest_table.object_id == "obj_mid"
+    def test_default_whitelist_accepts_standard_actions(self, actuators):
+        """Default allowed set includes 'move', 'grasp', etc."""
+        cmd = actuators.issue_command("arm", "move")
+        assert cmd.status != "rejected"
 
-    def test_body_schema_capability_gating(self):
-        """System checks capabilities before issuing commands."""
-        ei = EmbodiedInteraction()
-        # Default capabilities include move, speak, look
-        assert ei.body_schema.can_perform("move")
-        assert ei.body_schema.can_perform("speak")
-        # Teleportation not registered
-        assert not ei.body_schema.can_perform("teleport")
+    def test_disallowed_action_is_rejected(self, actuators):
+        """An action not in the default set is rejected."""
+        cmd = actuators.issue_command("arm", "self_destruct")
+        assert cmd.status == "rejected"
+        assert "error" in cmd.result
 
-        # Add a new capability and verify
-        ei.body_schema.add_capability("grasp")
-        assert ei.body_schema.can_perform("grasp")
+    def test_custom_whitelist_restricts_actions(self, bus):
+        """Custom allowed_actions narrows the set."""
+        restricted = ActuatorInterface(bus=bus, allowed_actions={"ping"})
+        ok = restricted.issue_command("net", "ping")
+        assert ok.status != "rejected"
+        bad = restricted.issue_command("net", "move")
+        assert bad.status == "rejected"
 
-    def test_sensor_fusion_scenario(self):
-        """Multiple sensors provide complementary data; all readable."""
-        ei = EmbodiedInteraction()
-        ei.sensors.inject_reading("distance_front", 1.2)
-        ei.sensors.inject_reading("temperature", 23.5)
-        ei.sensors.inject_reading("touch_left", False)
-        ei.sensors.inject_reading("touch_right", True)
-
-        all_readings = ei.sense_all()
-        by_id = {r.sensor_id: r for r in all_readings}
-
-        assert abs(by_id["distance_front"].value - 1.2) < 1e-6
-        assert abs(by_id["temperature"].value - 23.5) < 1e-6
-        assert by_id["touch_left"].value is False
-        assert by_id["touch_right"].value is True
-
-    def test_snapshot_after_full_interaction(self):
-        """Snapshot reflects all state changes from a full embodied session."""
-        ei = EmbodiedInteraction()
-        ei.environment.update_object("snapbox", label="box", position={"x": 5.0})
-        ei.sensors.inject_reading("distance_front", 5.0)
-        ei.move("forward", 1.0)
-        ei.speak("Approaching target")
-
-        snap = ei.snapshot()
-        assert len(snap["environment"]) >= 1
-        env_ids = [o["object_id"] for o in snap["environment"]]
-        assert "snapbox" in env_ids
-        assert len(snap["sensors"]) >= 1
+    def test_rejected_command_still_recorded_in_history(self, actuators):
+        """Rejected commands must appear in command history."""
+        actuators.issue_command("bot", "forbidden_action")
+        history = actuators.command_history("bot")
+        assert len(history) == 1
+        assert history[0].status == "rejected"

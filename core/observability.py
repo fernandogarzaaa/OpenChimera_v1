@@ -24,6 +24,10 @@ class ObservabilityStore:
         self._llm_query_type_counts: dict[str, int] = {}
         self._recent_requests: deque[dict[str, Any]] = deque(maxlen=self._recent_limit)
         self._recent_completions: deque[dict[str, Any]] = deque(maxlen=self._recent_limit)
+        self._job_total_runs = 0
+        self._job_success_count = 0
+        self._job_name_counts: dict[str, int] = {}
+        self._recent_jobs: deque[dict[str, Any]] = deque(maxlen=self._recent_limit)
         if self._persist_path is not None:
             self._initialize_persistence()
 
@@ -195,6 +199,32 @@ class ObservabilityStore:
                 )
                 self._connection.commit()
 
+    def record_autonomy_job(self, job_name: str, status: str) -> None:
+        """Record an autonomy job execution."""
+        with self._lock:
+            self._job_total_runs += 1
+            if status == "ok":
+                self._job_success_count += 1
+            self._job_name_counts[job_name] = self._job_name_counts.get(job_name, 0) + 1
+            self._recent_jobs.append({
+                "job": job_name,
+                "status": status,
+                "recorded_at": int(time.time()),
+            })
+
+    def subscribe_to_bus(self, bus: Any) -> None:
+        """Subscribe to event bus topics to auto-record observability data."""
+        try:
+            bus.subscribe("system/autonomy/job", self._on_autonomy_job_event)
+        except Exception:
+            pass
+
+    def _on_autonomy_job_event(self, event: dict[str, Any]) -> None:
+        job_name = str(event.get("job", "unknown"))
+        result = event.get("result", {})
+        status = str(result.get("status", "ok")) if isinstance(result, dict) else "ok"
+        self.record_autonomy_job(job_name, status)
+
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
             average_duration_ms = 0.0
@@ -214,5 +244,11 @@ class ObservabilityStore:
                     "models": dict(sorted(self._llm_model_counts.items())),
                     "query_types": dict(sorted(self._llm_query_type_counts.items())),
                     "recent_completions": list(self._recent_completions),
+                },
+                "autonomy_jobs": {
+                    "total_runs": self._job_total_runs,
+                    "success_count": self._job_success_count,
+                    "jobs": dict(sorted(self._job_name_counts.items())),
+                    "recent_jobs": list(self._recent_jobs),
                 },
             }

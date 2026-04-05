@@ -142,16 +142,26 @@ class CommandRegistry:
     # Execution
     # ------------------------------------------------------------------
 
-    def execute(self, command_id: str, **kwargs: Any) -> Any:
+    def execute(self, command_id: str, *, is_admin: bool = False, **kwargs: Any) -> Any:
         """Invoke a command handler by id.
 
         Raises ``ValueError`` if the command is unknown.
+        Raises ``PermissionError`` if the command requires admin and
+        *is_admin* is ``False``.
         Raises ``NotImplementedError`` if no handler is registered.
         Emits a bus event either way.
         """
         cmd = self._commands.get(command_id)
         if cmd is None:
             raise ValueError(f"Unknown command: {command_id!r}")
+        if cmd.requires_admin and not is_admin:
+            self._publish("system/commands", {
+                "action": "execute",
+                "command_id": command_id,
+                "success": False,
+                "reason": "admin_required",
+            })
+            raise PermissionError(f"Command {command_id!r} requires admin privileges")
         if cmd.handler is None:
             raise NotImplementedError(f"Command {command_id!r} has no executable handler")
         started = time.perf_counter()

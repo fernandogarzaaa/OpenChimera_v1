@@ -79,6 +79,18 @@ def list_mcp_registry_with_health(root: Path | None = None) -> list[dict[str, An
     return merged
 
 
+def get_mcp_registry_entry(server_id: str, root: Path | None = None) -> dict[str, Any]:
+    """Return a single registry entry (with health) by *server_id*.
+
+    Raises ``ValueError`` if no entry with that id exists.
+    """
+    sid = str(server_id).strip()
+    for entry in list_mcp_registry_with_health(root):
+        if str(entry.get("id", "")) == sid:
+            return entry
+    raise ValueError(f"Unknown MCP server: {sid!r}")
+
+
 def upsert_mcp_registry_entry(
     server_id: str,
     *,

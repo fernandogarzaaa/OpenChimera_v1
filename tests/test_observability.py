@@ -54,3 +54,45 @@ class ObservabilityStoreTests(unittest.TestCase):
                 reloaded.close()
 
             self.assertEqual([entry["request_id"] for entry in recent_requests], ["req-2", "req-3"])
+
+
+class ObservabilityAutonomyJobTests(unittest.TestCase):
+    """Tests for Phase 8 autonomy job tracking in ObservabilityStore."""
+
+    def test_record_autonomy_job_increments_counters(self) -> None:
+        store = ObservabilityStore(recent_limit=4)
+        store.record_autonomy_job("sync_scouted_models", "ok")
+        store.record_autonomy_job("discover_free_models", "error")
+        store.record_autonomy_job("sync_scouted_models", "ok")
+        snap = store.snapshot()
+        jobs = snap["autonomy_jobs"]
+        self.assertEqual(jobs["total_runs"], 3)
+        self.assertEqual(jobs["success_count"], 2)
+        self.assertEqual(jobs["jobs"]["sync_scouted_models"], 2)
+        self.assertEqual(jobs["jobs"]["discover_free_models"], 1)
+        self.assertEqual(len(jobs["recent_jobs"]), 3)
+
+    def test_snapshot_includes_autonomy_jobs_key(self) -> None:
+        store = ObservabilityStore()
+        snap = store.snapshot()
+        self.assertIn("autonomy_jobs", snap)
+        self.assertEqual(snap["autonomy_jobs"]["total_runs"], 0)
+
+    def test_subscribe_to_bus_captures_events(self) -> None:
+        from unittest.mock import MagicMock
+        store = ObservabilityStore()
+        mock_bus = MagicMock()
+        store.subscribe_to_bus(mock_bus)
+        mock_bus.subscribe.assert_called_once_with(
+            "system/autonomy/job", store._on_autonomy_job_event
+        )
+
+    def test_on_autonomy_job_event_records_job(self) -> None:
+        store = ObservabilityStore()
+        store._on_autonomy_job_event({
+            "job": "run_self_audit",
+            "result": {"status": "ok"},
+        })
+        snap = store.snapshot()
+        self.assertEqual(snap["autonomy_jobs"]["total_runs"], 1)
+        self.assertEqual(snap["autonomy_jobs"]["success_count"], 1)

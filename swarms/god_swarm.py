@@ -232,14 +232,25 @@ class GodSwarm(SwarmOrchestrator):
         """
         # Phase 1 — analysis agents build shared context
         analysis_agents = ["omniscient", "oracle", "architect"]
+        analysis_result = self.dispatch(
+            task=objective,
+            agent_ids=analysis_agents,
+            context={"objective": objective, "phase": "god_swarm_analysis"},
+            use_consensus=False,
+        )
 
-        # Phase 2 — full swarm answers
+        # Phase 2 — full swarm answers using analysis context
         execution_agents = self.ALL_AGENT_IDS
+        analysis_context: dict[str, Any] = {
+            "objective": objective,
+            "phase": "god_swarm_execution",
+            "analysis_summary": str(analysis_result)[:2000],
+        }
 
         return self.dispatch(
             task=objective,
             agent_ids=execution_agents,
-            context={"objective": objective, "phase": "god_swarm_full"},
+            context=analysis_context,
             use_consensus=True,
         )
 
@@ -250,76 +261,6 @@ class GodSwarm(SwarmOrchestrator):
         base["dynamic_agents"] = list(self._dynamic_agents.values())
         base["kernel_wired"] = self._kernel is not None
         return base
-
-# ---------------------------------------------------------------------------
-# Agent definitions extracted from GOD_SWARM.md
-# ---------------------------------------------------------------------------
-
-_CORE_AGENTS: list[dict] = [
-    {
-        "agent_id": "omniscient",
-        "role": "Requirement Analyzer",
-        "description": "Deeply understands user intent, constraints, and success criteria.",
-        "capabilities": ["requirement-parsing", "intent-detection", "constraint-analysis"],
-    },
-    {
-        "agent_id": "architect",
-        "role": "Swarm Composer",
-        "description": "Designs swarm topology, selects agent types, and plans dependencies.",
-        "capabilities": ["topology-design", "agent-selection", "dependency-planning"],
-    },
-    {
-        "agent_id": "demiurge",
-        "role": "Swarm Creator",
-        "description": "Spawns sub-swarms, assigns objectives, and provisions resources.",
-        "capabilities": ["swarm-spawning", "resource-provisioning", "objective-assignment"],
-    },
-    {
-        "agent_id": "chronos",
-        "role": "Progress Monitor",
-        "description": "Tracks swarm activities, detects stalls and failures, enforces timeouts.",
-        "capabilities": ["progress-tracking", "failure-detection", "timeout-enforcement"],
-    },
-    {
-        "agent_id": "arbiter",
-        "role": "Conflict Resolver",
-        "description": "Resolves disputes between swarms and handles resource contention.",
-        "capabilities": ["conflict-resolution", "resource-scheduling", "negotiation"],
-    },
-    {
-        "agent_id": "scribe",
-        "role": "Context Keeper",
-        "description": "Maintains shared state and ensures continuity across swarm handoffs.",
-        "capabilities": ["state-management", "context-persistence", "handoff-continuity"],
-    },
-]
-
-_SUPPORTING_AGENTS: list[dict] = [
-    {
-        "agent_id": "oracle",
-        "role": "Pattern Recognizer",
-        "description": "Matches objectives to known swarm patterns from history.",
-        "capabilities": ["pattern-matching", "history-lookup", "swarm-recommendation"],
-    },
-    {
-        "agent_id": "alchemist",
-        "role": "Swarm Optimizer",
-        "description": "Tweaks swarm composition based on real-time performance signals.",
-        "capabilities": ["performance-monitoring", "composition-tuning", "optimization"],
-    },
-    {
-        "agent_id": "reaper",
-        "role": "Cleanup Manager",
-        "description": "Destroys completed or failed swarms and archives learnings.",
-        "capabilities": ["swarm-teardown", "artifact-archival", "learning-capture"],
-    },
-    {
-        "agent_id": "librarian",
-        "role": "Knowledge Curator",
-        "description": "Updates swarm registry with new patterns and improvements.",
-        "capabilities": ["registry-update", "knowledge-indexing", "pattern-curation"],
-    },
-]
 
 
 # ---------------------------------------------------------------------------

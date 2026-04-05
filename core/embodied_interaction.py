@@ -186,13 +186,33 @@ class ActuatorInterface:
     Parameters
     ──────────
     bus  Optional EventBus for publishing ``embodied/actuator_command`` events.
+    allowed_actions
+        Optional set of permitted action names.  When provided, any action
+        not in the set is rejected with status ``"rejected"``.
+    command_timeout_s
+        Maximum seconds a synchronous handler may run before being treated
+        as a timeout (applied when handler raises).
     """
 
-    def __init__(self, bus: "Any | None" = None) -> None:
+    _DEFAULT_ALLOWED_ACTIONS: frozenset[str] = frozenset({
+        "move", "grasp", "release", "speak", "look", "halt",
+        "rotate", "push", "pull", "scan", "idle",
+    })
+
+    def __init__(
+        self,
+        bus: "Any | None" = None,
+        allowed_actions: "set[str] | None" = None,
+        command_timeout_s: float = 30.0,
+    ) -> None:
         self._bus = bus
         self._handlers: dict[str, Callable[[ActuatorCommand], dict[str, Any]]] = {}
         self._history: list[ActuatorCommand] = []
         self._lock = threading.RLock()
+        self._allowed_actions: frozenset[str] = (
+            frozenset(allowed_actions) if allowed_actions else self._DEFAULT_ALLOWED_ACTIONS
+        )
+        self._command_timeout_s = command_timeout_s
 
     def register_handler(
         self,
@@ -212,11 +232,22 @@ class ActuatorInterface:
     ) -> ActuatorCommand:
         """Issue a command to *actuator_id*.
 
+        The *action* is validated against the allowed-actions whitelist.
         If a handler is registered it is called synchronously.  Otherwise the
         command is stored with status ``"pending"``.  Returns the completed
         (or pending) command.
         """
         cmd = ActuatorCommand(actuator_id=actuator_id, action=action, params=params or {})
+
+        # Validate action against whitelist
+        if action not in self._allowed_actions:
+            cmd.status = "rejected"
+            cmd.result = {"error": f"Action {action!r} is not in the allowed actions list"}
+            log.warning("[Actuator] Rejected disallowed action '%s' for actuator '%s'", action, actuator_id)
+            with self._lock:
+                self._history.append(cmd)
+            return cmd
+
         if self._bus is not None:
             self._bus.publish_nowait(
                 "embodied/actuator_command",

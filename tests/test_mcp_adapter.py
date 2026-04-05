@@ -217,7 +217,7 @@ class TestMCPAdapterListServerTools(unittest.TestCase):
             {"name": "tool-a", "description": "A"},
             {"name": "tool-b", "description": "B"},
         ]}}
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             with patch.object(adapter, "_http_call", return_value=tools_response):
                 tools = adapter.list_server_tools("tools-srv")
@@ -228,7 +228,7 @@ class TestMCPAdapterListServerTools(unittest.TestCase):
 
     def test_list_tools_stdio_server_returns_empty(self):
         entry = {"id": "stdio-srv", "transport": "stdio", "command": "my-cmd", "enabled": True, "status": "registered"}
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             tools = adapter.list_server_tools("stdio-srv")
         self.assertEqual(tools, [])
@@ -241,7 +241,7 @@ class TestMCPAdapterListServerTools(unittest.TestCase):
 
     def test_list_tools_returns_empty_on_empty_result(self):
         entry = self._mock_entry("empty-srv")
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             with patch.object(adapter, "_http_call", return_value={"jsonrpc": "2.0", "id": "x", "result": {}}):
                 tools = adapter.list_server_tools("empty-srv")
@@ -259,7 +259,7 @@ class TestMCPAdapterCallTool(unittest.TestCase):
     def test_call_tool_ok_result(self):
         entry = self._mock_http_entry()
         call_response = {"jsonrpc": "2.0", "id": "x", "result": {"value": 42}}
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             with patch.object(adapter, "_http_call", return_value=call_response):
                 result = adapter.call_tool("call-srv", "my-tool", {"arg": 1})
@@ -272,7 +272,7 @@ class TestMCPAdapterCallTool(unittest.TestCase):
     def test_call_tool_error_response(self):
         entry = self._mock_http_entry()
         error_response = {"jsonrpc": "2.0", "id": "x", "error": {"code": -32601, "message": "Method not found"}}
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             with patch.object(adapter, "_http_call", return_value=error_response):
                 result = adapter.call_tool("call-srv", "bad-tool")
@@ -281,13 +281,13 @@ class TestMCPAdapterCallTool(unittest.TestCase):
 
     def test_call_tool_stdio_raises_mcp_connection_error(self):
         entry = {"id": "stdio-srv", "transport": "stdio", "command": "cmd", "enabled": True, "status": "registered"}
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter()
             with self.assertRaises(MCPConnectionError):
                 adapter.call_tool("stdio-srv", "any-tool")
 
     def test_call_tool_unknown_server_raises_value_error(self):
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", side_effect=ValueError("Unknown")):
             adapter = _make_adapter()
             with self.assertRaises(ValueError):
                 adapter.call_tool("unknown-srv", "tool")
@@ -295,7 +295,7 @@ class TestMCPAdapterCallTool(unittest.TestCase):
     def test_call_tool_publishes_event(self):
         bus = _make_bus()
         entry = self._mock_http_entry()
-        with patch("core.mcp_adapter.list_mcp_registry_with_health", return_value=[entry]):
+        with patch("core.mcp_adapter.get_mcp_registry_entry", return_value=entry):
             adapter = _make_adapter(bus=bus)
             with patch.object(adapter, "_http_call", return_value={"result": "ok"}):
                 adapter.call_tool("call-srv", "t", {})

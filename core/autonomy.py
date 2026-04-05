@@ -249,17 +249,42 @@ class AutonomyScheduler:
             job.last_status = "ok"
             job.last_result = result
             job.success_streak += 1
+            self._record_learning(job_name, result, success=True)
         except Exception as exc:
             result = {"status": "error", "error": str(exc)}
             job.last_status = "error"
             job.last_result = result
             job.success_streak = 0
+            self._record_learning(job_name, result, success=False)
 
         job.run_count += 1
         job.last_run_at = time.time()
         self._save_job_state()
         self.bus.publish_nowait("system/autonomy/job", {"job": job_name, "result": result})
         return result
+
+    def _record_learning(self, job_name: str, result: dict[str, Any], *, success: bool) -> None:
+        """Feed job outcomes into causal and transfer learning subsystems."""
+        if self._causal is not None:
+            try:
+                self._causal.record_observation(
+                    event=f"autonomy_job:{job_name}",
+                    outcome="success" if success else "failure",
+                    context={"job": job_name, "streak": self.jobs[job_name].success_streak},
+                )
+            except Exception:
+                pass
+        if self._transfer is not None and success:
+            try:
+                from core.transfer_learning import PatternType
+                self._transfer.register_pattern(
+                    name=f"autonomy:{job_name}",
+                    pattern_type=PatternType.HEURISTIC,
+                    pattern_data={"job": job_name, "summary": str(result)[:500]},
+                    source_domain="autonomy",
+                )
+            except Exception:
+                pass
 
     def _sync_scouted_models(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         source_path = self.legacy_workspace_root / "chimera_free_fallbacks.json"

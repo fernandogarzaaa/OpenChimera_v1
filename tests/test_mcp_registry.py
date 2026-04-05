@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from core.mcp_registry import (
     delete_mcp_registry_entry,
+    get_mcp_registry_entry,
     get_mcp_registry_path,
     get_mcp_health_state_path,
     list_mcp_registry,
@@ -362,6 +363,39 @@ class TestEdgeCaseBranches(unittest.TestCase):
         )
         result = load_mcp_health_state(self.root)
         self.assertEqual(result["servers"], {})
+
+
+class TestGetMcpRegistryEntry(unittest.TestCase):
+    """Tests for the new get_mcp_registry_entry() lookup function."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.root = Path(self.tmp)
+        reg_path = get_mcp_registry_path(self.root)
+        reg_path.parent.mkdir(parents=True, exist_ok=True)
+        reg_path.write_text(
+            json.dumps({
+                "version": 1,
+                "servers": {
+                    "alpha": {"name": "Alpha", "transport": "http", "url": "http://localhost:8001", "enabled": True},
+                    "beta": {"name": "Beta", "transport": "stdio", "command": "echo", "enabled": True},
+                },
+            }),
+            encoding="utf-8",
+        )
+
+    def test_returns_existing_entry(self):
+        entry = get_mcp_registry_entry("alpha", root=self.root)
+        self.assertEqual(entry["id"], "alpha")
+        self.assertEqual(entry["name"], "Alpha")
+
+    def test_raises_value_error_for_missing_entry(self):
+        with self.assertRaises(ValueError):
+            get_mcp_registry_entry("nonexistent", root=self.root)
+
+    def test_strips_whitespace_from_server_id(self):
+        entry = get_mcp_registry_entry("  beta  ", root=self.root)
+        self.assertEqual(entry["id"], "beta")
 
 
 if __name__ == "__main__":

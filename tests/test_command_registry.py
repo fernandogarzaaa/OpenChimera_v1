@@ -357,6 +357,42 @@ class TestCommandRegistryExecute(unittest.TestCase):
         self.assertIsInstance(payload["latency_ms"], float)
 
 
+class TestCommandRegistryAdminEnforcement(unittest.TestCase):
+    """Phase 3 — requires_admin enforcement via is_admin keyword."""
+
+    def test_admin_command_blocked_without_is_admin(self):
+        reg = _make_registry([
+            _make_entry("admin-only", handler=lambda: "secret", requires_admin=True),
+        ])
+        with self.assertRaises(PermissionError):
+            reg.execute("admin-only")
+
+    def test_admin_command_allowed_with_is_admin_true(self):
+        reg = _make_registry([
+            _make_entry("admin-only", handler=lambda: "secret", requires_admin=True),
+        ])
+        result = reg.execute("admin-only", is_admin=True)
+        self.assertEqual(result, "secret")
+
+    def test_non_admin_command_passes_without_is_admin(self):
+        reg = _make_registry([
+            _make_entry("public", handler=lambda: "open"),
+        ])
+        result = reg.execute("public")
+        self.assertEqual(result, "open")
+
+    def test_admin_blocked_publishes_bus_event(self):
+        bus = _make_bus()
+        reg = CommandRegistry(bus=bus)
+        reg.register(_make_entry("locked", handler=lambda: "x", requires_admin=True))
+        bus.reset_mock()
+        with self.assertRaises(PermissionError):
+            reg.execute("locked")
+        bus.publish_nowait.assert_called_once()
+        _, payload = bus.publish_nowait.call_args[0]
+        self.assertEqual(payload["reason"], "admin_required")
+
+
 # ---------------------------------------------------------------------------
 # CommandRegistry — status
 # ---------------------------------------------------------------------------

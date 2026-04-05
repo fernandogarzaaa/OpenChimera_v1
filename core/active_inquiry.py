@@ -39,9 +39,10 @@ class ActiveInquiry:
                contradiction detection; may be None).
     """
 
-    def __init__(self, semantic: Any, episodic: Any) -> None:
+    def __init__(self, semantic: Any, episodic: Any, bus: Any = None) -> None:
         self._semantic = semantic
         self._episodic = episodic
+        self._bus = bus
         self._open_questions: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
 
@@ -184,6 +185,14 @@ class ActiveInquiry:
             self._open_questions.append(entry)
 
         log.debug("[ActiveInquiry] Posted question %s: %r", qid[:8], question[:80])
+        if self._bus is not None:
+            try:
+                self._bus.publish_nowait("inquiry/question_posted", {
+                    "question_id": qid,
+                    "question": question[:200],
+                })
+            except Exception:
+                pass
         return entry
 
     def resolve_question(self, question_id: str, answer: str) -> bool:

@@ -32,6 +32,7 @@ from urllib import error, request
 
 from core.mcp_registry import (
     delete_mcp_registry_entry,
+    get_mcp_registry_entry,
     list_mcp_registry_with_health,
     probe_mcp_registry_entry,
     upsert_mcp_registry_entry,
@@ -118,7 +119,7 @@ class MCPAdapter:
         Returns an empty list for stdio servers (no live protocol call is
         made without a running process).
         """
-        entry = self._get_entry(server_id)
+        entry = get_mcp_registry_entry(server_id)
         transport = str(entry.get("transport", "")).lower()
         if transport != "http":
             return []
@@ -154,7 +155,7 @@ class MCPAdapter:
 
         Raises ``MCPConnectionError`` for transport errors or non-HTTP servers.
         """
-        entry = self._get_entry(server_id)
+        entry = get_mcp_registry_entry(server_id)
         transport = str(entry.get("transport", "")).lower()
         if transport != "http":
             raise MCPConnectionError(
@@ -258,11 +259,6 @@ class MCPAdapter:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_entry(self, server_id: str) -> dict[str, Any]:
-        for entry in list_mcp_registry_with_health():
-            if str(entry.get("id", "")) == server_id:
-                return entry
-        raise ValueError(f"Unknown MCP server: {server_id!r}")
 
     def _http_call(self, url: str, payload: dict[str, Any]) -> dict[str, Any]:
         req = request.Request(
