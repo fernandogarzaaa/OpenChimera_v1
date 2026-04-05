@@ -6,6 +6,7 @@ import struct
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -14,6 +15,128 @@ from core._database_fallback import DatabaseManager
 from core.memory.episodic import EpisodicMemory
 
 log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Continual Learning Pipeline (LoRA adapter library)
+# ---------------------------------------------------------------------------
+
+class ContinualLearningPipeline:
+    """Manages a LoRA-style adapter library for continual learning.
+
+    Adapters are lightweight fine-tuning artifacts scoped to a domain.  This
+    class maintains an in-memory registry of adapter metadata — it does *not*
+    perform actual model training but provides the bookkeeping layer that a
+    training orchestrator can consume.
+
+    Thread-safe.
+    """
+
+    def __init__(self, adapter_dir: Path | None = None) -> None:
+        self._adapter_dir = adapter_dir or Path("data/adapters")
+        self._adapters: dict[str, dict[str, Any]] = {}  # adapter_id → metadata
+        self._lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Registration
+    # ------------------------------------------------------------------
+
+    def register_adapter(
+        self,
+        adapter_id: str,
+        domain: str,
+        base_model: str,
+        dpo_pairs: int,
+    ) -> dict[str, Any]:
+        """Register a new LoRA adapter with metadata.
+
+        Returns the adapter metadata dict::
+
+            {
+                "adapter_id": str,
+                "domain": str,
+                "base_model": str,
+                "dpo_pairs": int,
+                "registered_at": float,
+                "status": "ready",
+            }
+        """
+        metadata: dict[str, Any] = {
+            "adapter_id": adapter_id,
+            "domain": domain,
+            "base_model": base_model,
+            "dpo_pairs": int(dpo_pairs),
+            "registered_at": time.time(),
+            "status": "ready",
+        }
+        with self._lock:
+            self._adapters[adapter_id] = metadata
+        log.info(
+            "[ContinualLearningPipeline] Registered adapter '%s' domain=%s pairs=%d",
+            adapter_id, domain, dpo_pairs,
+        )
+        return dict(metadata)
+
+    # ------------------------------------------------------------------
+    # Retrieval
+    # ------------------------------------------------------------------
+
+    def list_adapters(self) -> list[dict[str, Any]]:
+        """Return all registered adapters sorted by *registered_at* descending."""
+        with self._lock:
+            return sorted(
+                (dict(m) for m in self._adapters.values()),
+                key=lambda m: m["registered_at"],
+                reverse=True,
+            )
+
+    def select_adapter(self, domain: str) -> dict[str, Any] | None:
+        """Return the most recently registered adapter for *domain*, or ``None``."""
+        with self._lock:
+            candidates = [
+                m for m in self._adapters.values() if m["domain"] == domain
+            ]
+        if not candidates:
+            return None
+        best = max(candidates, key=lambda m: m["registered_at"])
+        return dict(best)
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def mark_deployed(self, adapter_id: str) -> bool:
+        """Mark adapter as deployed.
+
+        Returns ``True`` if the adapter was found and updated, ``False``
+        otherwise.
+        """
+        with self._lock:
+            adapter = self._adapters.get(adapter_id)
+            if adapter is None:
+                return False
+            adapter["status"] = "deployed"
+            log.info("[ContinualLearningPipeline] Adapter '%s' marked as deployed", adapter_id)
+            return True
+
+    # ------------------------------------------------------------------
+    # Status
+    # ------------------------------------------------------------------
+
+    def pipeline_status(self) -> dict[str, Any]:
+        """Return aggregate pipeline statistics."""
+        with self._lock:
+            adapters = list(self._adapters.values())
+        total = len(adapters)
+        deployed = sum(1 for a in adapters if a.get("status") == "deployed")
+        pending = total - deployed
+        domains = sorted({a["domain"] for a in adapters})
+        return {
+            "total_adapters": total,
+            "deployed": deployed,
+            "pending": pending,
+            "domains": domains,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +184,8 @@ class EvolutionEngine:
         self._response_quality: dict[str, dict[str, Any]] = {}  # record_id → outcome record
         self._dpo_signals: dict[str, DPOSignal] = {}  # signal_id → DPOSignal
         self._thresholds: dict[str, float] = {"similarity_threshold": 0.85}
+        # Phase 4 — Continual Learning Pipeline
+        self._pipeline = ContinualLearningPipeline()
 
     # ------------------------------------------------------------------
     # Cosine similarity
@@ -301,6 +426,21 @@ class EvolutionEngine:
             "recommendations": recommendations,
         }
 
+        # Phase 4 — register a LoRA adapter when meaningful pairs are produced
+        if len(pairs) > 0:
+            adapter_id = uuid4().hex
+            self._pipeline.register_adapter(
+                adapter_id=adapter_id,
+                domain=domain or "general",
+                base_model="openchimera-base",
+                dpo_pairs=len(pairs),
+            )
+            result["adapter_id"] = adapter_id
+            log.info(
+                "[EvolutionEngine] Registered adapter '%s' for domain=%s with %d DPO pairs",
+                adapter_id, domain, len(pairs),
+            )
+
         self._bus.publish("evolution.cycle.completed", {
             "pairs_count": len(pairs),
             "dataset_size": len(dataset),
@@ -313,6 +453,14 @@ class EvolutionEngine:
             len(pairs), len(dataset), len(fitness),
         )
         return result
+
+    # ------------------------------------------------------------------
+    # Phase 4 — Pipeline accessor
+    # ------------------------------------------------------------------
+
+    def get_pipeline(self) -> ContinualLearningPipeline:
+        """Return the :class:`ContinualLearningPipeline` instance."""
+        return self._pipeline
 
     # ------------------------------------------------------------------
     # Summary
