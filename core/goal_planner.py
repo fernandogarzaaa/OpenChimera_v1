@@ -691,6 +691,91 @@ class GoalPlanner:
 
         return result
 
+    # ========== Execution ==========
+
+    def execute_goal(self, goal_id: str, executor_fn=None) -> dict:
+        """Execute a goal, optionally using a provided executor function.
+
+        Args:
+            goal_id: Goal ID to execute
+            executor_fn: Optional callable(goal) -> dict with 'status' key
+
+        Returns:
+            Dict with goal_id, status, result, duration_seconds
+        """
+        start_time = time.time()
+        goal = self.get_goal(goal_id)
+        if goal is None:
+            return {"goal_id": goal_id, "status": "failed", "result": "Goal not found", "duration_seconds": 0.0}
+
+        if goal.preconditions:
+            for precondition in goal.preconditions:
+                if not isinstance(precondition, str) or not precondition.strip():
+                    log.warning("Goal %s has unmet precondition: %r", goal_id, precondition)
+
+        try:
+            self.update_goal(goal_id, status=GoalStatus.ACTIVE)
+            goal = self.get_goal(goal_id)
+
+            if executor_fn is not None:
+                result = executor_fn(goal)
+            else:
+                result = {"status": "completed", "result": "no executor provided"}
+
+            if result.get("status") == "completed":
+                self.update_goal(goal_id, status=GoalStatus.COMPLETED, result=json.dumps(result))
+                final_status = GoalStatus.COMPLETED
+            else:
+                self.update_goal(goal_id, status=GoalStatus.FAILED, result=json.dumps(result))
+                final_status = GoalStatus.FAILED
+
+        except Exception as exc:
+            log.warning("Goal %s execution failed: %s", goal_id, exc)
+            self.update_goal(goal_id, status=GoalStatus.FAILED, result=str(exc))
+            result = {"status": "failed", "result": str(exc)}
+            final_status = GoalStatus.FAILED
+
+        duration = round(time.time() - start_time, 4)
+        self._bus.publish("planner.goal.executed", {"goal_id": goal_id, "status": final_status})
+        return {"goal_id": goal_id, "status": final_status, "result": result, "duration_seconds": duration}
+
+    def auto_decompose(self, goal_id: str, max_subgoals: int = 5) -> list[str]:
+        """Decompose a goal into subgoals by splitting its description on conjunctions.
+
+        Args:
+            goal_id: Parent goal ID
+            max_subgoals: Maximum number of subgoals to create
+
+        Returns:
+            List of created child goal IDs
+        """
+        import re
+        goal = self.get_goal(goal_id)
+        if goal is None:
+            log.warning("auto_decompose: goal %s not found", goal_id)
+            return []
+
+        parts = re.split(r'\s+(?:and|then|also|while)\s+', goal.description, flags=re.IGNORECASE)
+        parts = [p.strip() for p in parts if p.strip()][:max_subgoals]
+
+        if len(parts) <= 1:
+            return []
+
+        created_ids: list[str] = []
+        for part in parts:
+            try:
+                child = self.create_goal(
+                    description=part,
+                    domain=goal.domain,
+                    parent_id=goal_id,
+                    max_depth=goal.max_depth,
+                )
+                created_ids.append(child.id)
+            except Exception as exc:
+                log.warning("auto_decompose: failed to create subgoal '%s': %s", part, exc)
+
+        return created_ids
+
     # ========== Introspection ==========
 
     def summary(self) -> dict[str, Any]:
