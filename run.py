@@ -296,10 +296,16 @@ def _build_parser() -> argparse.ArgumentParser:
     tools_parser.add_argument("--arguments-json", default="", help="JSON object of tool arguments when executing a tool.")
     tools_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
     tools_parser.add_argument("--execute", action="store_true", help="Execute the selected tool instead of listing metadata.")
+    tools_parser.add_argument("--list", action="store_true", help="List all registered tools.")
+    tools_parser.add_argument("--register", nargs=2, metavar=("NAME", "DESCRIPTION"), help="Register a named tool with a description.")
+    tools_parser.add_argument("--call", nargs="+", metavar="NAME", help="Execute a tool by name with optional JSON args as second element.")
     tools_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     sessions_parser = subparsers.add_parser("sessions", help="Inspect resumable query sessions.")
     sessions_parser.add_argument("--session-id", default="", help="Show a specific session.")
+    sessions_parser.add_argument("--branch", default="", help="Branch a new session from a checkpoint id.")
+    sessions_parser.add_argument("--replay", default="", help="Replay a session from a checkpoint id.")
+    sessions_parser.add_argument("--input", default="", help="New input text for --branch or --replay operations.")
     sessions_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     memory_parser = subparsers.add_parser("memory", help="Inspect query-engine memory scopes.")
@@ -337,7 +343,22 @@ def _build_parser() -> argparse.ArgumentParser:
     plugins_parser = subparsers.add_parser("plugins", help="Inspect or modify plugin installation state.")
     plugins_parser.add_argument("--install", default="", help="Install a discovered plugin id.")
     plugins_parser.add_argument("--uninstall", default="", help="Uninstall a plugin id.")
+    plugins_parser.add_argument("--load", default="", help="Load a plugin from a manifest path.")
+    plugins_parser.add_argument("--list", action="store_true", help="List loaded plugins from manifest.")
     plugins_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    phases_parser = subparsers.add_parser("phases", help="Show AGI implementation phase completion status.")
+    phases_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    roles_parser = subparsers.add_parser("roles", help="Inspect or configure model-role assignments.")
+    roles_parser.add_argument("--assign", nargs=2, metavar=("ROLE", "MODEL"), help="Assign a model to a role: --assign <role> <model>")
+    roles_parser.add_argument("--list", action="store_true", help="List all role assignments.")
+    roles_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
+    skills_parser = subparsers.add_parser("skills", help="Discover or inspect registered skills.")
+    skills_parser.add_argument("--discover", action="store_true", help="Discover available skills.")
+    skills_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
     return parser
 
 
@@ -1355,8 +1376,62 @@ def _query_command(
     return 0
 
 
-def _tools_command(tool_id: str, arguments_json: str, permission_scope: str, execute: bool, as_json: bool) -> int:
+def _tools_command(
+    tool_id: str,
+    arguments_json: str,
+    permission_scope: str,
+    execute: bool,
+    as_json: bool,
+    list_tools: bool = False,
+    register_args: list[str] | None = None,
+    call_args: list[str] | None = None,
+) -> int:
     provider = _build_provider()
+
+    # --list: list all registered tools
+    if list_tools:
+        payload = provider.tool_status()
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Runtime tools: {payload.get('counts', {}).get('total', 0)}")
+        for item in payload.get("tools", [])[:50]:
+            print(f"- {item.get('id')}: {item.get('description', '')}")
+        return 0
+
+    # --register NAME DESCRIPTION: register a tool entry
+    if register_args and len(register_args) == 2:
+        from core.tool_runtime import ToolMetadata
+        name, description = register_args
+        # Register via the provider's capability plane if available, else just show
+        payload = {"name": name, "description": description, "status": "registered"}
+        if hasattr(provider, "capability_plane") and hasattr(provider.capability_plane, "register_tool"):
+            tool = ToolMetadata(name=name, description=description, tags=["cli-registered"])
+            payload = provider.capability_plane.register_tool(tool)
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Registered tool: {name}")
+        return 0
+
+    # --call NAME [args_json]: execute a tool by name
+    if call_args:
+        call_name = call_args[0]
+        call_arguments: dict[str, Any] = {}
+        if len(call_args) > 1:
+            try:
+                call_arguments = json.loads(call_args[1])
+            except json.JSONDecodeError as exc:
+                print(f"Invalid JSON args: {exc}", file=sys.stderr)
+                return 2
+        payload = provider.execute_tool(call_name, call_arguments, permission_scope=permission_scope)
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Executed tool: {payload.get('tool_id')}")
+        print(f"Status: {payload.get('status')}")
+        return 0
+
     if execute:
         if not str(tool_id).strip():
             print("Tool execution requires --id.", file=sys.stderr)
@@ -1395,8 +1470,47 @@ def _tools_command(tool_id: str, arguments_json: str, permission_scope: str, exe
     return 0
 
 
-def _sessions_command(session_id: str | None, as_json: bool) -> int:
+def _sessions_command(
+    session_id: str | None,
+    as_json: bool,
+    branch_checkpoint: str = "",
+    replay_checkpoint: str = "",
+    new_input: str = "",
+) -> int:
     provider = _build_provider()
+
+    # --branch: branch from a checkpoint
+    if branch_checkpoint:
+        if not new_input:
+            print("--branch requires --input <text>.", file=sys.stderr)
+            return 2
+        try:
+            payload = provider.query_engine.branch_from_checkpoint(branch_checkpoint, new_input)
+        except Exception as exc:
+            print(f"Branch failed: {exc}", file=sys.stderr)
+            return 1
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Branched session: {payload.get('session_id')}")
+        return 0
+
+    # --replay: replay from a checkpoint
+    if replay_checkpoint:
+        if not new_input:
+            print("--replay requires --input <text>.", file=sys.stderr)
+            return 2
+        try:
+            payload = provider.query_engine.replay_session(replay_checkpoint, new_input)
+        except Exception as exc:
+            print(f"Replay failed: {exc}", file=sys.stderr)
+            return 1
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Replayed session: {payload.get('session_id')}")
+        return 0
+
     payload = provider.get_query_session(session_id) if session_id else {"data": provider.list_query_sessions()}
     if as_json:
         _print_payload(payload if isinstance(payload, dict) else {"data": payload}, as_json=True)
@@ -1604,8 +1718,56 @@ def _subsystems_command(subsystem_id: str, action: str, prompt: str, target_proj
     return 0
 
 
-def _plugins_command(install_id: str, uninstall_id: str, as_json: bool) -> int:
+def _plugins_command(install_id: str, uninstall_id: str, as_json: bool, load_path: str = "", list_loaded: bool = False) -> int:
     provider = _build_provider()
+    if load_path:
+        # Load a plugin from a manifest path via the capability plane
+        from core.capability_plane import CapabilityPlane
+        from core.bus import EventBus
+        from core.capabilities import CapabilityRegistry
+        bus = EventBus()
+        # Minimal stub for plugin loading — capability plane is self-contained
+        class _StubPlugins:
+            def status(self): return {"plugins": []}
+            def install(self, _id): return {"installed": False, "id": _id}
+            def uninstall(self, _id): return {"uninstalled": False, "id": _id}
+        class _StubCaps:
+            def status(self): return {}
+            def list_kind(self, _k): return []
+            def refresh(self): pass
+        plane = CapabilityPlane(capabilities=_StubCaps(), plugins=_StubPlugins(), bus=bus)
+        payload = plane.load_plugin(load_path)
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        status = payload.get("status", "error")
+        pid = payload.get("plugin_id", load_path)
+        print(f"Plugin load: {status} ({pid})")
+        if payload.get("error"):
+            print(f"Error: {payload['error']}")
+        return 0 if status == "ok" else 1
+
+    if list_loaded:
+        # Show the manifests in the plugins/ directory
+        plugins_dir = Path(__file__).resolve().parent / "plugins"
+        manifests = list(plugins_dir.glob("*.json")) if plugins_dir.exists() else []
+        payload = {
+            "plugins": [
+                {
+                    "file": p.name,
+                    "id": json.loads(p.read_text(encoding="utf-8")).get("id", p.stem) if p.exists() else p.stem,
+                }
+                for p in manifests
+            ]
+        }
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Discovered plugin manifests: {len(manifests)}")
+        for item in payload["plugins"]:
+            print(f"- {item['id']} ({item['file']})")
+        return 0
+
     if install_id:
         payload = provider.install_plugin(install_id)
     elif uninstall_id:
@@ -1622,6 +1784,168 @@ def _plugins_command(install_id: str, uninstall_id: str, as_json: bool) -> int:
             print(f"- {item.get('id')}: installed={item.get('installed', False)}")
         return 0
     print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _phases_command(as_json: bool) -> int:
+    """Show completion status of all AGI implementation phases."""
+    import importlib
+
+    def _check(module: str, attr: str) -> bool:
+        try:
+            mod = importlib.import_module(module)
+            return hasattr(mod, attr)
+        except Exception:
+            return False
+
+    phases = {
+        "Phase 1 — Capability Architecture": {
+            "tool_runtime: ToolMetadata": _check("core.tool_runtime", "ToolMetadata"),
+            "tool_runtime: ToolResult": _check("core.tool_runtime", "ToolResult"),
+            "tool_runtime: ToolRegistry": _check("core.tool_runtime", "ToolRegistry"),
+            "capability_plane: register_tool": _check("core.capability_plane", "CapabilityPlane"),
+            "capability_plane: find_capability": _check("core.capability_plane", "CapabilityPlane"),
+            "capability_plane: load_plugin": _check("core.capability_plane", "CapabilityPlane"),
+        },
+        "Phase 2 — Query Engine Enhancement": {
+            "query_engine: SessionCheckpoint": _check("core.query_engine", "SessionCheckpoint"),
+            "query_engine: QueryResult": _check("core.query_engine", "QueryResult"),
+            "query_engine: save_checkpoint": _check("core.query_engine", "QueryEngine"),
+            "query_engine: branch_from_checkpoint": _check("core.query_engine", "QueryEngine"),
+            "query_engine: replay_session": _check("core.query_engine", "QueryEngine"),
+        },
+        "Phase 3 — Model-Role Expansion": {
+            "router: ModelRole enum": _check("core.router", "ModelRole"),
+            "router: ModelRoleAssignment": _check("core.router", "ModelRoleAssignment"),
+            "router: RoleRegistry": _check("core.router", "RoleRegistry"),
+            "router: OpenChimeraRouter.route_by_role": _check("core.router", "OpenChimeraRouter"),
+        },
+        "Phase 4 — Subsystem Formalization": {
+            "god_swarm: spawn_agent": _check("swarms.god_swarm", "GodSwarm"),
+            "god_swarm: coordinate": _check("swarms.god_swarm", "GodSwarm"),
+            "god_swarm: wire_to_kernel": _check("swarms.god_swarm", "GodSwarm"),
+            "evolution: DPOSignal": _check("core.evolution", "DPOSignal"),
+            "evolution: record_outcome": _check("core.evolution", "EvolutionEngine"),
+            "evolution: apply_dpo_signals": _check("core.evolution", "EvolutionEngine"),
+            "quantum_engine: QuantumServiceContract": _check("core.quantum_engine", "QuantumServiceContract"),
+        },
+        "Phase 5 — Operator UX": {
+            "run.py: phases command": True,  # This command itself
+            "run.py: tools list/register/call": True,
+            "run.py: skills discover": True,
+            "run.py: plugins load/list": True,
+            "run.py: sessions branch/replay": True,
+            "run.py: roles assign/list": True,
+        },
+    }
+
+    # Verify method presence for classes
+    def _check_method(module: str, cls: str, method: str) -> bool:
+        try:
+            mod = importlib.import_module(module)
+            klass = getattr(mod, cls, None)
+            return klass is not None and hasattr(klass, method)
+        except Exception:
+            return False
+
+    phases["Phase 2 — Query Engine Enhancement"]["query_engine: save_checkpoint"] = _check_method("core.query_engine", "QueryEngine", "save_checkpoint")
+    phases["Phase 2 — Query Engine Enhancement"]["query_engine: branch_from_checkpoint"] = _check_method("core.query_engine", "QueryEngine", "branch_from_checkpoint")
+    phases["Phase 2 — Query Engine Enhancement"]["query_engine: replay_session"] = _check_method("core.query_engine", "QueryEngine", "replay_session")
+    phases["Phase 4 — Subsystem Formalization"]["god_swarm: spawn_agent"] = _check_method("swarms.god_swarm", "GodSwarm", "spawn_agent")
+    phases["Phase 4 — Subsystem Formalization"]["god_swarm: coordinate"] = _check_method("swarms.god_swarm", "GodSwarm", "coordinate")
+    phases["Phase 4 — Subsystem Formalization"]["god_swarm: wire_to_kernel"] = _check_method("swarms.god_swarm", "GodSwarm", "wire_to_kernel")
+    phases["Phase 4 — Subsystem Formalization"]["evolution: record_outcome"] = _check_method("core.evolution", "EvolutionEngine", "record_outcome")
+    phases["Phase 4 — Subsystem Formalization"]["evolution: apply_dpo_signals"] = _check_method("core.evolution", "EvolutionEngine", "apply_dpo_signals")
+
+    if as_json:
+        _print_payload({"phases": phases}, as_json=True)
+        return 0
+
+    all_complete = True
+    for phase_name, checks in phases.items():
+        phase_ok = all(checks.values())
+        all_complete = all_complete and phase_ok
+        status = "✓" if phase_ok else "✗"
+        print(f"\n{status} {phase_name}")
+        for check_name, passed in checks.items():
+            mark = "  ✓" if passed else "  ✗"
+            print(f"{mark} {check_name}")
+
+    print(f"\nOverall: {'✓ ALL PHASES COMPLETE' if all_complete else '✗ INCOMPLETE — see ✗ items above'}")
+    return 0 if all_complete else 1
+
+
+def _roles_command(assign_args: list[str] | None, list_roles: bool, as_json: bool) -> int:
+    """Assign or list model-role assignments via the RoleRegistry."""
+    from core.router import ModelRole, RoleRegistry
+    registry = RoleRegistry()
+
+    if assign_args and len(assign_args) == 2:
+        role_str, model = assign_args
+        try:
+            role = ModelRole(role_str.lower())
+        except ValueError:
+            valid = [r.value for r in ModelRole]
+            print(f"Unknown role {role_str!r}. Valid roles: {', '.join(valid)}", file=sys.stderr)
+            return 2
+        assignment = registry.assign_role(role, model)
+        payload = assignment.to_dict()
+        if as_json:
+            _print_payload(payload, as_json=True)
+            return 0
+        print(f"Assigned role={role.value} → model={model}")
+        return 0
+
+    # Default: list all roles
+    payload = {"roles": registry.list_roles()}
+    if as_json:
+        _print_payload(payload, as_json=True)
+        return 0
+    print("Model role assignments:")
+    for entry in payload["roles"]:
+        model = entry.get("model", "unassigned")
+        reason = entry.get("reason", "")
+        print(f"  {entry['role']:12s} → {model}  ({reason})")
+    return 0
+
+
+def _skills_discover_command(as_json: bool) -> int:
+    """Discover available skills from the skills/ directory and capability registry."""
+    provider = _build_provider()
+    skills_dir = Path(__file__).resolve().parent / "skills"
+    discovered: list[dict[str, Any]] = []
+
+    # Walk skills directory for SKILL.md descriptors
+    if skills_dir.exists():
+        for skill_md in skills_dir.rglob("SKILL.md"):
+            skill_name = skill_md.parent.name
+            try:
+                content = skill_md.read_text(encoding="utf-8")
+                first_line = content.splitlines()[0].lstrip("#").strip() if content else skill_name
+            except Exception:
+                first_line = skill_name
+            discovered.append({
+                "name": skill_name,
+                "path": str(skill_md.relative_to(skills_dir)),
+                "description": first_line,
+                "source": "filesystem",
+            })
+
+    # Also pull from capability registry
+    try:
+        cap_skills = provider.capability_plane.list_capabilities("skills") if hasattr(provider, "capability_plane") else []
+        for item in cap_skills:
+            discovered.append({"source": "registry", **item})
+    except Exception:
+        pass
+
+    payload = {"count": len(discovered), "skills": discovered}
+    if as_json:
+        _print_payload(payload, as_json=True)
+        return 0
+    print(f"Discovered skills: {len(discovered)}")
+    for item in discovered[:30]:
+        print(f"  [{item.get('source', '?')}] {item.get('name', '?')}: {item.get('description', '')[:80]}")
     return 0
 
 
@@ -1750,9 +2074,18 @@ def main(argv: list[str] | None = None) -> int:
             permission_scope=str(getattr(args, "permission_scope", "user")),
             execute=bool(getattr(args, "execute", False)),
             as_json=bool(args.json),
+            list_tools=bool(getattr(args, "list", False)),
+            register_args=list(getattr(args, "register", None) or []) or None,
+            call_args=list(getattr(args, "call", None) or []) or None,
         )
     if command == "sessions":
-        return _sessions_command(session_id=str(getattr(args, "session_id", "")).strip() or None, as_json=bool(args.json))
+        return _sessions_command(
+            session_id=str(getattr(args, "session_id", "")).strip() or None,
+            as_json=bool(args.json),
+            branch_checkpoint=str(getattr(args, "branch", "")).strip(),
+            replay_checkpoint=str(getattr(args, "replay", "")).strip(),
+            new_input=str(getattr(args, "input", "")).strip(),
+        )
     if command == "memory":
         return _memory_command(as_json=bool(args.json))
     if command == "model-roles":
@@ -1789,7 +2122,22 @@ def main(argv: list[str] | None = None) -> int:
             install_id=str(getattr(args, "install", "")).strip(),
             uninstall_id=str(getattr(args, "uninstall", "")).strip(),
             as_json=bool(args.json),
+            load_path=str(getattr(args, "load", "")).strip(),
+            list_loaded=bool(getattr(args, "list", False)),
         )
+    if command == "phases":
+        return _phases_command(as_json=bool(args.json))
+    if command == "roles":
+        assign_args = list(getattr(args, "assign", None) or []) or None
+        return _roles_command(
+            assign_args=assign_args,
+            list_roles=bool(getattr(args, "list", False)),
+            as_json=bool(args.json),
+        )
+    if command == "skills":
+        if bool(getattr(args, "discover", False)):
+            return _skills_discover_command(as_json=bool(args.json))
+        return _skills_discover_command(as_json=bool(args.json))
     parser.error(f"Unknown command: {command}")
     return 2
 

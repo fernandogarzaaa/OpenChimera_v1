@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
-from typing import Any, Callable
+import uuid
+from dataclasses import dataclass, field
+from typing import Any, Callable, List
 
 from pydantic import BaseModel, ValidationError
 
@@ -14,6 +15,168 @@ class ToolPermissionError(PermissionError):
 
 class ToolExecutionError(RuntimeError):
     pass
+
+
+# ---------------------------------------------------------------------------
+# ToolMetadata / ToolResult — structured capability descriptors
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ToolMetadata:
+    """Describes a registered tool's identity and interface."""
+    name: str
+    description: str
+    schema: dict[str, Any] | None = None
+    handler: Callable[..., Any] | None = None
+    tags: list[str] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "schema": self.schema or {"type": "object", "additionalProperties": True},
+            "tags": list(self.tags),
+            "executable": self.handler is not None,
+        }
+
+
+@dataclass
+class ToolResult:
+    """Structured result returned from ToolRegistry.execute()."""
+    tool_name: str
+    success: bool
+    output: Any
+    error: str | None = None
+    latency_ms: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tool_name": self.tool_name,
+            "success": self.success,
+            "output": self.output,
+            "error": self.error,
+            "latency_ms": round(self.latency_ms, 3),
+            "metadata": dict(self.metadata),
+        }
+
+
+# ---------------------------------------------------------------------------
+# ToolRegistry — lightweight registry for ToolMetadata-based tools
+# ---------------------------------------------------------------------------
+
+class ToolRegistry:
+    """Lightweight tool registry backed by ToolMetadata descriptors.
+
+    Provides register/unregister/list/describe/execute with timing and
+    event bus integration.  Designed to be wired into the CapabilityPlane.
+    """
+
+    def __init__(self, bus: Any | None = None) -> None:
+        self._tools: dict[str, ToolMetadata] = {}
+        self._bus = bus
+
+    # --- CRUD ---
+
+    def register(self, tool: ToolMetadata) -> ToolMetadata:
+        """Register or replace a tool by name."""
+        if not tool.name or not tool.name.strip():
+            raise ValueError("Tool name must be non-empty")
+        self._tools[tool.name] = tool
+        if self._bus is not None:
+            try:
+                self._bus.publish_nowait(
+                    "system/tools",
+                    {"action": "register", "tool_name": tool.name, "tags": tool.tags},
+                )
+            except Exception:
+                pass
+        return tool
+
+    def unregister(self, name: str) -> bool:
+        """Remove a tool by name.  Returns True if found and removed."""
+        removed = self._tools.pop(name, None) is not None
+        if removed and self._bus is not None:
+            try:
+                self._bus.publish_nowait(
+                    "system/tools",
+                    {"action": "unregister", "tool_name": name},
+                )
+            except Exception:
+                pass
+        return removed
+
+    def list_tools(self) -> list[dict[str, Any]]:
+        """Return a list of all registered tool descriptors."""
+        return [meta.to_dict() for meta in sorted(self._tools.values(), key=lambda m: m.name)]
+
+    def describe(self, name: str) -> ToolMetadata:
+        """Return the ToolMetadata for a specific tool."""
+        tool = self._tools.get(name)
+        if tool is None:
+            raise ValueError(f"Unknown tool: {name!r}")
+        return tool
+
+    def execute(self, name: str, arguments: dict[str, Any] | None = None) -> ToolResult:
+        """Execute a registered tool and return a ToolResult.
+
+        Times execution and emits an event on the bus if available.
+        """
+        tool = self._tools.get(name)
+        if tool is None:
+            return ToolResult(
+                tool_name=name,
+                success=False,
+                output=None,
+                error=f"Unknown tool: {name!r}",
+            )
+
+        if tool.handler is None:
+            return ToolResult(
+                tool_name=name,
+                success=False,
+                output=None,
+                error=f"Tool {name!r} has no handler registered",
+            )
+
+        args = dict(arguments or {})
+        started = time.perf_counter()
+        try:
+            output = tool.handler(args)
+            latency_ms = (time.perf_counter() - started) * 1000.0
+            result = ToolResult(
+                tool_name=name,
+                success=True,
+                output=output,
+                latency_ms=latency_ms,
+                metadata={"tags": tool.tags},
+            )
+        except Exception as exc:
+            latency_ms = (time.perf_counter() - started) * 1000.0
+            result = ToolResult(
+                tool_name=name,
+                success=False,
+                output=None,
+                error=str(exc),
+                latency_ms=latency_ms,
+                metadata={"tags": tool.tags},
+            )
+
+        if self._bus is not None:
+            try:
+                self._bus.publish_nowait(
+                    "system/tools",
+                    {
+                        "action": "execute",
+                        "tool_name": name,
+                        "success": result.success,
+                        "latency_ms": result.latency_ms,
+                    },
+                )
+            except Exception:
+                pass
+
+        return result
 
 
 @dataclass(frozen=True)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
@@ -10,6 +11,46 @@ from core.capabilities import CapabilityRegistry
 from core.config import ROOT
 from core.database import DatabaseManager
 from core.model_roles import ModelRoleManager
+
+
+# ---------------------------------------------------------------------------
+# QueryEngine structured result types
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SessionCheckpoint:
+    """Snapshot of a query session at a specific turn."""
+    session_id: str
+    turn_id: str
+    state: dict[str, Any]
+    timestamp: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "turn_id": self.turn_id,
+            "state": self.state,
+            "timestamp": self.timestamp,
+        }
+
+
+@dataclass
+class QueryResult:
+    """Structured result from a QueryEngine.run_query() call."""
+    response: dict[str, Any]
+    model_used: str | None = None
+    confidence: float = 0.0
+    latency_ms: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "response": self.response,
+            "model_used": self.model_used,
+            "confidence": self.confidence,
+            "latency_ms": self.latency_ms,
+            "metadata": dict(self.metadata),
+        }
 
 
 class QueryEngine:
@@ -194,6 +235,66 @@ class QueryEngine:
             },
             "summaries": summaries,
         }
+
+    # ------------------------------------------------------------------
+    # Checkpoint / branching / replay (Phase 2 additions)
+    # ------------------------------------------------------------------
+
+    def save_checkpoint(self, session_id: str, turn_id: str, state: dict[str, Any]) -> SessionCheckpoint:
+        """Persist a checkpoint of session state at a given turn."""
+        checkpoint = SessionCheckpoint(
+            session_id=session_id,
+            turn_id=turn_id,
+            state=dict(state),
+            timestamp=time.time(),
+        )
+        # Store checkpoint in the database as a special session artifact
+        checkpoint_session = {
+            "session_id": f"ckpt-{checkpoint.turn_id}",
+            "created_at": int(checkpoint.timestamp),
+            "updated_at": int(checkpoint.timestamp),
+            "title": f"Checkpoint {session_id}@{turn_id}",
+            "permission_scope": state.get("permission_scope", "user"),
+            "turns": state.get("turns", []),
+            "task_snapshots": state.get("task_snapshots", []),
+            "checkpoint_meta": {
+                "source_session_id": session_id,
+                "turn_id": turn_id,
+                "is_checkpoint": True,
+            },
+        }
+        self._save_session(checkpoint_session)
+        return checkpoint
+
+    def branch_from_checkpoint(self, checkpoint_id: str, new_input: str) -> dict[str, Any]:
+        """Create a new session branched from a checkpoint, inject new_input as first query."""
+        ckpt_session = self._find_session(f"ckpt-{checkpoint_id}")
+        if ckpt_session is None:
+            raise ValueError(f"Checkpoint not found: {checkpoint_id!r}")
+
+        # Build a new session inheriting the checkpoint state
+        branched_session_id = f"branch-{uuid.uuid4().hex[:12]}"
+        branched_session = {
+            "session_id": branched_session_id,
+            "created_at": int(time.time()),
+            "updated_at": int(time.time()),
+            "title": f"Branch from {checkpoint_id}: {new_input[:60]}",
+            "permission_scope": ckpt_session.get("permission_scope", "user"),
+            "turns": list(ckpt_session.get("turns", [])),
+            "task_snapshots": list(ckpt_session.get("task_snapshots", [])),
+            "branched_from": checkpoint_id,
+        }
+        self._save_session(branched_session)
+
+        return self.run_query(
+            query=new_input,
+            session_id=branched_session_id,
+            permission_scope=branched_session["permission_scope"],
+        )
+
+    def replay_session(self, checkpoint_id: str, new_input: str) -> dict[str, Any]:
+        """Replay a session from a checkpoint with a new input (alias for branch)."""
+        return self.branch_from_checkpoint(checkpoint_id, new_input)
 
     def _ensure_session(self, session_id: str | None, permission_scope: str, user_query: str) -> dict[str, Any]:
         if session_id:

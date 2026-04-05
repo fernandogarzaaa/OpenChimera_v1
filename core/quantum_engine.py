@@ -575,3 +575,126 @@ class ConsensusProfiler:
             "early_exit_pct": round(early_pct, 1),
             "partial_pct": round(partial_pct, 1),
         }
+
+
+# ---------------------------------------------------------------------------
+# QuantumServiceContract — managed-service wrapper for QuantumEngine
+# ---------------------------------------------------------------------------
+
+class QuantumServiceContract:
+    """Managed-service wrapper that exposes start/stop/status/health_check.
+
+    Wraps a QuantumEngine instance with lifecycle management and kernel
+    supervision integration via the event bus.
+    """
+
+    def __init__(
+        self,
+        engine: Optional[QuantumEngine] = None,
+        bus: Optional[Any] = None,
+    ) -> None:
+        self._engine = engine or QuantumEngine()
+        self._bus = bus
+        self._running = False
+        self._started_at: Optional[float] = None
+        self._heartbeat_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def start(self) -> dict[str, Any]:
+        """Start the quantum engine service and begin heartbeat emission."""
+        if self._running:
+            return {"status": "already_running", "started_at": self._started_at}
+        self._running = True
+        self._started_at = time.time()
+        self._stop_event.clear()
+        self._heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            daemon=True,
+            name="QuantumServiceHeartbeat",
+        )
+        self._heartbeat_thread.start()
+        self._emit("quantum_engine.service.started", {"started_at": self._started_at})
+        log.info("[QuantumService] Started")
+        return {"status": "started", "started_at": self._started_at}
+
+    def stop(self) -> dict[str, Any]:
+        """Stop the quantum engine service and heartbeat thread."""
+        if not self._running:
+            return {"status": "not_running"}
+        self._running = False
+        self._stop_event.set()
+        if self._heartbeat_thread and self._heartbeat_thread.is_alive():
+            self._heartbeat_thread.join(timeout=3.0)
+        self._emit("quantum_engine.service.stopped", {"stopped_at": time.time()})
+        log.info("[QuantumService] Stopped")
+        return {"status": "stopped", "uptime_seconds": time.time() - (self._started_at or time.time())}
+
+    # ------------------------------------------------------------------
+    # Status / health
+    # ------------------------------------------------------------------
+
+    def status(self) -> dict[str, Any]:
+        """Return a structured service status dict."""
+        profiler_summary = self._engine.profiler.summary() if self._engine.profiler else {}
+        return {
+            "running": self._running,
+            "started_at": self._started_at,
+            "uptime_seconds": (time.time() - self._started_at) if self._started_at and self._running else 0.0,
+            "quorum": self._engine.quorum,
+            "early_exit_conf": self._engine.early_exit_conf,
+            "hard_timeout_ms": self._engine.hard_timeout_ms,
+            "profiler": profiler_summary,
+        }
+
+    def health_check(self) -> bool:
+        """Verify core quantum operations are functional.
+
+        Runs a minimal synchronous sanity check: verifies that the engine
+        can perform voting on a synthetic response set without crashing.
+        """
+        try:
+            dummy_responses = [
+                AgentResponse(agent_id="hc-a", answer="ok", latency_ms=1.0, confidence=0.9),
+                AgentResponse(agent_id="hc-b", answer="ok", latency_ms=1.0, confidence=0.85),
+            ]
+            result = self._engine._vote(dummy_responses, ["hc-a", "hc-b"], 2.0, False)
+            return result.confidence > 0 and result.answer == "ok"
+        except Exception as exc:
+            log.warning("[QuantumService] Health check failed: %s", exc)
+            return False
+
+    # ------------------------------------------------------------------
+    # Engine delegation
+    # ------------------------------------------------------------------
+
+    @property
+    def engine(self) -> QuantumEngine:
+        return self._engine
+
+    # ------------------------------------------------------------------
+    # Heartbeat
+    # ------------------------------------------------------------------
+
+    def _heartbeat_loop(self, interval_seconds: float = 30.0) -> None:
+        """Emit periodic heartbeat events so the kernel supervisor can track liveness."""
+        while not self._stop_event.wait(timeout=interval_seconds):
+            if not self._running:
+                break
+            healthy = self.health_check()
+            self._emit("quantum_engine.heartbeat", {
+                "healthy": healthy,
+                "uptime_seconds": time.time() - (self._started_at or time.time()),
+            })
+
+    def _emit(self, topic: str, payload: dict[str, Any]) -> None:
+        if self._bus is None:
+            return
+        try:
+            self._bus.publish_nowait(topic, payload)
+        except Exception:
+            pass
+

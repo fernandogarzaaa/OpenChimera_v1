@@ -5,6 +5,7 @@ import math
 import struct
 import threading
 import time
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
@@ -13,6 +14,31 @@ from core._database_fallback import DatabaseManager
 from core.memory.episodic import EpisodicMemory
 
 log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# DPOSignal — structured preference signal for inference path injection
+# ---------------------------------------------------------------------------
+
+@dataclass
+class DPOSignal:
+    """Carries a single direct preference optimization signal."""
+    prompt: str
+    chosen: str
+    rejected: str
+    reward_delta: float = 0.0
+    signal_id: str = field(default_factory=lambda: uuid4().hex)
+    recorded_at: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "signal_id": self.signal_id,
+            "prompt": self.prompt,
+            "chosen": self.chosen,
+            "rejected": self.rejected,
+            "reward_delta": self.reward_delta,
+            "recorded_at": self.recorded_at,
+        }
 
 
 class EvolutionEngine:
@@ -31,6 +57,9 @@ class EvolutionEngine:
         self._cycles_run = 0
         self._total_pairs = 0
         self._last_cycle_ts: float | None = None
+        # Inference-path tracking
+        self._response_quality: dict[str, dict[str, Any]] = {}  # record_id → outcome record
+        self._dpo_signals: dict[str, DPOSignal] = {}  # signal_id → DPOSignal
 
     # ------------------------------------------------------------------
     # Cosine similarity
@@ -295,4 +324,93 @@ class EvolutionEngine:
                 "cycles_run": self._cycles_run,
                 "total_pairs_generated": self._total_pairs,
                 "last_cycle_timestamp": self._last_cycle_ts,
+                "response_outcomes": len(self._response_quality),
+                "dpo_signals_recorded": len(self._dpo_signals),
             }
+
+    # ------------------------------------------------------------------
+    # Inference-path DPO signal tracking (Phase 4 additions)
+    # ------------------------------------------------------------------
+
+    def __post_init_extras(self) -> None:
+        """Extra state initialised alongside __init__."""
+        # These are set in __init__ — here for documentation
+        pass
+
+    def record_outcome(self, session_id: str, response: str, outcome_score: float) -> dict[str, Any]:
+        """Record an outcome score for a response in a session.
+
+        outcome_score: float in [0, 1] — 1.0 = excellent, 0.0 = failure.
+        """
+        record = {
+            "session_id": session_id,
+            "response_preview": response[:300],
+            "outcome_score": float(outcome_score),
+            "recorded_at": time.time(),
+            "record_id": uuid4().hex,
+        }
+        with self._lock:
+            self._response_quality[record["record_id"]] = record
+
+        self._bus.publish("evolution.outcome.recorded", {
+            "session_id": session_id,
+            "outcome_score": outcome_score,
+            "record_id": record["record_id"],
+        })
+        log.debug("[Evolution] Outcome recorded: session=%s score=%.3f", session_id, outcome_score)
+        return record
+
+    def apply_dpo_signals(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Inject top learned DPO preferences into an inference context dict.
+
+        Adds ``dpo_preferences`` key with the most relevant chosen/rejected pairs
+        so the inference layer can condition on them.
+        """
+        with self._lock:
+            signals = list(self._dpo_signals.values())
+
+        # Sort by reward_delta descending — most impactful signals first
+        signals.sort(key=lambda s: s.reward_delta, reverse=True)
+        top = signals[:5]
+
+        enhanced = dict(context)
+        enhanced["dpo_preferences"] = [s.to_dict() for s in top]
+        enhanced["dpo_signal_count"] = len(self._dpo_signals)
+        return enhanced
+
+    def track_response_quality(self, response_id: str, better_than_id: str) -> DPOSignal | None:
+        """Record that response_id is preferred over better_than_id.
+
+        Attempts to create a DPOSignal if both outcome records exist.
+        Returns the created DPOSignal or None if records are missing.
+        """
+        with self._lock:
+            chosen_rec = self._response_quality.get(response_id)
+            rejected_rec = self._response_quality.get(better_than_id)
+
+        if chosen_rec is None or rejected_rec is None:
+            log.warning(
+                "[Evolution] track_response_quality: missing record(s) — "
+                "response_id=%s better_than_id=%s", response_id, better_than_id,
+            )
+            return None
+
+        reward_delta = (
+            float(chosen_rec.get("outcome_score", 0.5))
+            - float(rejected_rec.get("outcome_score", 0.5))
+        )
+        signal = DPOSignal(
+            prompt=chosen_rec.get("session_id", ""),
+            chosen=chosen_rec.get("response_preview", ""),
+            rejected=rejected_rec.get("response_preview", ""),
+            reward_delta=reward_delta,
+        )
+        with self._lock:
+            self._dpo_signals[signal.signal_id] = signal
+
+        self._bus.publish("evolution.dpo_signal.tracked", {
+            "signal_id": signal.signal_id,
+            "reward_delta": reward_delta,
+        })
+        log.info("[Evolution] DPO signal tracked: %s (delta=%.3f)", signal.signal_id, reward_delta)
+        return signal
