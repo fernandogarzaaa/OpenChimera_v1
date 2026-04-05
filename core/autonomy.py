@@ -30,6 +30,8 @@ class ScheduledJob:
     last_run_at: float = 0.0
     last_status: str = "never"
     last_result: dict[str, Any] = field(default_factory=dict)
+    run_count: int = 0          # total executions (success or failure)
+    success_streak: int = 0     # consecutive successes without failure
 
 
 JOB_SPECS: dict[str, dict[str, Any]] = {
@@ -167,12 +169,62 @@ class AutonomyScheduler:
     def _run_loop(self) -> None:
         while self._running:
             now = time.time()
+            # Fetch ECE score lazily — used by predictive scheduling
+            ece_score: float | None = None
+            try:
+                if self._causal is not None:
+                    ece_score = self._causal.summary().get("avg_confidence")
+            except Exception:
+                pass
+
             for job in self.jobs.values():
                 if not job.enabled:
                     continue
                 if job.last_run_at == 0.0 or (now - job.last_run_at) >= job.interval_seconds:
                     self.run_job(job.name)
+                elif self._should_run_predictive(job.name, job, ece_score):
+                    self.run_job(job.name)
             time.sleep(5)
+
+    # ------------------------------------------------------------------
+    # Predictive scheduling (Phase 3 — World Modeling)
+    # ------------------------------------------------------------------
+
+    def _should_run_predictive(
+        self,
+        job_name: str,
+        job: ScheduledJob,
+        ece_score: float | None = None,
+    ) -> bool:
+        """Decide whether to run a job ahead of its normal schedule.
+
+        Rules (in priority order):
+        1. High ECE score (> 0.15) triggers early execution of learning jobs.
+        2. Last execution failed → halve effective interval (run sooner).
+        3. Long success streak (> 5 runs without failure) → extend interval
+           by 25 % (do NOT run yet).
+        4. Otherwise defer to normal clock-based scheduling.
+        """
+        now = time.time()
+
+        # Rule 1 — high calibration error triggers learning jobs
+        _LEARNING_JOBS = {"learn_fallback_rankings", "evolve_dpo_pairs"}
+        if ece_score is not None and ece_score > 0.15 and job_name in _LEARNING_JOBS:
+            return True
+
+        # Rule 2 — failed last run: halve interval (run sooner by 50%)
+        if job.last_status == "failed" or job.last_status == "error":
+            effective_interval = job.interval_seconds * 0.5
+            if job.last_run_at > 0.0 and (now - job.last_run_at) >= effective_interval:
+                return True
+
+        # Rule 3 — long success streak: extend interval by 25%
+        if job.last_status == "ok" and job.success_streak > 5:
+            extended_interval = job.interval_seconds * 1.25
+            if job.last_run_at > 0.0 and (now - job.last_run_at) < extended_interval:
+                return False  # Not yet due under extended schedule
+
+        return False
 
     def run_job(self, job_name: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         job = self.jobs.get(job_name)
@@ -196,11 +248,14 @@ class AutonomyScheduler:
             result = handler(payload or {})
             job.last_status = "ok"
             job.last_result = result
+            job.success_streak += 1
         except Exception as exc:
             result = {"status": "error", "error": str(exc)}
             job.last_status = "error"
             job.last_result = result
+            job.success_streak = 0
 
+        job.run_count += 1
         job.last_run_at = time.time()
         self._save_job_state()
         self.bus.publish_nowait("system/autonomy/job", {"job": job_name, "result": result})

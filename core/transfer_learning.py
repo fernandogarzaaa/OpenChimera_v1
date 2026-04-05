@@ -92,6 +92,107 @@ class DomainProfile:
 
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Domain World Model (Phase 3 — World Modeling)
+# ---------------------------------------------------------------------------
+
+class DomainWorldModel:
+    """Per-domain causal model of skill outcomes used by TransferLearning.
+
+    Tracks success/failure counts and average confidence for each skill
+    applied in a specific domain.  Used to inform cross-domain transfer
+    decisions with richer outcome evidence.
+
+    Parameters
+    ──────────
+    domain  Name of the domain this model covers.
+    """
+
+    def __init__(self, domain: str) -> None:
+        self.domain = domain
+        self._lock = threading.RLock()
+        # skill_name → {"successes": int, "failures": int, "total_conf": float, "count": int}
+        self._skills: Dict[str, Dict[str, Any]] = {}
+
+    def record_skill_outcome(
+        self,
+        skill_name: str,
+        outcome: str,
+        confidence: float,
+    ) -> None:
+        """Record the result of applying a skill in this domain.
+
+        Parameters
+        ──────────
+        skill_name  Identifier for the skill.
+        outcome     ``"success"`` or ``"failure"`` (case-insensitive).
+        confidence  Confidence score for this observation (0..1).
+        """
+        outcome_norm = outcome.lower().strip()
+        confidence = max(0.0, min(1.0, float(confidence)))
+
+        with self._lock:
+            if skill_name not in self._skills:
+                self._skills[skill_name] = {
+                    "successes": 0,
+                    "failures": 0,
+                    "total_conf": 0.0,
+                    "count": 0,
+                }
+            entry = self._skills[skill_name]
+            if outcome_norm == "success":
+                entry["successes"] += 1
+            else:
+                entry["failures"] += 1
+            entry["total_conf"] += confidence
+            entry["count"] += 1
+
+    def best_skills(self, top_k: int = 3) -> List[str]:
+        """Return the top-k skills sorted by average success confidence.
+
+        Skills with no recorded outcomes are excluded.  Ties are broken by
+        name for determinism.
+
+        Parameters
+        ──────────
+        top_k  Maximum number of skill names to return.
+        """
+        with self._lock:
+            scored: List[Tuple[float, str]] = []
+            for name, entry in self._skills.items():
+                if entry["count"] == 0:
+                    continue
+                avg_conf = entry["total_conf"] / entry["count"]
+                # Weight by success ratio
+                success_ratio = entry["successes"] / entry["count"]
+                score = avg_conf * success_ratio
+                scored.append((score, name))
+            scored.sort(key=lambda x: (-x[0], x[1]))
+            return [name for _, name in scored[:top_k]]
+
+    def export(self) -> Dict[str, Any]:
+        """Return a serialisable summary of this domain model.
+
+        Returns
+        ──────
+        dict with keys ``domain`` and ``skills``, where each skill entry
+        has ``successes``, ``failures``, and ``avg_conf``.
+        """
+        with self._lock:
+            skills_out: Dict[str, Dict[str, Any]] = {}
+            for name, entry in self._skills.items():
+                avg_conf = (
+                    entry["total_conf"] / entry["count"] if entry["count"] > 0 else 0.0
+                )
+                skills_out[name] = {
+                    "successes": entry["successes"],
+                    "failures": entry["failures"],
+                    "avg_conf": avg_conf,
+                }
+            return {"domain": self.domain, "skills": skills_out}
+
+
+# ---------------------------------------------------------------------------
 # Transfer Learning engine
 # ---------------------------------------------------------------------------
 
@@ -134,6 +235,9 @@ class TransferLearning:
 
         # Transfer log: list of (timestamp, source_domain, target_domain, pattern_id, score)
         self._transfer_log: List[Tuple[float, str, str, str, float]] = []
+
+        # Phase 3 — per-domain causal world models
+        self._domain_models: Dict[str, DomainWorldModel] = {}
 
         log.info(
             "TransferLearning initialised (max_patterns=%d, decay_halflife=%.0fs)",
@@ -440,6 +544,48 @@ class TransferLearning:
                 except (KeyError, ValueError) as exc:
                     log.warning("Skipped invalid pattern during import: %s", exc)
         return count
+
+    # ------------------------------------------------------------------
+    # Domain World Model integration (Phase 3 — World Modeling)
+    # ------------------------------------------------------------------
+
+    def update_domain_model(
+        self,
+        domain: str,
+        skill_name: str,
+        outcome: str,
+        confidence: float,
+    ) -> None:
+        """Record a skill outcome in the domain's causal world model.
+
+        Creates the :class:`DomainWorldModel` for ``domain`` on first use.
+
+        Parameters
+        ──────────
+        domain      Target domain identifier.
+        skill_name  Skill that was applied.
+        outcome     ``"success"`` or ``"failure"``.
+        confidence  Confidence of the observation (0..1).
+        """
+        with self._lock:
+            if domain not in self._domain_models:
+                self._domain_models[domain] = DomainWorldModel(domain)
+            model = self._domain_models[domain]
+        model.record_skill_outcome(skill_name, outcome, confidence)
+
+    def get_domain_model(self, domain: str) -> DomainWorldModel:
+        """Return the :class:`DomainWorldModel` for ``domain``.
+
+        Creates a new empty model if none exists yet.
+
+        Parameters
+        ──────────
+        domain  Domain identifier.
+        """
+        with self._lock:
+            if domain not in self._domain_models:
+                self._domain_models[domain] = DomainWorldModel(domain)
+            return self._domain_models[domain]
 
     # ------------------------------------------------------------------
     # Internals
