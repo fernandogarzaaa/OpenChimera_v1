@@ -351,6 +351,9 @@ class CausalReasoning:
         # Observation log for causal inference
         self._observations: List[Tuple[float, str, float]] = []
 
+        # Phase 5 — symbolic counterfactual reasoner (wired after class def)
+        self._cf_reasoner: Optional["CounterfactualReasoner"] = None
+
         log.info("CausalReasoning initialised")
 
     @property
@@ -621,6 +624,31 @@ class CausalReasoning:
         return self._graph.find_confounders(var_a, var_b)
 
     # ------------------------------------------------------------------
+    # Phase 5 — symbolic counterfactual delegation
+    # ------------------------------------------------------------------
+
+    def _get_cf_reasoner(self) -> "CounterfactualReasoner":
+        """Lazy-init the CounterfactualReasoner to avoid forward-ref issues."""
+        if self._cf_reasoner is None:
+            self._cf_reasoner = CounterfactualReasoner(self)
+        return self._cf_reasoner
+
+    def symbolic_counterfactual(
+        self,
+        intervention_node: str,
+        intervention_value: str,
+        query_node: str,
+    ) -> Dict[str, Any]:
+        """Delegate to CounterfactualReasoner.counterfactual() (Phase 5).
+
+        Answers "what if *intervention_node* had been *intervention_value*,
+        what would *query_node* be?" using path analysis on the causal graph.
+        """
+        return self._get_cf_reasoner().counterfactual(
+            intervention_node, intervention_value, query_node,
+        )
+
+    # ------------------------------------------------------------------
     # Summary / introspection
     # ------------------------------------------------------------------
 
@@ -746,3 +774,194 @@ class CausalReasoning:
         if std_x == 0.0 or std_y == 0.0:
             return 0.0
         return cov / (std_x * std_y)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — CounterfactualReasoner (symbolic graph-based counterfactuals)
+# ---------------------------------------------------------------------------
+
+class CounterfactualReasoner:
+    """Answers 'what if X had been different?' using the causal graph.
+
+    Operates on the *structure* of the causal graph (node/edge existence and
+    weights) rather than on numeric variable values.  This makes it
+    complementary to :meth:`CausalReasoning.counterfactual`, which propagates
+    numeric deltas.
+
+    Parameters
+    ──────────
+    causal  The :class:`CausalReasoning` engine whose graph is queried.
+    """
+
+    def __init__(self, causal: CausalReasoning) -> None:
+        self._causal = causal
+
+    # ------------------------------------------------------------------
+    # Core counterfactual query
+    # ------------------------------------------------------------------
+
+    def counterfactual(
+        self,
+        intervention_node: str,
+        intervention_value: str,
+        query_node: str,
+    ) -> Dict[str, Any]:
+        """Simulate: if *intervention_node* had been *intervention_value*, what
+        would *query_node* be?
+
+        Algorithm:
+        1. Find all causal paths from *intervention_node* to *query_node*.
+        2. If no path exists: predicted_value = "unchanged", confidence = 1.0.
+        3. If paths exist: predicted_value = "affected",
+           confidence = avg(min_confidence along each path).
+        4. Return a rich result dict with explanation.
+
+        Returns
+        ──────
+        dict with keys: query_node, intervention_node, intervention_value,
+        predicted_value, confidence, paths, explanation.
+        """
+        graph = self._causal.graph
+        paths: List[CausalPathway] = graph.find_causal_paths(
+            intervention_node, query_node,
+        )
+
+        if not paths:
+            explanation = (
+                f"No causal pathway connects '{intervention_node}' to "
+                f"'{query_node}'. Setting {intervention_node}="
+                f"{intervention_value!r} would leave {query_node} unchanged."
+            )
+            return {
+                "query_node": query_node,
+                "intervention_node": intervention_node,
+                "intervention_value": intervention_value,
+                "predicted_value": "unchanged",
+                "confidence": 1.0,
+                "paths": [],
+                "explanation": explanation,
+            }
+
+        # Confidence = mean of per-path min_confidence values
+        avg_conf = sum(p.min_confidence for p in paths) / len(paths)
+        avg_conf = round(avg_conf, 4)
+
+        # Build human-readable path descriptions
+        path_strs = [" → ".join(p.path) for p in paths]
+
+        # Explanation uses the strongest path
+        strongest = max(paths, key=lambda p: abs(p.cumulative_strength))
+        explanation = (
+            f"If '{intervention_node}' had been {intervention_value!r}, "
+            f"it would propagate through {len(paths)} path(s) to affect "
+            f"'{query_node}'. Strongest path: {' → '.join(strongest.path)} "
+            f"(cumulative strength {strongest.cumulative_strength:.4f})."
+        )
+
+        return {
+            "query_node": query_node,
+            "intervention_node": intervention_node,
+            "intervention_value": intervention_value,
+            "predicted_value": "affected",
+            "confidence": avg_conf,
+            "paths": path_strs,
+            "explanation": explanation,
+        }
+
+    # ------------------------------------------------------------------
+    # Outcome explanation
+    # ------------------------------------------------------------------
+
+    def explain_outcome(
+        self,
+        outcome_node: str,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Explain why *outcome_node* occurred by tracing back causal ancestors.
+
+        Returns
+        ──────
+        dict with keys: outcome, causes, explanation, confidence.
+        """
+        graph = self._causal.graph
+        direct_causes: List[CausalEdge] = graph.get_causes(outcome_node)
+
+        cause_names: List[str] = [e.cause for e in direct_causes]
+
+        if not cause_names:
+            return {
+                "outcome": outcome_node,
+                "causes": [],
+                "explanation": f"No direct causes found for '{outcome_node}'.",
+                "confidence": 0.0,
+            }
+
+        avg_conf = round(
+            sum(e.confidence for e in direct_causes) / len(direct_causes), 4,
+        )
+
+        cause_list = ", ".join(f"'{c}'" for c in cause_names)
+        explanation = (
+            f"'{outcome_node}' is directly caused by {cause_list}. "
+            f"Average causal confidence across {len(direct_causes)} edge(s): "
+            f"{avg_conf:.2f}."
+        )
+        if context:
+            explanation += f" Context provided: {list(context.keys())}."
+
+        return {
+            "outcome": outcome_node,
+            "causes": cause_names,
+            "explanation": explanation,
+            "confidence": avg_conf,
+        }
+
+    # ------------------------------------------------------------------
+    # Alternative scenario generation
+    # ------------------------------------------------------------------
+
+    def generate_alternatives(
+        self,
+        current_outcome: str,
+        n: int = 3,
+    ) -> List[Dict[str, Any]]:
+        """Generate *n* alternative scenarios via different interventions.
+
+        For each direct cause of *current_outcome*, simulates "what if we had
+        intervened on that cause instead?", producing an alternative prediction.
+
+        Returns
+        ──────
+        List of dicts: {intervention, predicted_change, confidence}.
+        """
+        graph = self._causal.graph
+        causes: List[CausalEdge] = graph.get_causes(current_outcome)
+
+        if not causes:
+            # No causes known — generate generic placeholders using all
+            # graph variables that are not the outcome itself.
+            all_vars = sorted(graph.variables - {current_outcome})
+            alternatives: List[Dict[str, Any]] = []
+            for var in all_vars[:n]:
+                alternatives.append({
+                    "intervention": var,
+                    "predicted_change": "unknown (no direct path)",
+                    "confidence": 0.0,
+                })
+            return alternatives[:n]
+
+        # Sort by absolute strength descending
+        sorted_causes = sorted(causes, key=lambda e: abs(e.strength), reverse=True)
+        alternatives = []
+        for edge in sorted_causes[:n]:
+            result = self.counterfactual(
+                edge.cause, f"altered({edge.cause})", current_outcome,
+            )
+            alternatives.append({
+                "intervention": edge.cause,
+                "predicted_change": result["predicted_value"],
+                "confidence": result["confidence"],
+            })
+
+        return alternatives[:n]
+

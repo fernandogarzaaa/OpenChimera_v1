@@ -239,6 +239,9 @@ class TransferLearning:
         # Phase 3 — per-domain causal world models
         self._domain_models: Dict[str, DomainWorldModel] = {}
 
+        # Phase 5 — cross-domain skill synthesizer
+        self._synthesizer: "SkillSynthesizer" = SkillSynthesizer(self)
+
         log.info(
             "TransferLearning initialised (max_patterns=%d, decay_halflife=%.0fs)",
             self._max_patterns, self._decay_halflife,
@@ -623,3 +626,175 @@ class TransferLearning:
                 if kw_set:
                     kw_set.discard(entry.pattern_id)
         log.debug("[Transfer] Pruned %d patterns", to_remove)
+
+    # ------------------------------------------------------------------
+    # Phase 5 — pattern extraction helper + skill synthesis delegation
+    # ------------------------------------------------------------------
+
+    def extract_patterns(self, domain: str) -> List[PatternEntry]:
+        """Return all patterns registered for *domain*.
+
+        Alias for ``list_patterns(domain=domain)`` exposed explicitly so that
+        :class:`SkillSynthesizer` and tests can call it by an intuitive name.
+
+        Parameters
+        ──────────
+        domain  Domain identifier to extract patterns from.
+
+        Returns
+        ──────
+        List of :class:`PatternEntry` objects for the domain.
+        """
+        return self.list_patterns(domain=domain)
+
+    def synthesize_skill(
+        self,
+        source_domains: List[str],
+        target_domain: str,
+        skill_name: str,
+    ) -> Dict[str, Any]:
+        """Synthesize a new skill from patterns across multiple source domains.
+
+        Delegates to :class:`SkillSynthesizer`.
+
+        Parameters
+        ──────────
+        source_domains  Domains whose patterns are merged.
+        target_domain   Domain in which the synthesized skill is registered.
+        skill_name      Human-readable name for the new synthesized skill.
+
+        Returns
+        ──────
+        dict describing the synthesized skill (see :meth:`SkillSynthesizer.synthesize`).
+        """
+        return self._synthesizer.synthesize(source_domains, target_domain, skill_name)
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — SkillSynthesizer
+# ---------------------------------------------------------------------------
+
+class SkillSynthesizer:
+    """Synthesizes new skills by combining patterns from multiple source domains.
+
+    Operates on a :class:`TransferLearning` engine to extract and merge
+    patterns, then registers the composite result as a new pattern in a
+    target domain.
+
+    Parameters
+    ──────────
+    transfer_learning  The :class:`TransferLearning` engine to read from and
+                       write to.
+    """
+
+    def __init__(self, transfer_learning: "TransferLearning") -> None:
+        self._transfer = transfer_learning
+        self._synthesized: List[Dict[str, Any]] = []
+        self._lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Synthesis
+    # ------------------------------------------------------------------
+
+    def synthesize(
+        self,
+        source_domains: List[str],
+        target_domain: str,
+        skill_name: str,
+    ) -> Dict[str, Any]:
+        """Synthesize a new skill from *source_domains* for *target_domain*.
+
+        Steps:
+        1. Extract all patterns from each source domain.
+        2. Merge pattern keywords (union) and average success rates.
+        3. Register a new pattern in *target_domain* representing the synthesis.
+        4. Record and return the synthesis metadata.
+
+        Parameters
+        ──────────
+        source_domains  Domains to pull patterns from.
+        target_domain   Domain to register the synthesized pattern in.
+        skill_name      Name for the synthesized skill / pattern.
+
+        Returns
+        ──────
+        dict with keys: skill_name, source_domains, target_domain,
+        patterns_merged, created_at.
+        """
+        all_patterns: List[PatternEntry] = []
+        for domain in source_domains:
+            all_patterns.extend(self._transfer.extract_patterns(domain))
+
+        patterns_merged = len(all_patterns)
+
+        # Merge keywords — union of all source keywords
+        merged_keywords: set = set()
+        for p in all_patterns:
+            merged_keywords.update(p.keywords)
+        # Add skill_name words as extra keywords
+        for word in skill_name.lower().split():
+            merged_keywords.add(word)
+
+        # Average success rate across source patterns (default 0.5 if none)
+        if all_patterns:
+            avg_rate = sum(p.success_rate for p in all_patterns) / len(all_patterns)
+        else:
+            avg_rate = 0.5
+
+        # Build a merged description
+        domain_str = ", ".join(source_domains) if source_domains else "unknown"
+        description = (
+            f"Synthesized skill '{skill_name}' from {len(source_domains)} "
+            f"domain(s): {domain_str}. Merged {patterns_merged} pattern(s)."
+        )
+
+        # Register the synthesized pattern in the target domain
+        self._transfer.register_pattern(
+            source_domain=target_domain,
+            pattern_type=PatternType.ANALOGY,
+            description=description,
+            keywords=sorted(merged_keywords),
+            success_rate=round(avg_rate, 4),
+            metadata={
+                "synthesized": True,
+                "skill_name": skill_name,
+                "source_domains": source_domains,
+                "patterns_merged": patterns_merged,
+            },
+        )
+
+        result: Dict[str, Any] = {
+            "skill_name": skill_name,
+            "source_domains": source_domains,
+            "target_domain": target_domain,
+            "patterns_merged": patterns_merged,
+            "created_at": time.time(),
+        }
+
+        with self._lock:
+            self._synthesized.append(result)
+
+        log.info(
+            "[SkillSynthesizer] Synthesized '%s' in '%s' from %d domain(s), "
+            "%d pattern(s) merged.",
+            skill_name, target_domain, len(source_domains), patterns_merged,
+        )
+        return result
+
+    # ------------------------------------------------------------------
+    # Listing
+    # ------------------------------------------------------------------
+
+    def list_synthesized(self) -> List[Dict[str, Any]]:
+        """Return all synthesized skill records (snapshots)."""
+        with self._lock:
+            return list(self._synthesized)
+
+    def get_synthesis(self, skill_name: str) -> Optional[Dict[str, Any]]:
+        """Return a specific synthesized skill record by name, or None."""
+        with self._lock:
+            for entry in reversed(self._synthesized):
+                if entry["skill_name"] == skill_name:
+                    return dict(entry)
+        return None
+

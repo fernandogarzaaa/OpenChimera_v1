@@ -320,3 +320,163 @@ _SUPPORTING_AGENTS: list[dict] = [
         "capabilities": ["registry-update", "knowledge-indexing", "pattern-curation"],
     },
 ]
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — EmergentSwarm
+# ---------------------------------------------------------------------------
+
+import threading as _threading  # noqa: E402
+
+
+class EmergentSwarm:
+    """Emergent multi-agent coordination with collective decision-making.
+
+    Agents cast weighted votes on topics.  Votes are tallied using confidence-
+    weighted majority, and recurring high-confidence outcomes are recorded as
+    *emergent behaviors* — stable collective patterns the swarm has learned.
+
+    Parameters
+    ----------
+    agents  List of agent name strings participating in the swarm.
+    bus     Optional event bus for publishing coordination events.
+    """
+
+    def __init__(self, agents: list[str], bus: "Any | None" = None) -> None:
+        self._agents = list(agents)
+        self._bus = bus
+        # topic -> list of {agent, vote, confidence, ts}
+        self._votes: dict[str, list[dict[str, Any]]] = {}
+        self._emergent_behaviors: list[dict[str, Any]] = []
+        self._lock = _threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Voting
+    # ------------------------------------------------------------------
+
+    def cast_vote(
+        self,
+        topic: str,
+        agent: str,
+        vote: str,
+        confidence: float = 0.5,
+    ) -> None:
+        """Record a vote from *agent* on *topic*."""
+        confidence = max(0.0, min(1.0, float(confidence)))
+        entry: dict[str, Any] = {
+            "agent": agent,
+            "vote": vote,
+            "confidence": confidence,
+            "ts": time.time(),
+        }
+        with self._lock:
+            self._votes.setdefault(topic, []).append(entry)
+
+    # ------------------------------------------------------------------
+    # Tallying
+    # ------------------------------------------------------------------
+
+    def tally(self, topic: str) -> dict[str, Any]:
+        """Tally votes for *topic* using confidence-weighted voting.
+
+        Returns dict with keys: topic, winner, confidence, vote_count, breakdown.
+        """
+        with self._lock:
+            votes = list(self._votes.get(topic, []))
+
+        if not votes:
+            return {
+                "topic": topic,
+                "winner": "",
+                "confidence": 0.0,
+                "vote_count": 0,
+                "breakdown": {},
+            }
+
+        breakdown: dict[str, float] = {}
+        for v in votes:
+            breakdown[v["vote"]] = breakdown.get(v["vote"], 0.0) + v["confidence"]
+
+        winner = max(breakdown, key=lambda k: breakdown[k])
+        total_weight = sum(breakdown.values())
+        win_confidence = round(breakdown[winner] / total_weight, 4) if total_weight else 0.0
+
+        return {
+            "topic": topic,
+            "winner": winner,
+            "confidence": win_confidence,
+            "vote_count": len(votes),
+            "breakdown": {k: round(v, 4) for k, v in breakdown.items()},
+        }
+
+    # ------------------------------------------------------------------
+    # Emergent pattern detection
+    # ------------------------------------------------------------------
+
+    def detect_emergent_pattern(self, topic: str) -> "dict[str, Any] | None":
+        """Detect if a stable emergent pattern has formed.
+
+        Returns dict with behavior/confidence/agents_involved, or None.
+        """
+        result = self.tally(topic)
+        if result["confidence"] <= 0.7 or not result["winner"]:
+            return None
+
+        behavior_record: dict[str, Any] = {
+            "behavior": result["winner"],
+            "topic": topic,
+            "confidence": result["confidence"],
+            "agents_involved": result["vote_count"],
+            "detected_at": time.time(),
+        }
+
+        with self._lock:
+            already = any(
+                b["topic"] == topic and b["behavior"] == result["winner"]
+                for b in self._emergent_behaviors
+            )
+            if not already:
+                self._emergent_behaviors.append(behavior_record)
+
+        return {
+            "behavior": behavior_record["behavior"],
+            "confidence": behavior_record["confidence"],
+            "agents_involved": behavior_record["agents_involved"],
+        }
+
+    # ------------------------------------------------------------------
+    # Collective reasoning cycle
+    # ------------------------------------------------------------------
+
+    def run_collective_reasoning(
+        self,
+        query: str,
+        agent_perspectives: dict[str, str],
+    ) -> dict[str, Any]:
+        """Run a full emergent reasoning cycle and return decision dict."""
+        topic = query
+
+        for agent, perspective in agent_perspectives.items():
+            vote_label = perspective.strip()[:80] or "no_opinion"
+            raw_conf = min(1.0, len(perspective) / 200.0)
+            self.cast_vote(topic=topic, agent=agent, vote=vote_label, confidence=raw_conf)
+
+        tally_result = self.tally(topic)
+        emergent = self.detect_emergent_pattern(topic)
+
+        return {
+            "query": query,
+            "decision": tally_result.get("winner", ""),
+            "confidence": tally_result.get("confidence", 0.0),
+            "emergent": emergent,
+            "perspectives": dict(agent_perspectives),
+        }
+
+    # ------------------------------------------------------------------
+    # Behavior listing
+    # ------------------------------------------------------------------
+
+    def list_behaviors(self) -> list[dict[str, Any]]:
+        """Return all detected emergent behaviors (snapshot)."""
+        with self._lock:
+            return list(self._emergent_behaviors)
