@@ -143,6 +143,11 @@ class MultiAgentOrchestrator:
         self._memory = None
         self._metacognition = None
         self._deliberation = None
+        self._self_model = None
+        self._transfer_learning = None
+        self._causal_reasoning = None
+        self._meta_learning = None
+        self._ethical_reasoning = None
 
         try:
             from core.memory_system import MemorySystem
@@ -159,6 +164,36 @@ class MultiAgentOrchestrator:
             )
         except Exception as exc:
             log.warning("[Orchestrator] MetacognitionEngine unavailable: %s", exc)
+
+        try:
+            from core.self_model import SelfModel
+            self._self_model = SelfModel(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] SelfModel unavailable: %s", exc)
+
+        try:
+            from core.transfer_learning import TransferLearning
+            self._transfer_learning = TransferLearning(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] TransferLearning unavailable: %s", exc)
+
+        try:
+            from core.causal_reasoning import CausalReasoning
+            self._causal_reasoning = CausalReasoning(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] CausalReasoning unavailable: %s", exc)
+
+        try:
+            from core.meta_learning import MetaLearning
+            self._meta_learning = MetaLearning(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] MetaLearning unavailable: %s", exc)
+
+        try:
+            from core.ethical_reasoning import EthicalReasoning
+            self._ethical_reasoning = EthicalReasoning(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] EthicalReasoning unavailable: %s", exc)
 
         log.info(
             "[Orchestrator] Initialised: %d agents, quorum=%d, timeout=%dms",
@@ -306,6 +341,14 @@ class MultiAgentOrchestrator:
             except Exception as exc:
                 log.warning("[Orchestrator] Memory recording failed: %s", exc)
 
+        # 3b. AGI cognitive enrichment
+        self._run_cognitive_enrichment(
+            domain=domain or "general",
+            task=task,
+            confidence=result.confidence,
+            agent_ids=agent_ids,
+        )
+
         # 4. Metacognition check
         meta_report: Dict[str, Any] = {}
         if self._metacognition is not None:
@@ -396,7 +439,74 @@ class MultiAgentOrchestrator:
             "profiler": self._profiler.summary(),
             "memory_available": self._memory is not None,
             "metacognition_available": self._metacognition is not None,
+            "self_model_available": self._self_model is not None,
+            "transfer_learning_available": self._transfer_learning is not None,
+            "causal_reasoning_available": self._causal_reasoning is not None,
+            "meta_learning_available": self._meta_learning is not None,
+            "ethical_reasoning_available": self._ethical_reasoning is not None,
         }
+
+    # ------------------------------------------------------------------
+    # Cognitive enrichment
+    # ------------------------------------------------------------------
+
+    def _run_cognitive_enrichment(
+        self,
+        *,
+        domain: str,
+        task: str,
+        confidence: float,
+        agent_ids: List[str],
+    ) -> None:
+        """Run AGI cognitive enrichment after consensus."""
+        # Self-model: record capability
+        if self._self_model is not None:
+            try:
+                self._self_model.record_capability(
+                    domain=domain,
+                    metric="consensus_confidence",
+                    value=confidence,
+                    sample_count=len(agent_ids),
+                )
+            except Exception as exc:
+                log.debug("[Orchestrator] SelfModel record failed: %s", exc)
+
+        # Transfer learning: find reusable patterns
+        if self._transfer_learning is not None:
+            try:
+                keywords = [w for w in task.lower().split()[:10] if len(w) > 2]
+                self._transfer_learning.find_transfers(
+                    target_domain=domain,
+                    target_keywords=keywords,
+                    limit=3,
+                )
+            except Exception as exc:
+                log.debug("[Orchestrator] TransferLearning query failed: %s", exc)
+
+        # Causal reasoning: update confidence variable
+        if self._causal_reasoning is not None:
+            try:
+                self._causal_reasoning.set_variable(f"{domain}_confidence", confidence)
+            except Exception as exc:
+                log.debug("[Orchestrator] CausalReasoning update failed: %s", exc)
+
+        # Meta-learning: detect regime shifts
+        if self._meta_learning is not None:
+            try:
+                self._meta_learning.detect_regime_shift(domain=domain)
+            except Exception as exc:
+                log.debug("[Orchestrator] MetaLearning shift detection failed: %s", exc)
+
+        # Ethical reasoning: evaluate task for safety
+        if self._ethical_reasoning is not None:
+            try:
+                self._ethical_reasoning.evaluate(
+                    action=task[:200],
+                    domain=domain,
+                    context={"confidence": confidence, "agents": len(agent_ids)},
+                )
+            except Exception as exc:
+                log.debug("[Orchestrator] EthicalReasoning eval failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

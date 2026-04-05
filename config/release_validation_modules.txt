@@ -18,3 +18,6 @@ tests.test_model_registry
 tests.test_runtime_profile
 tests.test_autonomy
 tests.test_job_queue
+tests.test_meta_learning
+tests.test_ethical_reasoning
+tests.test_agi_complete_loop

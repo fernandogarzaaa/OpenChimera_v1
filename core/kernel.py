@@ -7,12 +7,17 @@ import time
 from core.api_server import OpenChimeraAPIServer
 from core.aether_service import AetherService
 from core.bus import EventBus
+from core.causal_reasoning import CausalReasoning
 from core.config import build_identity_snapshot, get_watch_files
 from core.consensus_plane import ConsensusPlane
+from core.ethical_reasoning import EthicalReasoning
 from core.evo_service import EvoService
 from core.fim_daemon import FIMDaemon
+from core.meta_learning import MetaLearning
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
+from core.self_model import SelfModel
+from core.transfer_learning import TransferLearning
 from core.wraith_service import WraithService
 
 
@@ -32,6 +37,14 @@ class OpenChimeraKernel:
         self.evo = EvoService()
         self.provider = OpenChimeraProvider(self.bus, self.personality)
         self.consensus_plane = ConsensusPlane(profile=self.identity_snapshot, bus=self.bus)
+
+        # --- AGI cognitive modules ---
+        self.self_model = SelfModel(bus=self.bus)
+        self.transfer_learning = TransferLearning(bus=self.bus)
+        self.causal_reasoning = CausalReasoning(bus=self.bus)
+        self.meta_learning = MetaLearning(bus=self.bus)
+        self.ethical_reasoning = EthicalReasoning(bus=self.bus)
+
         self.api_server = OpenChimeraAPIServer(self.provider, system_status_provider=self.status_snapshot)
         self._fim_thread: threading.Thread | None = None
         self._supervisor_thread: threading.Thread | None = None
@@ -97,6 +110,9 @@ class OpenChimeraKernel:
         except Exception:
             pass
 
+        # --- Wire AGI cognitive modules to bus events ---
+        self._wire_cognitive_modules()
+
         self._start_fim_daemon()
         self._start_runtime_supervisor()
 
@@ -146,6 +162,43 @@ class OpenChimeraKernel:
         self.provider.stop()
         self.bus.publish_nowait("system/shutdown", {"status": "offline"})
 
+    # ------------------------------------------------------------------
+    # Cognitive module wiring
+    # ------------------------------------------------------------------
+
+    def _wire_cognitive_modules(self) -> None:
+        """Subscribe AGI modules to relevant bus events."""
+        try:
+            self.bus.subscribe("consensus/complete", self._on_consensus_complete)
+            self.bus.subscribe("evolution/cycle", self._on_evolution_cycle)
+        except Exception as exc:
+            LOGGER.warning("AGI bus wiring incomplete: %s", exc)
+
+    def _on_consensus_complete(self, event: dict) -> None:
+        """React to consensus results: update self-model and causal graph."""
+        try:
+            domain = event.get("domain", "general")
+            confidence = float(event.get("confidence", 0.5))
+            self.self_model.record_capability(domain, "consensus_confidence", confidence)
+            self.causal_reasoning.set_variable(f"{domain}_confidence", confidence)
+        except Exception as exc:
+            LOGGER.debug("cognitive reaction to consensus failed: %s", exc)
+
+    def _on_evolution_cycle(self, event: dict) -> None:
+        """React to evolution cycles: record in meta-learning."""
+        try:
+            domain = event.get("domain", "general")
+            success = bool(event.get("success", False))
+            self.meta_learning.record_outcome(
+                strategy_id=event.get("strategy_id", "default"),
+                domain=domain,
+                success=success,
+                confidence=float(event.get("confidence", 0.5)),
+                latency_ms=float(event.get("latency_ms", 0.0)),
+            )
+        except Exception as exc:
+            LOGGER.debug("cognitive reaction to evolution failed: %s", exc)
+
     def _start_fim_daemon(self) -> None:
         if self._fim_thread is not None or not self.watch_files:
             return
@@ -191,6 +244,26 @@ class OpenChimeraKernel:
 
     def status_snapshot(self, provider_status: dict | None = None) -> dict:
         provider_status = provider_status or self.provider.status()
+        agi_status: dict = {}
+        try:
+            agi_status["self_model"] = self.self_model.self_assessment()
+        except Exception:
+            agi_status["self_model"] = {"error": "unavailable"}
+        try:
+            agi_status["transfer_learning"] = {
+                "domains": self.transfer_learning.list_domains(),
+                "patterns": len(self.transfer_learning.list_patterns()),
+            }
+        except Exception:
+            agi_status["transfer_learning"] = {"error": "unavailable"}
+        try:
+            agi_status["meta_learning"] = self.meta_learning.status()
+        except Exception:
+            agi_status["meta_learning"] = {"error": "unavailable"}
+        try:
+            agi_status["ethical_reasoning"] = self.ethical_reasoning.status()
+        except Exception:
+            agi_status["ethical_reasoning"] = {"error": "unavailable"}
         return {
             "aether": self.aether.status(),
             "wraith": self.wraith.status(),
@@ -209,6 +282,7 @@ class OpenChimeraKernel:
             },
             "watch_files": self.watch_files,
             "swarm_agents": self._swarm_status(),
+            "agi": agi_status,
         }
 
     def _swarm_status(self) -> dict:
