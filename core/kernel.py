@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from typing import Any
 
 from core.api_server import OpenChimeraAPIServer
 from core.aether_service import AetherService
@@ -10,6 +11,7 @@ from core.bus import EventBus
 from core.causal_reasoning import CausalReasoning
 from core.config import build_identity_snapshot, get_watch_files
 from core.consensus_plane import ConsensusPlane
+from core.embodied_interaction import EmbodiedInteraction
 from core.ethical_reasoning import EthicalReasoning
 from core.evo_service import EvoService
 from core.fim_daemon import FIMDaemon
@@ -17,6 +19,7 @@ from core.meta_learning import MetaLearning
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
 from core.self_model import SelfModel
+from core.social_cognition import SocialCognition
 from core.transfer_learning import TransferLearning
 from core.wraith_service import WraithService
 
@@ -44,6 +47,11 @@ class OpenChimeraKernel:
         self.causal_reasoning = CausalReasoning(bus=self.bus)
         self.meta_learning = MetaLearning(bus=self.bus)
         self.ethical_reasoning = EthicalReasoning(bus=self.bus)
+        # Capabilities #9 & #10 — Embodied Interaction and Social Cognition
+        self.embodied_interaction = EmbodiedInteraction(bus=self.bus)
+        self.social_cognition = SocialCognition(bus=self.bus)
+        # GodSwarm — multi-agent orchestration (lazy init so boot doesn't block)
+        self._god_swarm: "Any | None" = None
 
         self.api_server = OpenChimeraAPIServer(self.provider, system_status_provider=self.status_snapshot)
         self._fim_thread: threading.Thread | None = None
@@ -174,6 +182,15 @@ class OpenChimeraKernel:
         except Exception as exc:
             LOGGER.warning("AGI bus wiring incomplete: %s", exc)
 
+        # Wire GodSwarm to the bus — non-blocking lazy initialisation
+        try:
+            from swarms.god_swarm import GodSwarm
+            self._god_swarm = GodSwarm(bus=self.bus)
+            self._god_swarm.wire_to_kernel(self)
+            LOGGER.info("GodSwarm wired to kernel (%d agents).", len(GodSwarm.ALL_AGENT_IDS))
+        except Exception as exc:
+            LOGGER.warning("GodSwarm wiring skipped: %s", exc)
+
     def _on_consensus_complete(self, event: dict) -> None:
         """React to consensus results: update self-model and causal graph."""
         try:
@@ -264,6 +281,14 @@ class OpenChimeraKernel:
             agi_status["ethical_reasoning"] = self.ethical_reasoning.status()
         except Exception:
             agi_status["ethical_reasoning"] = {"error": "unavailable"}
+        try:
+            agi_status["social_cognition"] = self.social_cognition.snapshot()
+        except Exception:
+            agi_status["social_cognition"] = {"error": "unavailable"}
+        try:
+            agi_status["embodied_interaction"] = self.embodied_interaction.snapshot()
+        except Exception:
+            agi_status["embodied_interaction"] = {"error": "unavailable"}
         return {
             "aether": self.aether.status(),
             "wraith": self.wraith.status(),
@@ -286,15 +311,18 @@ class OpenChimeraKernel:
         }
 
     def _swarm_status(self) -> dict:
-        """Return lightweight swarm surface info without instantiating GodSwarm."""
+        """Return lightweight swarm surface info."""
         try:
             from swarms.god_swarm import GodSwarm
-            return {
+            base = {
                 "core_agents": GodSwarm.CORE_AGENT_IDS,
                 "supporting_agents": GodSwarm.SUPPORTING_AGENT_IDS,
                 "total_agents": len(GodSwarm.ALL_AGENT_IDS),
                 "ready": True,
             }
+            if self._god_swarm is not None:
+                base["live"] = self._god_swarm.status()
+            return base
         except Exception as exc:
             return {"ready": False, "error": str(exc)}
 
