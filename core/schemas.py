@@ -191,6 +191,20 @@ class QuerySessionGetRequest(OpenChimeraSchema):
     session_id: str = Field(min_length=1)
 
 
+class SessionResumeRequest(OpenChimeraSchema):
+    session_id: str = Field(min_length=1)
+    query: str = Field(default="", description="New query to run in the resumed session context")
+    permission_scope: Literal["user", "admin"] = "user"
+    max_tokens: int = Field(default=512, ge=1, le=32768)
+
+
+class MemoryClearRequest(OpenChimeraFlexibleSchema):
+    scope: str | None = Field(
+        default=None,
+        description="Memory scope to clear: 'sessions', 'tool_history', or null for all",
+    )
+
+
 class OnboardingApplyRequest(OpenChimeraFlexibleSchema):
     preferred_local_model: str | None = None
     preferred_cloud_provider: str | None = None
@@ -390,6 +404,8 @@ POST_BODY_SCHEMAS: dict[str, type[BaseModel]] = {
     "/v1/query/run": QueryRunRequest,
     "/v1/tools/execute": ToolExecuteRequest,
     "/v1/query/session/get": QuerySessionGetRequest,
+    "/v1/sessions/resume": SessionResumeRequest,
+    "/v1/memory/clear": MemoryClearRequest,
     "/v1/onboarding/apply": OnboardingApplyRequest,
     "/v1/onboarding/reset": EmptyRequest,
     "/v1/aegis/run": AegisRunRequest,

@@ -392,6 +392,9 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if self.path == "/v1/query/memory":
                 self._write_json(self.server.provider.inspect_memory())
                 return
+            if self.path == "/v1/memory/show":
+                self._write_json(self.server.provider.inspect_memory())
+                return
             if self.path == "/v1/plugins/status":
                 self._write_json(self.server.provider.plugin_status())
                 return
@@ -601,6 +604,23 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
 
             if self.path == "/v1/query/session/get":
                 self._write_json(self.server.provider.get_query_session(str(payload.get("session_id", "")).strip()))
+                return
+
+            if self.path == "/v1/sessions/resume":
+                self._write_json(
+                    self.server.provider.resume_session(
+                        session_id=str(payload.get("session_id", "")).strip(),
+                        query=str(payload.get("query", "")).strip(),
+                        permission_scope=str(payload.get("permission_scope", "user")),
+                        max_tokens=int(payload.get("max_tokens", 512)),
+                    )
+                )
+                return
+
+            if self.path == "/v1/memory/clear":
+                scope = payload.get("scope")
+                scope = str(scope).strip() if scope is not None else None
+                self._write_json(self.server.provider.clear_memory(scope=scope))
                 return
 
             if self.path == "/v1/onboarding/apply":
