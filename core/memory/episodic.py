@@ -5,6 +5,7 @@ import math
 import struct
 import threading
 import time
+from collections import Counter, defaultdict
 from typing import Any
 from uuid import uuid4
 
@@ -272,6 +273,101 @@ class EpisodicMemory:
             pm["similar_past_failures"] = json.loads(pm.get("similar_past_failures") or "[]")
             result.append(pm)
         return result
+
+    # ------------------------------------------------------------------
+    # Memory consolidation (Phase 2 — Self-Awareness)
+    # ------------------------------------------------------------------
+
+    def consolidate_to_semantic(
+        self,
+        semantic_memory: Any,
+        min_occurrences: int = 3,
+        limit: int = 500,
+    ) -> dict[str, int]:
+        """Promote recurring episodic patterns into semantic knowledge-graph triples.
+
+        Groups episodes by domain and outcome. For any domain that has at least
+        ``min_occurrences`` success or failure episodes, a pattern triple is
+        promoted into ``semantic_memory``. The most common leading reasoning-chain
+        step across the full domain cohort is also promoted as a
+        ``key_reasoning_step`` triple.
+
+        Returns a summary dict with counts of promoted triples.
+        """
+        episodes = self.list_episodes(limit=limit)
+
+        # Bucket episodes by domain → outcome → list[episode]
+        domain_outcomes: dict[str, dict[str, list[dict[str, Any]]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for ep in episodes:
+            domain = ep.get("domain") or "general"
+            outcome = ep.get("outcome") or "unknown"
+            domain_outcomes[domain][outcome].append(ep)
+
+        pattern_promoted = 0
+        reasoning_step_promoted = 0
+
+        for domain, outcomes in domain_outcomes.items():
+            success_eps = outcomes.get("success", [])
+            failure_eps = outcomes.get("failure", [])
+
+            # ── Success pattern triple ─────────────────────────────────
+            if len(success_eps) >= min_occurrences:
+                confidence = min(1.0, len(success_eps) / (len(success_eps) + 1))
+                semantic_memory.add_triple(
+                    subject=domain,
+                    predicate="has_pattern",
+                    object_="successful_approach",
+                    confidence=confidence,
+                    source="episodic_consolidation",
+                )
+                pattern_promoted += 1
+
+            # ── Failure pattern triple ─────────────────────────────────
+            if len(failure_eps) >= min_occurrences:
+                confidence = min(1.0, len(failure_eps) / (len(failure_eps) + 1))
+                semantic_memory.add_triple(
+                    subject=domain,
+                    predicate="has_pattern",
+                    object_="failure_mode",
+                    confidence=confidence,
+                    source="episodic_consolidation",
+                )
+                pattern_promoted += 1
+
+            # ── Most common reasoning step across the whole domain ─────
+            all_domain_eps = success_eps + failure_eps + outcomes.get("unknown", [])
+            step_counter: Counter[str] = Counter()
+            for ep in all_domain_eps:
+                chain = ep.get("reasoning_chain", [])
+                if isinstance(chain, list) and chain:
+                    step_counter[chain[0]] += 1
+
+            if step_counter:
+                top_step, _ = step_counter.most_common(1)[0]
+                semantic_memory.add_triple(
+                    subject=domain,
+                    predicate="key_reasoning_step",
+                    object_=top_step,
+                    confidence=0.8,
+                    source="episodic_consolidation",
+                )
+                reasoning_step_promoted += 1
+
+        total = pattern_promoted + reasoning_step_promoted
+
+        self._bus.publish("memory.consolidation.completed", {
+            "triples_promoted": total,
+            "pattern_triples": pattern_promoted,
+            "reasoning_step_triples": reasoning_step_promoted,
+        })
+
+        return {
+            "triples_promoted": total,
+            "pattern_triples": pattern_promoted,
+            "reasoning_step_triples": reasoning_step_promoted,
+        }
 
     # ------------------------------------------------------------------
     # Helpers
