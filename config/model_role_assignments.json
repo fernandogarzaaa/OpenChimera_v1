@@ -1,0 +1,8 @@
+{
+  "fast": {
+    "role": "fast",
+    "model": "llama3.2-fast",
+    "reason": "manual",
+    "assigned_at": 1775401443.937962
+  }
+}
