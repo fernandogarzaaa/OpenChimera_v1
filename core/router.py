@@ -241,7 +241,6 @@ class OpenChimeraRouter:
         if self.role_registry is not None:
             payload["role_registry"] = self.role_registry.list_roles()
         return payload
-        return payload
 
     def _build_reason(
         self,

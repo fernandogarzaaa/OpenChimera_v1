@@ -308,32 +308,6 @@ class CapabilityPlane:
         self.bus.publish_nowait("system/plugins", {"action": "uninstall", "result": result})
         return result
 
-    def capability_status(self) -> dict[str, Any]:
-        return self.capabilities.status()
-
-    def list_capabilities(self, kind: str) -> list[dict[str, Any]]:
-        return self.capabilities.list_kind(kind)
-
-    def mcp_status(self) -> dict[str, Any]:
-        servers = self.capabilities.list_kind("mcp")
-        registry_servers = list_mcp_registry_with_health()
-        return {
-            "counts": {
-                "total": len(servers),
-                "healthy": sum(1 for item in servers if str(item.get("status", "")).lower() in {"healthy", "discovered"}),
-                "registered": len(registry_servers),
-            },
-            "servers": servers,
-            "registry": {
-                "counts": {
-                    "total": len(registry_servers),
-                    "healthy": sum(1 for item in registry_servers if str(item.get("status", "")).lower() == "healthy"),
-                    "enabled": sum(1 for item in registry_servers if bool(item.get("enabled", True))),
-                },
-                "servers": registry_servers,
-            },
-        }
-
     def mcp_registry_status(self) -> dict[str, Any]:
         servers = list_mcp_registry_with_health()
         return {
