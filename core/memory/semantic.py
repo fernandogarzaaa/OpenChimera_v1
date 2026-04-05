@@ -81,19 +81,15 @@ class SemanticMemory:
             clauses.append("confidence >= ?")
             params.append(min_confidence)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        # `where` is built exclusively from controlled string literals; no user
+        # data is interpolated into the SQL string itself.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
                 f"SELECT subject, predicate, object, confidence, source, timestamp FROM kg_triples {where}",
                 params,
             ).fetchall()
-        # Rename 'object' key to match Python convention
-        result = []
-        for row in rows:
-            r = dict(row)
-            r["object"] = r.get("object")
-            result.append(r)
-        return result
+        return [dict(row) for row in rows]
 
     def update_confidence(
         self, subject: str, predicate: str, object_: str, confidence: float
@@ -246,6 +242,7 @@ class SemanticMemory:
             clauses.append("predicate = ?")
             params.append(predicate)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        # `where` is built exclusively from controlled string literals.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
@@ -269,6 +266,7 @@ class SemanticMemory:
             clauses.append("predicate = ?")
             params.append(predicate)
         where = "WHERE " + " AND ".join(clauses)
+        # `where` is built exclusively from controlled string literals.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(

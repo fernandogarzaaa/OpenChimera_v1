@@ -12,6 +12,10 @@ from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
 
 
+def _dict_factory(cursor: Any, row: Any) -> dict[str, Any]:
+    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+
+
 def _cosine_similarity(a: bytes, b: bytes) -> float:
     """Compute cosine similarity between two packed float32 byte buffers."""
     n = len(a) // 4
@@ -283,5 +287,3 @@ class EpisodicMemory:
         return ep
 
 
-def _dict_factory(cursor: Any, row: Any) -> dict[str, Any]:
-    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
