@@ -132,7 +132,7 @@ class EpisodicMemory:
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
-                f"SELECT * FROM episodes {where} ORDER BY timestamp DESC LIMIT ?",
+                "SELECT * FROM episodes " + where + " ORDER BY timestamp DESC LIMIT ?",
                 params,
             ).fetchall()
         return [self._decode_episode(r) for r in rows]
@@ -191,7 +191,7 @@ class EpisodicMemory:
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         with self._db.transaction() as conn:
             row = conn.execute(
-                f"SELECT COUNT(*) FROM episodes {where}", params
+                "SELECT COUNT(*) FROM episodes " + where, params
             ).fetchone()
         return row[0] if row else 0
 

@@ -80,13 +80,11 @@ class SemanticMemory:
         if min_confidence is not None:
             clauses.append("confidence >= ?")
             params.append(min_confidence)
-        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-        # `where` is built exclusively from controlled string literals; no user
-        # data is interpolated into the SQL string itself.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
-                f"SELECT subject, predicate, object, confidence, source, timestamp FROM kg_triples {where}",
+                "SELECT subject, predicate, object, confidence, source, timestamp FROM kg_triples "
+                + (("WHERE " + " AND ".join(clauses)) if clauses else ""),
                 params,
             ).fetchall()
         return [dict(row) for row in rows]
@@ -242,11 +240,10 @@ class SemanticMemory:
             clauses.append("predicate = ?")
             params.append(predicate)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-        # `where` is built exclusively from controlled string literals.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
-                f"SELECT * FROM kg_assertions {where} ORDER BY valid_from DESC",
+                "SELECT * FROM kg_assertions " + where + " ORDER BY valid_from DESC",
                 params,
             ).fetchall()
         return [dict(r) for r in rows]
@@ -266,11 +263,10 @@ class SemanticMemory:
             clauses.append("predicate = ?")
             params.append(predicate)
         where = "WHERE " + " AND ".join(clauses)
-        # `where` is built exclusively from controlled string literals.
         with self._db.transaction() as conn:
             conn.row_factory = _dict_factory
             rows = conn.execute(
-                f"SELECT * FROM kg_assertions {where} ORDER BY valid_from DESC",
+                "SELECT * FROM kg_assertions " + where + " ORDER BY valid_from DESC",
                 params,
             ).fetchall()
         return [dict(r) for r in rows]
