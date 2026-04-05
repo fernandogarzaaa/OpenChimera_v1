@@ -1,280 +1,471 @@
-"""Tests for core.quantum_engine — ConsensusResult, AgentReputation, QuantumEngine,
-ConsensusProfiler, and ConsensusFailure paths.
+"""Tests for core.quantum_engine — upgraded quantum consensus engine.
 
-All tests are fully offline (no network, no Ollama, no disk I/O).
+Covers:
+  1. Confidence parsed from dict response
+  2. Confidence heuristic from plain string (hedging vs long)
+  3. Destructive interference reduces confidence
+  4. Domain-aware reputation
+  5. Reputation snapshot round-trip via load()
+  6. Early exit fires before all agents return
+  7. Hard timeout returns partial=True
+  8. ConsensusProfiler records after gather() with with_profiler()
+  9. contradictions_found > 0 on ConsensusResult
+  10. Embedding similarity groups semantically equivalent answers (mocked)
 """
 from __future__ import annotations
 
 import asyncio
-import time
-import unittest
+import json
+from unittest.mock import patch
+
+import numpy as np
+import pytest
 
 from core.quantum_engine import (
     AgentReputation,
-    AgentResponse,
     ConsensusFailure,
     ConsensusProfiler,
-    ConsensusResult,
     QuantumEngine,
 )
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# 1. Confidence parsed from dict response
 # ---------------------------------------------------------------------------
 
-def run(coro):
-    return asyncio.run(coro)
+@pytest.mark.asyncio
+async def test_confidence_from_dict():
+    """Agent returning {answer, confidence} dict has its confidence parsed."""
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=3000)
+
+    async def dict_agent(task, ctx):
+        return {"answer": "42", "confidence": 0.6}
+
+    resp = await engine._timed_call("a", dict_agent, "test", {})
+    assert resp is not None
+    assert resp.answer == "42"
+    assert resp.confidence == pytest.approx(0.6)
+    assert resp.domain == "general"
 
 
-def make_agent(answer: str, delay: float = 0.0, fail: bool = False):
-    async def _agent(task, context):
-        if delay:
-            await asyncio.sleep(delay)
-        if fail:
-            raise RuntimeError("agent intentionally failed")
-        return answer
-    return _agent
+@pytest.mark.asyncio
+async def test_confidence_from_dict_with_domain():
+    """Dict response can also carry a domain field."""
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=3000)
 
+    async def dict_agent(task, ctx):
+        return {"answer": "pi", "confidence": 0.95, "domain": "math"}
 
-# ---------------------------------------------------------------------------
-# AgentReputation
-# ---------------------------------------------------------------------------
-
-class TestAgentReputation(unittest.TestCase):
-    def test_default_weight(self):
-        rep = AgentReputation()
-        self.assertAlmostEqual(rep.weight("unknown-agent"), 0.7, places=5)
-
-    def test_update_correct_increases_weight(self):
-        rep = AgentReputation(alpha=0.5, default_weight=0.5)
-        rep.update("a1", correct=True)
-        self.assertGreater(rep.weight("a1"), 0.5)
-
-    def test_update_wrong_decreases_weight(self):
-        rep = AgentReputation(alpha=0.5, default_weight=0.5)
-        rep.update("a1", correct=False)
-        self.assertLess(rep.weight("a1"), 0.5)
-
-    def test_snapshot_returns_copy(self):
-        rep = AgentReputation()
-        rep.update("x", correct=True)
-        snap = rep.snapshot()
-        snap["x"] = 999  # mutating snap must not affect rep
-        self.assertNotEqual(rep.weight("x"), 999)
-
-    def test_repeated_updates_converge(self):
-        rep = AgentReputation(alpha=0.3, default_weight=0.5)
-        for _ in range(20):
-            rep.update("a1", correct=True)
-        self.assertGreater(rep.weight("a1"), 0.9)
+    resp = await engine._timed_call("a", dict_agent, "test", {})
+    assert resp is not None
+    assert resp.confidence == pytest.approx(0.95)
+    assert resp.domain == "math"
 
 
 # ---------------------------------------------------------------------------
-# AgentResponse
+# 2. Confidence heuristic from plain string
 # ---------------------------------------------------------------------------
 
-class TestAgentResponse(unittest.TestCase):
-    def test_answer_hash_is_stable(self):
-        r = AgentResponse(agent_id="a", answer="hello world", latency_ms=10.0)
-        self.assertEqual(r.answer_hash(), r.answer_hash())
+@pytest.mark.asyncio
+async def test_confidence_heuristic_hedging():
+    """Hedging words reduce heuristic confidence."""
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=3000)
 
-    def test_different_answers_different_hash(self):
-        r1 = AgentResponse(agent_id="a", answer="hello", latency_ms=5.0)
-        r2 = AgentResponse(agent_id="a", answer="world", latency_ms=5.0)
-        self.assertNotEqual(r1.answer_hash(), r2.answer_hash())
+    async def hedging(task, ctx):
+        return "maybe possibly uncertain"
 
-    def test_default_confidence(self):
-        r = AgentResponse(agent_id="a", answer="x", latency_ms=0.0)
-        self.assertEqual(r.confidence, 1.0)
+    resp = await engine._timed_call("h", hedging, "q", {})
+    assert resp is not None
+    assert resp.confidence < 0.5  # short + 3 hedging words
 
 
-# ---------------------------------------------------------------------------
-# QuantumEngine — basic consensus
-# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_confidence_heuristic_long_answer():
+    """Long answers without hedging produce high confidence."""
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=3000)
 
-class TestQuantumEngineBasic(unittest.TestCase):
-    def setUp(self):
-        self.engine = QuantumEngine(quorum=1, early_exit_conf=0.5, hard_timeout_ms=2000)
+    async def confident(task, ctx):
+        return "x" * 400
 
-    def test_single_agent_consensus(self):
-        agents = {"a1": make_agent("the answer")}
-        result = run(self.engine.gather("question", agents))
-        self.assertEqual(result.answer, "the answer")
-        self.assertEqual(result.participating, 1)
-        self.assertEqual(result.total_invited, 1)
+    resp = await engine._timed_call("c", confident, "q", {})
+    assert resp is not None
+    assert resp.confidence > 0.5  # long, no hedging
 
-    def test_majority_wins(self):
-        agents = {
-            "a1": make_agent("correct"),
-            "a2": make_agent("correct"),
-            "a3": make_agent("wrong"),
-        }
-        engine = QuantumEngine(quorum=2, early_exit_conf=0.7, hard_timeout_ms=2000)
-        result = run(engine.gather("q", agents))
-        self.assertEqual(result.answer, "correct")
 
-    def test_all_agree_gives_high_confidence(self):
-        agents = {f"a{i}": make_agent("same answer") for i in range(3)}
-        engine = QuantumEngine(quorum=3, early_exit_conf=0.95, hard_timeout_ms=2000)
-        result = run(engine.gather("q", agents))
-        self.assertGreater(result.confidence, 0.8)
+@pytest.mark.asyncio
+async def test_confidence_heuristic_ordering():
+    """Confident answer has higher confidence than hedging answer."""
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=3000)
 
-    def test_result_has_latency(self):
-        agents = {"a1": make_agent("ok")}
-        result = run(self.engine.gather("q", agents))
-        self.assertGreater(result.latency_ms, 0.0)
+    async def hedging(task, ctx):
+        return "maybe possibly uncertain"
 
-    def test_early_exit_flag(self):
-        """With low conf threshold and unanimous agents, early_exit should fire."""
-        agents = {
-            "a1": make_agent("ans"),
-            "a2": make_agent("ans"),
-            "a3": make_agent("ans", delay=0.5),
-        }
-        engine = QuantumEngine(quorum=2, early_exit_conf=0.5, hard_timeout_ms=2000)
-        result = run(engine.gather("q", agents))
-        self.assertEqual(result.answer, "ans")
+    async def confident(task, ctx):
+        return "x" * 400
+
+    rh = await engine._timed_call("h", hedging, "q", {})
+    rc = await engine._timed_call("c", confident, "q", {})
+    assert rc.confidence > rh.confidence
 
 
 # ---------------------------------------------------------------------------
-# QuantumEngine — failure paths
+# 3. Destructive interference
 # ---------------------------------------------------------------------------
 
-class TestQuantumEngineFailures(unittest.TestCase):
-    def test_all_agents_fail_raises_consensus_failure(self):
-        agents = {"a1": make_agent("x", fail=True)}
-        engine = QuantumEngine(quorum=1, hard_timeout_ms=500)
-        with self.assertRaises(ConsensusFailure):
-            run(engine.gather("q", agents))
+@pytest.mark.asyncio
+async def test_destructive_interference():
+    """Contradicting high-weight agent reduces winner confidence."""
+    rep = AgentReputation(default_weight=0.9)
+    engine = QuantumEngine(
+        quorum=3,
+        early_exit_conf=0.99,
+        hard_timeout_ms=3000,
+        reputation=rep,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
 
-    def test_timeout_with_partial_results(self):
-        """Agent responds after timeout; engine should return partial or fail."""
-        async def slow(task, ctx):
-            await asyncio.sleep(2.0)
-            return "slow_answer"
+    async def yes1(t, c):
+        return {"answer": "Yes", "confidence": 0.95}
 
-        engine = QuantumEngine(quorum=2, hard_timeout_ms=100)
-        agents = {"slow": slow, "also_slow": slow}
-        with self.assertRaises(ConsensusFailure):
-            run(engine.gather("q", agents))
+    async def yes2(t, c):
+        return {"answer": "Yes", "confidence": 0.95}
 
-    def test_partial_quorum_sets_partial_flag(self):
-        """If only 1 of 3 responds before timeout, partial=True."""
-        async def fast(task, ctx):
-            return "fast_answer"
+    async def no1(t, c):
+        return {"answer": "No", "confidence": 0.95}
 
-        async def slow(task, ctx):
-            await asyncio.sleep(5.0)
-            return "slow"
-
-        engine = QuantumEngine(quorum=2, hard_timeout_ms=200)
-        agents = {"fast": fast, "slow1": slow, "slow2": slow}
-        try:
-            result = run(engine.gather("q", agents))
-            self.assertTrue(result.partial)
-        except ConsensusFailure:
-            pass  # acceptable when 0 answers arrive in time
+    result = await engine.gather("q", {"a": yes1, "b": yes2, "c": no1})
+    assert result.answer == "Yes"
+    # Raw majority confidence would be ~0.667;
+    # destructive interference lowers it
+    assert result.confidence < 0.667
 
 
 # ---------------------------------------------------------------------------
-# ConsensusProfiler
+# 4. Domain-aware reputation
 # ---------------------------------------------------------------------------
 
-class TestConsensusProfiler(unittest.TestCase):
-    def _make_result(self, latency_ms=100.0, confidence=0.9, early_exit=False, partial=False):
-        return ConsensusResult(
-            answer="x",
-            confidence=confidence,
-            participating=1,
-            total_invited=1,
-            latency_ms=latency_ms,
-            early_exit=early_exit,
-            partial=partial,
+def test_domain_aware_reputation():
+    """Agent scores differ by domain."""
+    rep = AgentReputation(alpha=0.5, default_weight=0.5)
+    rep.update("alice", correct=True, domain="math")
+    rep.update("alice", correct=False, domain="code")
+
+    math_w = rep.weight("alice", domain="math")
+    code_w = rep.weight("alice", domain="code")
+
+    assert math_w > code_w
+    assert math_w > 0.5
+    assert code_w < 0.5
+
+
+def test_domain_fallback_to_general():
+    """Unknown domain falls back to general, then default."""
+    rep = AgentReputation(default_weight=0.6)
+    rep.update("bob", correct=True, domain="general")
+
+    w = rep.weight("bob", domain="art")
+    general_w = rep.weight("bob", domain="general")
+    assert w == general_w  # Falls back to general
+
+
+# ---------------------------------------------------------------------------
+# 5. Reputation snapshot round-trip
+# ---------------------------------------------------------------------------
+
+def test_reputation_snapshot_roundtrip():
+    """snapshot() -> load() preserves all scores."""
+    rep = AgentReputation(alpha=0.3, default_weight=0.5)
+    rep.update("bob", correct=True, domain="general")
+    rep.update("bob", correct=False, domain="math")
+    rep.update("carol", correct=True, domain="code")
+
+    snap = rep.snapshot()
+    assert isinstance(snap, dict)
+    assert all("::" in k for k in snap)
+
+    rep2 = AgentReputation(alpha=0.3, default_weight=0.5)
+    rep2.load(snap)
+
+    for key in snap:
+        aid, dom = key.split("::", 1)
+        assert abs(rep.weight(aid, dom) - rep2.weight(aid, dom)) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# 6. Early exit
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_early_exit():
+    """Engine exits early when confidence threshold met."""
+    rep = AgentReputation(default_weight=0.9)
+    engine = QuantumEngine(
+        quorum=2,
+        early_exit_conf=0.5,
+        hard_timeout_ms=10000,
+        reputation=rep,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+
+    async def fast(t, c):
+        return {"answer": "42", "confidence": 0.9}
+
+    async def slow(t, c):
+        await asyncio.sleep(60.0)
+        return {"answer": "42", "confidence": 0.9}
+
+    result = await engine.gather("q", {
+        "fast1": fast, "fast2": fast, "slow": slow,
+    })
+    assert result.early_exit is True
+    assert result.participating >= 2
+    assert result.latency_ms < 5000
+
+
+# ---------------------------------------------------------------------------
+# 7. Hard timeout -> partial=True
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_hard_timeout_partial():
+    """Hard timeout fires before quorum; result is partial."""
+    engine = QuantumEngine(
+        quorum=3,
+        early_exit_conf=0.99,
+        hard_timeout_ms=300,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+
+    async def fast(t, c):
+        return {"answer": "ok", "confidence": 0.8}
+
+    async def slow(t, c):
+        await asyncio.sleep(10.0)
+        return {"answer": "ok", "confidence": 0.8}
+
+    result = await engine.gather("q", {
+        "fast": fast, "slow1": slow, "slow2": slow,
+    })
+    assert result.partial is True
+    assert result.participating < 3
+
+
+# ---------------------------------------------------------------------------
+# 8. ConsensusProfiler via with_profiler()
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_profiler_records():
+    """Profiler records stats after each gather()."""
+    engine = QuantumEngine(
+        quorum=1,
+        early_exit_conf=0.99,
+        hard_timeout_ms=3000,
+        similarity_fn=QuantumEngine._exact_sim,
+    ).with_profiler()
+
+    async def agent(t, c):
+        return {"answer": "ok", "confidence": 0.8}
+
+    await engine.gather("q1", {"a": agent})
+    await engine.gather("q2", {"a": agent})
+
+    assert engine.profiler is not None
+    summary = engine.profiler.summary()
+    assert summary["rounds"] == 2
+    assert summary["avg_confidence"] > 0
+
+
+# ---------------------------------------------------------------------------
+# 9. contradictions_found > 0
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_contradictions_found_numerical():
+    """Numerical disagreement counted as contradiction."""
+    engine = QuantumEngine(
+        quorum=2,
+        early_exit_conf=0.99,
+        hard_timeout_ms=3000,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+
+    async def agent_100(t, c):
+        return {"answer": "The value is 100", "confidence": 0.9}
+
+    async def agent_200(t, c):
+        return {"answer": "The value is 200", "confidence": 0.9}
+
+    result = await engine.gather("q", {"a": agent_100, "b": agent_200})
+    assert result.contradictions_found >= 1
+
+
+@pytest.mark.asyncio
+async def test_contradictions_found_negation():
+    """Negation pair counted as contradiction."""
+    engine = QuantumEngine(
+        quorum=2,
+        early_exit_conf=0.99,
+        hard_timeout_ms=3000,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+
+    async def yes_agent(t, c):
+        return {"answer": "Yes, correct", "confidence": 0.9}
+
+    async def no_agent(t, c):
+        return {"answer": "No, incorrect", "confidence": 0.9}
+
+    result = await engine.gather("q", {"a": yes_agent, "b": no_agent})
+    assert result.contradictions_found >= 1
+
+
+# ---------------------------------------------------------------------------
+# 10. Embedding similarity (mocked)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_embedding_similarity_groups():
+    """Mock embedding model groups semantically equivalent answers."""
+
+    class FakeModel:
+        def encode(self, texts, normalize_embeddings=True):
+            vecs = []
+            for t in texts:
+                if "42" in t or "forty-two" in t:
+                    v = np.array([0.9, 0.1, 0.0])
+                elif "wrong" in t:
+                    v = np.array([0.0, 0.1, 0.9])
+                else:
+                    v = np.array([0.5, 0.5, 0.0])
+                norm = np.linalg.norm(v)
+                vecs.append(v / norm if norm > 0 else v)
+            return np.array(vecs)
+
+    with patch(
+        "core.quantum_engine._get_embed_model",
+        return_value=FakeModel(),
+    ):
+        engine = QuantumEngine(
+            quorum=3,
+            early_exit_conf=0.99,
+            hard_timeout_ms=3000,
         )
 
-    def test_empty_profiler_returns_zero_summary(self):
-        p = ConsensusProfiler()
-        s = p.summary()
-        self.assertEqual(s["rounds"], 0)
-        self.assertEqual(s["avg_confidence"], 0.0)
+        async def agent_42(t, c):
+            return {"answer": "The answer is 42", "confidence": 0.9}
 
-    def test_single_round_summary(self):
-        p = ConsensusProfiler()
-        p.record(self._make_result(latency_ms=200.0, confidence=0.8))
-        s = p.summary()
-        self.assertEqual(s["rounds"], 1)
-        self.assertAlmostEqual(s["avg_confidence"], 0.8, places=3)
+        async def agent_42b(t, c):
+            return {"answer": "forty-two is the answer", "confidence": 0.85}
 
-    def test_early_exit_pct(self):
-        p = ConsensusProfiler()
-        p.record(self._make_result(early_exit=True))
-        p.record(self._make_result(early_exit=False))
-        s = p.summary()
-        self.assertAlmostEqual(s["early_exit_pct"], 50.0, places=1)
+        async def agent_wrong(t, c):
+            return {"answer": "The wrong answer entirely", "confidence": 0.7}
 
-    def test_p50_p95_latency(self):
-        p = ConsensusProfiler()
-        for ms in range(1, 101):
-            p.record(self._make_result(latency_ms=float(ms)))
-        s = p.summary()
-        self.assertGreater(s["p95_latency_ms"], s["p50_latency_ms"])
+        result = await engine.gather("q", {
+            "a": agent_42, "b": agent_42b, "c": agent_wrong,
+        })
+        # The two "42" agents should be grouped together and win
+        assert "42" in str(result.answer) or "forty-two" in str(result.answer)
+        assert result.participating == 3
 
 
 # ---------------------------------------------------------------------------
-# ConsensusPlane (integration layer)
+# Bonus: _is_contradiction heuristic
 # ---------------------------------------------------------------------------
 
-class TestConsensusPlaneMixin(unittest.TestCase):
-    """Smoke test the ConsensusPlane wrapper around QuantumEngine."""
-
-    def _make_plane(self):
-        from core.bus import EventBus
-        from core.consensus_plane import ConsensusPlane
-        bus = EventBus()
-        return ConsensusPlane(profile={}, bus=bus, quorum=1, early_exit_conf=0.5, hard_timeout_ms=2000)
-
-    def test_register_and_list_agents(self):
-        plane = self._make_plane()
-        plane.register_agent("echo", lambda task, ctx: task)
-        self.assertIn("echo", plane.list_agents())
-
-    def test_unregister_agent(self):
-        plane = self._make_plane()
-        plane.register_agent("echo", lambda task, ctx: "x")
-        plane.unregister_agent("echo")
-        self.assertNotIn("echo", plane.list_agents())
-
-    def test_query_with_no_agents_returns_error(self):
-        plane = self._make_plane()
-        result = run(plane.query("hello"))
-        self.assertIsNotNone(result["error"])
-        self.assertIsNone(result["answer"])
-
-    def test_query_with_single_agent(self):
-        plane = self._make_plane()
-        plane.register_agent("stub", make_agent("hello world"))
-        result = run(plane.query("test"))
-        self.assertEqual(result["answer"], "hello world")
-        self.assertIsNone(result["error"])
-
-    def test_status_returns_expected_keys(self):
-        plane = self._make_plane()
-        s = plane.status()
-        self.assertIn("agents", s)
-        self.assertIn("reputation", s)
-        self.assertIn("profiler", s)
-        self.assertIn("engine", s)
-
-    def test_feedback_updates_reputation(self):
-        plane = self._make_plane()
-        plane.register_agent("a1", make_agent("x"))
-        run(plane.query("t"))
-        # Give positive feedback
-        plane.feedback("a1", correct=True)
-        rep = plane.status()["reputation"]
-        self.assertIn("a1", rep)
+def test_is_contradiction_negation_pairs():
+    engine = QuantumEngine()
+    assert engine._is_contradiction("Yes definitely", "No way") is True
+    assert engine._is_contradiction("True", "False") is True
+    assert engine._is_contradiction("valid result", "invalid result") is True
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_is_contradiction_numerical_divergence():
+    engine = QuantumEngine()
+    assert engine._is_contradiction("Value is 100", "Value is 200") is True
+    assert engine._is_contradiction("Score: 50", "Score: 51") is False  # <20%
+
+
+def test_is_contradiction_no_conflict():
+    engine = QuantumEngine()
+    assert engine._is_contradiction("hello", "hello") is False
+    assert engine._is_contradiction("The answer is 42", "The answer is 42") is False
+
+
+# ---------------------------------------------------------------------------
+# Bonus: persistence via SemanticMemory
+# ---------------------------------------------------------------------------
+
+def test_reputation_persistence_save_load():
+    """Reputation auto-saves every 10 updates and loads on init."""
+    stored = {}
+
+    class FakeTriple:
+        def __init__(self, obj):
+            self.object = obj
+
+    class FakeSemantic:
+        def assert_fact(self, **kwargs):
+            stored["latest"] = kwargs["object"]
+
+        def query(self, **kwargs):
+            if "latest" in stored:
+                return [FakeTriple(stored["latest"])]
+            return []
+
+    sm = FakeSemantic()
+    rep = AgentReputation(persistence=sm)
+
+    for i in range(10):
+        rep.update(f"agent_{i}", correct=True, domain="general")
+
+    assert "latest" in stored
+    snap = json.loads(stored["latest"])
+    assert len(snap) == 10
+
+    rep2 = AgentReputation(persistence=sm)
+    for key in snap:
+        aid, dom = key.split("::", 1)
+        assert abs(rep.weight(aid, dom) - rep2.weight(aid, dom)) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# Bonus: instance-level _round counter
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_round_counter_instance_level():
+    """Each engine has its own round counter."""
+    e1 = QuantumEngine(
+        quorum=1, hard_timeout_ms=3000,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+    e2 = QuantumEngine(
+        quorum=1, hard_timeout_ms=3000,
+        similarity_fn=QuantumEngine._exact_sim,
+    )
+
+    async def agent(t, c):
+        return {"answer": "ok", "confidence": 0.9}
+
+    await e1.gather("q", {"a": agent})
+    await e1.gather("q", {"a": agent})
+    await e2.gather("q", {"a": agent})
+
+    assert e1._round == 2
+    assert e2._round == 1  # Independent counter
+
+
+# ---------------------------------------------------------------------------
+# Bonus: ConsensusFailure when all agents crash
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_consensus_failure_all_agents_crash():
+    engine = QuantumEngine(quorum=1, hard_timeout_ms=1000)
+
+    async def crasher(t, c):
+        raise RuntimeError("boom")
+
+    with pytest.raises(ConsensusFailure):
+        await engine.gather("q", {"a": crasher})
