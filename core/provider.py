@@ -721,6 +721,23 @@ class OpenChimeraProvider:
     def inspect_memory(self) -> dict[str, Any]:
         return self.interaction_plane.inspect_memory()
 
+    def resume_session(
+        self,
+        session_id: str,
+        query: str,
+        permission_scope: str = "user",
+        max_tokens: int = 512,
+    ) -> dict[str, Any]:
+        return self.interaction_plane.resume_session(
+            session_id=session_id,
+            query=query,
+            permission_scope=permission_scope,
+            max_tokens=max_tokens,
+        )
+
+    def clear_memory(self, scope: str | None = None) -> dict[str, Any]:
+        return self.interaction_plane.clear_memory(scope=scope)
+
     def run_query(
         self,
         query: str = "",

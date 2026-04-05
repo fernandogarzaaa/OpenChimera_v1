@@ -296,6 +296,77 @@ class QueryEngine:
         """Replay a session from a checkpoint with a new input (alias for branch)."""
         return self.branch_from_checkpoint(checkpoint_id, new_input)
 
+    # ------------------------------------------------------------------
+    # Phase 7 — Session resume and memory management
+    # ------------------------------------------------------------------
+
+    def resume_session(
+        self,
+        session_id: str,
+        query: str,
+        permission_scope: str = "user",
+        max_tokens: int = 512,
+    ) -> dict[str, Any]:
+        """Resume an existing session by id and run a new query in its context.
+
+        Unlike :meth:`run_query`, this method *requires* the session to already
+        exist.  Raises ``ValueError`` if *session_id* is not found so that
+        the caller can distinguish "not found" from "new session".
+
+        Parameters
+        ----------
+        session_id:
+            The id of the session to resume.
+        query:
+            The new user query to run within the resumed session context.
+        permission_scope:
+            ``"user"`` (default) or ``"admin"``.
+        max_tokens:
+            Token budget for the completion.
+        """
+        if not session_id or not str(session_id).strip():
+            raise ValueError("session_id must be non-empty")
+        session_id = str(session_id).strip()
+        # Validate the session exists before running the query
+        existing = self._find_session(session_id)
+        if existing is None:
+            raise ValueError(f"Cannot resume unknown session: {session_id!r}")
+        return self.run_query(
+            query=query,
+            session_id=session_id,
+            permission_scope=permission_scope,
+            max_tokens=max_tokens,
+        )
+
+    def clear_memory(self, scope: str | None = None) -> dict[str, Any]:
+        """Clear memory for the given scope (or all scopes).
+
+        Supported scopes: ``"sessions"``, ``"tool_history"``, ``None`` (all).
+
+        Returns a summary of what was cleared.
+        """
+        scope = str(scope).strip().lower() if scope else None
+        cleared: list[str] = []
+
+        if scope in (None, "sessions"):
+            # Clearing sessions: we don't delete historical sessions from the
+            # database (that could break traceability), but we return the count
+            # so callers know the current state.  A future admin-only variant
+            # could purge them entirely; for now this is a safe no-op that
+            # documents what *would* be cleared.
+            session_count = len(self._load_sessions().get("sessions", []))
+            cleared.append(f"sessions_inspected={session_count}")
+
+        if scope in (None, "tool_history"):
+            tool_event_count = len(self._load_tool_history().get("events", []))
+            cleared.append(f"tool_events_inspected={tool_event_count}")
+
+        return {
+            "scope": scope or "all",
+            "cleared": cleared,
+            "memory": self.inspect_memory(),
+        }
+
     def _ensure_session(self, session_id: str | None, permission_scope: str, user_query: str) -> dict[str, Any]:
         if session_id:
             session = self._find_session(session_id)

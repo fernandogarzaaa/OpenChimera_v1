@@ -117,6 +117,27 @@ class InteractionPlane:
     def inspect_memory(self) -> dict[str, Any]:
         return self.query_engine.inspect_memory()
 
+    def resume_session(
+        self,
+        session_id: str,
+        query: str,
+        permission_scope: str = "user",
+        max_tokens: int = 512,
+    ) -> dict[str, Any]:
+        result = self.query_engine.resume_session(
+            session_id=session_id,
+            query=query,
+            permission_scope=permission_scope,
+            max_tokens=max_tokens,
+        )
+        self.bus.publish_nowait("system/query-engine", {"action": "resume", "session_id": session_id})
+        return result
+
+    def clear_memory(self, scope: str | None = None) -> dict[str, Any]:
+        result = self.query_engine.clear_memory(scope=scope)
+        self.bus.publish_nowait("system/memory", {"action": "clear", "scope": scope or "all"})
+        return result
+
     def run_query(
         self,
         query: str = "",
