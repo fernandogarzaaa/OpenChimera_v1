@@ -1,0 +1,17 @@
+{
+  "id": "web-search",
+  "name": "Web Search",
+  "version": "1.0.0",
+  "kind": "plugins",
+  "description": "Performs privacy-respecting web searches using configurable search backends, returning structured results with snippets, URLs, and relevance scores.",
+  "author": "OpenChimera Contributors",
+  "commands": ["search"],
+  "tools": ["web-search.query", "web-search.fetch"],
+  "skills": ["web-retrieval"],
+  "config": {
+    "backend": "duckduckgo",
+    "max_results": 10,
+    "safe_search": true,
+    "timeout_ms": 5000
+  }
+}

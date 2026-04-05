@@ -1,0 +1,16 @@
+{
+  "id": "summarizer",
+  "name": "Text Summarizer",
+  "version": "1.0.0",
+  "kind": "plugins",
+  "description": "Extracts key points from long text using configurable compression ratios and extractive or abstractive modes.",
+  "author": "OpenChimera Contributors",
+  "commands": ["summarize"],
+  "tools": ["summarizer.extract", "summarizer.compress"],
+  "skills": ["text-summarization"],
+  "config": {
+    "default_ratio": 0.3,
+    "mode": "extractive",
+    "max_input_tokens": 8192
+  }
+}

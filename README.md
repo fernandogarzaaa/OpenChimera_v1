@@ -35,6 +35,11 @@ Five interlocking subsystems that form the self-improving core:
 | **HTN Goal Planner** | `core/goal_planner.py` | CRUD goals with decomposition, dependencies, and Kahn topological sort for execution ordering |
 | **Evolution Engine** | `core/evolution.py` | DPO training pair generation with 0.85 cosine similarity gate and domain fitness tracking |
 | **Metacognition Engine** | `core/metacognition.py` | Expected Calibration Error (ECE), overconfidence ratio, and domain drift detection |
+| **Self-Model** | `core/self_model.py` | Capability snapshots, health heartbeats, and self-assessment for introspective monitoring |
+| **Transfer Learning** | `core/transfer_learning.py` | Cross-domain pattern registry, keyword overlap matching, and domain profile analytics |
+| **Causal Reasoning** | `core/causal_reasoning.py` | Directed causal graph, do-calculus interventions, and counterfactual simulation |
+| **Meta-Learning** | `core/meta_learning.py` | Strategy registry, adaptive parameter tuning, regime shift detection, and exploration–exploitation balance |
+| **Ethical Reasoning** | `core/ethical_reasoning.py` | Constraint registry, domain-scoped ethical evaluation, audit trail, and configurable guardrails |
 
 ### Quantum Consensus Engine
 
@@ -47,6 +52,32 @@ Async-first weighted multi-agent voting in `core/quantum_engine.py`:
 - **Embedding similarity** — optional sentence-transformers cosine similarity for soft dedup (thread-safe lazy singleton, falls back to exact match)
 - **Persistence** — optional reputation persistence to SemanticMemory with auto-save every 10 updates
 - **Profiler** — built-in `ConsensusProfiler` with p50/p95 latency, avg confidence, early-exit %, and contradiction counts
+
+### Multi-Agent Orchestrator
+
+Parallel task orchestration in `core/multi_agent_orchestrator.py`:
+
+- **Role-based dispatch** — assigns tasks to agents by `AgentRole` (Reasoner, Creative, Critic, Specialist, etc.)
+- **Cognitive enrichment pipeline** — post-consensus stage runs Self-Model assessment, Transfer Learning suggestions, Causal Reasoning analysis, Meta-Learning adaptation, and Ethical Reasoning guardrails
+- **Batch execution** — concurrent multi-task runs with configurable parallelism
+- **Kernel integration** — wired into the boot sequence via `core/kernel.py` with bus event subscriptions
+
+### AGI Completeness
+
+OpenChimera targets 10 cognitive capabilities.  Current status: **8 / 10** implemented and tested.
+
+| # | Capability | Module | Status |
+|---|-----------|--------|--------|
+| 1 | Episodic Memory | `core/memory_system.py` | ✅ |
+| 2 | Multi-Perspective Deliberation | `core/deliberation.py` | ✅ |
+| 3 | Hierarchical Planning | `core/goal_planner.py` | ✅ |
+| 4 | Self-Directed Evolution | `core/evolution.py` | ✅ |
+| 5 | Confidence Calibration | `core/metacognition.py` | ✅ |
+| 6 | Self-Model | `core/self_model.py` | ✅ |
+| 7 | Cross-Domain Transfer | `core/transfer_learning.py` | ✅ |
+| 8 | Causal Reasoning | `core/causal_reasoning.py` | ✅ |
+| 9 | Embodied Interaction | — | 🔲 Planned |
+| 10 | Social Cognition | — | 🔲 Planned |
 
 ## Install
 

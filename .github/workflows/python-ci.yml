@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.12"]
+        python-version: ["3.12", "3.13"]
 
     steps:
       - name: Checkout code
@@ -54,6 +54,14 @@ jobs:
 
       - name: Run quantum consensus simulation verification
         run: python scripts/quantum_sim_verify.py
+
+      - name: Run pytest with coverage
+        run: |
+          python -m pytest tests/ --ignore=tests/test_local_llm_quality.py \
+            --cov=core --cov-report=term-missing --cov-fail-under=60 -q
+
+      - name: Run AGI integration tests
+        run: python -m pytest tests/test_agi_complete_loop.py -v
 
   full-discovery:
     name: Full discovery sweep
