@@ -26,6 +26,26 @@ def _default_migrations_path() -> Path:
     return LEGACY_MIGRATIONS_PATH
 
 
+class _InMemoryConnectionProxy:
+    """Thin proxy around a persistent :memory: sqlite3 connection.
+
+    Delegates all attribute access to the real connection but makes
+    ``close()`` a no-op so that the ``finally: connection.close()``
+    pattern in ``transaction()`` and ``initialize()`` doesn't destroy
+    the in-memory database between calls.
+    """
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    # Proxy everything except close()
+    def __getattr__(self, name: str):  # type: ignore[override]
+        return getattr(self._conn, name)
+
+    def close(self) -> None:  # intentional no-op
+        pass
+
+
 class DatabaseManager:
     def __init__(
         self,
@@ -34,15 +54,21 @@ class DatabaseManager:
         migrations_path: Path | None = None,
         legacy_data_root: Path | None = None,
     ) -> None:
-        self.db_path = Path(db_path) if db_path is not None else (ROOT / "data" / "openchimera.db")
+        raw = str(db_path) if db_path is not None else None
+        self._in_memory = raw == ":memory:"
+        self.db_path = Path(raw) if raw is not None else (ROOT / "data" / "openchimera.db")
         self.migrations_path = Path(migrations_path) if migrations_path is not None else _default_migrations_path()
         self.legacy_data_root = Path(legacy_data_root) if legacy_data_root is not None else self.db_path.parent
         self._initialized = False
+        # For :memory: databases we must reuse a single connection because each
+        # call to sqlite3.connect(":memory:") opens a fresh, empty database.
+        self._memory_conn: sqlite3.Connection | None = None
 
     def initialize(self) -> None:
         if self._initialized:
             return
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        if not self._in_memory:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.migrations_path.exists():
             raise FileNotFoundError(f"Database migrations path does not exist: {self.migrations_path}")
         connection = self._get_connection()
@@ -63,10 +89,19 @@ class DatabaseManager:
             self._migrate_legacy_json(connection)
             self._initialized = True
         finally:
-            connection.close()
+            # For file-backed DBs we close the setup connection; for :memory:
+            # we must NOT close it — the persistent _memory_conn holds the data.
+            if not self._in_memory:
+                connection.close()
 
     def close(self) -> None:
         self._initialized = False
+        if self._in_memory and self._memory_conn is not None:
+            try:
+                self._memory_conn.close()
+            except Exception:
+                pass
+            self._memory_conn = None
 
     @contextmanager
     def transaction(self) -> Iterator[sqlite3.Connection]:
@@ -232,6 +267,13 @@ class DatabaseManager:
             )
 
     def _get_connection(self) -> sqlite3.Connection:
+        if self._in_memory:
+            if self._memory_conn is None:
+                self._memory_conn = sqlite3.connect(
+                    ":memory:", check_same_thread=False, timeout=30.0
+                )
+                self._memory_conn.row_factory = sqlite3.Row
+            return _InMemoryConnectionProxy(self._memory_conn)
         connection = sqlite3.connect(self.db_path, timeout=30.0)
         connection.row_factory = sqlite3.Row
         return connection

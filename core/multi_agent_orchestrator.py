@@ -322,10 +322,11 @@ class MultiAgentOrchestrator:
         memory_ok = False
         if self._memory is not None:
             try:
+                outcome = "success" if result.confidence >= 0.5 else "partial"
                 self._memory.record_episode(
                     session_id=session_id,
                     goal=task,
-                    outcome=str(result.answer),
+                    outcome=outcome,
                     confidence_initial=result.confidence,
                     confidence_final=result.confidence,
                     models_used=agent_ids,

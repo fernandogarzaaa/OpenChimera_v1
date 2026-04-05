@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -9,10 +10,14 @@ from typing import Any
 from urllib import request
 
 from core.bus import EventBus
+from core.causal_reasoning import CausalReasoning
 from core.config import ROOT, get_legacy_workspace_root, load_runtime_profile
 from core.harness_port import HarnessPortAdapter
 from core.minimind_service import MiniMindService
 from core.transactions import atomic_write_json
+from core.transfer_learning import PatternType, TransferLearning
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -98,6 +103,13 @@ class AutonomyScheduler:
         self.runtime_context_providers: dict[str, Any] = {}
         self._thread: threading.Thread | None = None
         self._running = False
+        try:
+            self._causal = CausalReasoning(bus=self.bus)
+            self._transfer = TransferLearning(bus=self.bus)
+        except Exception as _exc:
+            log.warning("Failed to init causal/transfer subsystems: %s", _exc)
+            self._causal = None
+            self._transfer = None
 
     def bind_runtime_context(self, **providers: Any) -> None:
         for name, provider in providers.items():
@@ -334,6 +346,28 @@ class AutonomyScheduler:
             "degraded_models": degraded_models,
         }
         self._write_artifact("learned_fallback_rankings", payload, job_name="learn_fallback_rankings")
+        if self._transfer is not None:
+            try:
+                keywords = list(query_types.keys()) + ["fallback", "ranking", "model"]
+                avg_success = 0.0
+                total_entries = sum(len(entries) for entries in query_types.values())
+                if total_entries > 0:
+                    success_sum = sum(
+                        float(entry.get("success_ratio", 0.0))
+                        for entries in query_types.values()
+                        for entry in entries
+                    )
+                    avg_success = success_sum / total_entries
+                self._transfer.register_pattern(
+                    source_domain="fallback_ranking",
+                    pattern_type=PatternType.STRATEGY,
+                    description="Learned model fallback ranking strategy",
+                    keywords=keywords,
+                    success_rate=avg_success,
+                    metadata={"query_type_count": len(query_types), "degraded_model_count": len(degraded_models)},
+                )
+            except Exception as _exc:
+                log.warning("Transfer pattern registration failed: %s", _exc)
         return {
             "status": "ok",
             "target": str(target_path),
@@ -418,6 +452,28 @@ class AutonomyScheduler:
         context = self._build_runtime_context()
         report = self._build_degradation_report(context)
         self._write_artifact("degradation_chains", report, job_name="check_degradation_chains")
+        if self._causal is not None:
+            try:
+                for chain in report.get("chains", []):
+                    chain_id = chain.get("id", "unknown_chain")
+                    models = chain.get("models", [])
+                    if models:
+                        for model in models:
+                            self._causal.add_cause(
+                                cause=f"model_degradation:{model}",
+                                effect=f"fallback_chain_failure:{chain_id}",
+                                strength=0.8,
+                                confidence=0.7,
+                            )
+                    else:
+                        self._causal.add_cause(
+                            cause="model_degradation",
+                            effect=f"fallback_chain_failure:{chain_id}",
+                            strength=0.8,
+                            confidence=0.7,
+                        )
+            except Exception as _exc:
+                log.warning("Causal edge recording failed: %s", _exc)
         return {
             "status": report["status"],
             "target": str(self.data_root / "degradation_chains.json"),
@@ -429,12 +485,18 @@ class AutonomyScheduler:
         context = self._build_runtime_context()
         report = self._build_self_audit_report(context)
         self._write_artifact("self_audit", report, job_name="run_self_audit")
-        return {
+        result: dict[str, Any] = {
             "status": report["status"],
             "target": str(self.data_root / "self_audit.json"),
             "finding_count": len(report.get("findings", [])),
             "recommendation_count": len(report.get("recommendations", [])),
         }
+        if self._causal is not None:
+            try:
+                result["causal_graph"] = self._causal.summary()
+            except Exception as _exc:
+                log.warning("Causal summary failed: %s", _exc)
+        return result
 
     def _preview_self_repair(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = payload or {}
