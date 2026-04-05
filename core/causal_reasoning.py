@@ -29,7 +29,7 @@ import logging
 import math
 import threading
 import time
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
@@ -657,6 +657,58 @@ class CausalReasoning:
         self._graph.import_edges(edges)
         with self._lock:
             self._state.update(data.get("state", {}))
+
+    # ------------------------------------------------------------------
+    # Causal discovery from episodic data (Phase 2 — Self-Awareness)
+    # ------------------------------------------------------------------
+
+    def discover_from_episodes(self, episodes: List[Dict[str, Any]]) -> List[Tuple[str, str, float]]:
+        """Mine episodic memory to infer causal edges automatically.
+
+        For each episode with ``outcome == "failure"`` that has a non-empty
+        ``failure_reason``, the episode's ``domain`` is treated as a cause node
+        and ``failure_reason`` as the effect node.
+
+        Edges are weighted by relative frequency:
+            weight = occurrences(domain, failure_reason) / total_failure_episodes_with_reason
+
+        Returns a list of ``(cause, effect, weight)`` tuples for all edges added.
+        """
+        pair_counter: Counter[Tuple[str, str]] = Counter()
+
+        for ep in episodes:
+            if ep.get("outcome") != "failure":
+                continue
+            failure_reason = ep.get("failure_reason")
+            if not failure_reason:
+                continue
+            domain = ep.get("domain") or "general"
+            pair_counter[(domain, str(failure_reason))] += 1
+
+        if not pair_counter:
+            return []
+
+        total = sum(pair_counter.values())
+        edges_added: List[Tuple[str, str, float]] = []
+
+        for (domain, failure_reason), count in pair_counter.items():
+            weight = round(count / total, 6)
+            self.add_cause(
+                cause=domain,
+                effect=failure_reason,
+                edge_type=EdgeType.CAUSES,
+                strength=max(-1.0, min(1.0, weight)),
+                confidence=min(0.9, weight * 2),
+                confidence_level=ConfidenceLevel.INFERRED,
+                evidence_count=count,
+            )
+            edges_added.append((domain, failure_reason, weight))
+
+        log.info(
+            "discover_from_episodes: added %d causal edges from %d failure episodes",
+            len(edges_added), total,
+        )
+        return edges_added
 
     # ------------------------------------------------------------------
     # Internals

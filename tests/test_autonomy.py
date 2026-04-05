@@ -238,7 +238,7 @@ class AutonomySchedulerTests(unittest.TestCase):
                 )
                 result = scheduler.run_job("preview_self_repair", {"target_project": str(temp_root)})
 
-            self.assertEqual(result["status"], "preview")
+            self.assertEqual(result["status"], "repair")
             self.assertEqual(seen[0]["target_project"], str(temp_root))
             self.assertIn("focus_areas", seen[0]["preview_context"])
 

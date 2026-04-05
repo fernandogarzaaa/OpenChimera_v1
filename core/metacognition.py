@@ -26,6 +26,7 @@ class MetacognitionEngine:
         self._n_bins = n_bins
         self._episodic = EpisodicMemory(db=db, bus=bus)
         self._lock = threading.Lock()
+        self._thresholds: dict[str, float] = {"confidence_threshold": 0.7}
 
     # ------------------------------------------------------------------
     # Core ECE computation
@@ -361,3 +362,41 @@ class MetacognitionEngine:
             "underconfident_count": overconf["underconfident_count"],
             "overconfidence_ratio": overconf["overconfidence_ratio"],
         }
+
+    # ------------------------------------------------------------------
+    # Adaptive thresholds (Phase 2 — Self-Awareness)
+    # ------------------------------------------------------------------
+
+    def adapt_thresholds(self, ece_result: dict[str, Any]) -> dict[str, float]:
+        """Auto-tune confidence threshold based on calibration quality.
+
+        Rules:
+        - ECE > 0.20 → increase ``confidence_threshold`` by 0.05 (cap 0.90)
+        - ECE < 0.05 → decrease ``confidence_threshold`` by 0.02 (floor 0.30)
+        - Otherwise   → no change
+
+        Publishes a ``metacognition.threshold.adapted`` event and returns the
+        updated thresholds dict.
+        """
+        ece = float(ece_result.get("ece", 0.0))
+        with self._lock:
+            current = self._thresholds.get("confidence_threshold", 0.7)
+            if ece > 0.2:
+                updated = min(0.9, round(current + 0.05, 4))
+            elif ece < 0.05:
+                updated = max(0.3, round(current - 0.02, 4))
+            else:
+                updated = current
+            self._thresholds["confidence_threshold"] = updated
+            snapshot = dict(self._thresholds)
+
+        self._bus.publish("metacognition.threshold.adapted", {
+            "previous_confidence_threshold": current,
+            "confidence_threshold": updated,
+            "ece": ece,
+        })
+        log.info(
+            "[Metacognition] Threshold adapted: confidence_threshold %.4f → %.4f (ece=%.4f)",
+            current, updated, ece,
+        )
+        return snapshot

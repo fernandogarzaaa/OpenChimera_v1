@@ -60,6 +60,7 @@ class EvolutionEngine:
         # Inference-path tracking
         self._response_quality: dict[str, dict[str, Any]] = {}  # record_id → outcome record
         self._dpo_signals: dict[str, DPOSignal] = {}  # signal_id → DPOSignal
+        self._thresholds: dict[str, float] = {"similarity_threshold": 0.85}
 
     # ------------------------------------------------------------------
     # Cosine similarity
@@ -327,6 +328,44 @@ class EvolutionEngine:
                 "response_outcomes": len(self._response_quality),
                 "dpo_signals_recorded": len(self._dpo_signals),
             }
+
+    # ------------------------------------------------------------------
+    # Adaptive thresholds (Phase 2 — Self-Awareness)
+    # ------------------------------------------------------------------
+
+    def adapt_thresholds(self, metrics: dict[str, Any]) -> dict[str, float]:
+        """Auto-tune the DPO pair similarity threshold based on runtime metrics.
+
+        Rules applied to ``metrics["total_pairs"]``:
+        - == 0  → decrease ``similarity_threshold`` by 0.05 (floor 0.50)
+        - > 10  → increase ``similarity_threshold`` by 0.02 (cap  0.95)
+        - Otherwise → no change
+
+        Publishes an ``evolution.threshold.adapted`` event and returns the
+        updated thresholds dict.
+        """
+        total_pairs = int(metrics.get("total_pairs", self._total_pairs))
+        with self._lock:
+            current = self._thresholds.get("similarity_threshold", 0.85)
+            if total_pairs == 0:
+                updated = max(0.5, round(current - 0.05, 4))
+            elif total_pairs > 10:
+                updated = min(0.95, round(current + 0.02, 4))
+            else:
+                updated = current
+            self._thresholds["similarity_threshold"] = updated
+            snapshot = dict(self._thresholds)
+
+        self._bus.publish("evolution.threshold.adapted", {
+            "previous_similarity_threshold": current,
+            "similarity_threshold": updated,
+            "total_pairs": total_pairs,
+        })
+        log.info(
+            "[Evolution] Threshold adapted: similarity_threshold %.4f → %.4f (total_pairs=%d)",
+            current, updated, total_pairs,
+        )
+        return snapshot
 
     # ------------------------------------------------------------------
     # Inference-path DPO signal tracking (Phase 4 additions)
