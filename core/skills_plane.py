@@ -15,12 +15,81 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import threading
+import time
 import traceback
 from pathlib import Path
 from typing import Any, Optional
 
 from core.capabilities import CapabilityRegistry
 from core.config import ROOT
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Skill Composition and Creation Engine
+# ---------------------------------------------------------------------------
+
+class SkillComposer:
+    """Composes new skills from existing skill primitives.
+
+    A *composed skill* is a named, ordered sequence of step names (which map
+    to registered skill IDs or callable identifiers).  The composer keeps an
+    in-memory library of all composed skills and supports retrieval by name.
+
+    This class is intentionally lightweight: it records intent rather than
+    executing anything.  Execution is the responsibility of the caller or a
+    higher-level orchestrator.
+    """
+
+    def __init__(self, skills_dir: Path | None = None) -> None:
+        self._skills_dir = skills_dir
+        self._composed: dict[str, dict[str, Any]] = {}  # skill_name → record
+
+    # ------------------------------------------------------------------
+    # Composition
+    # ------------------------------------------------------------------
+
+    def compose(
+        self,
+        name: str,
+        steps: list[str],
+        description: str = "",
+    ) -> dict[str, Any]:
+        """Create a composed skill from a list of step names.
+
+        If a skill with *name* already exists it is overwritten with the new
+        definition.
+
+        Returns the skill record::
+
+            {
+                "name": str,
+                "steps": list[str],
+                "description": str,
+                "created_at": float,
+            }
+        """
+        record: dict[str, Any] = {
+            "name": name,
+            "steps": list(steps),
+            "description": description,
+            "created_at": time.time(),
+        }
+        self._composed[name] = record
+        return dict(record)
+
+    # ------------------------------------------------------------------
+    # Retrieval
+    # ------------------------------------------------------------------
+
+    def list_composed(self) -> list[dict[str, Any]]:
+        """Return all composed skills as a list (copies)."""
+        return [dict(r) for r in self._composed.values()]
+
+    def get(self, name: str) -> dict[str, Any] | None:
+        """Return a composed skill by name, or ``None`` if not found."""
+        record = self._composed.get(name)
+        return dict(record) if record is not None else None
 
 
 class SkillsPlane:
@@ -35,6 +104,7 @@ class SkillsPlane:
         self._bus = bus
         self._registry = CapabilityRegistry(root=self._root)
         self._loaded_modules: dict[str, Any] = {}  # skill_id → module
+        self._composer = SkillComposer(skills_dir=self._root / "skills")
 
     # ------------------------------------------------------------------
     # Public status / discovery API
@@ -78,6 +148,31 @@ class SkillsPlane:
     def categories(self) -> list[str]:
         """Return unique skill categories, sorted."""
         return sorted({s.get("category", "unknown") for s in self._registry.list_kind("skills")})
+
+    # ------------------------------------------------------------------
+    # Phase 4 — Skill Composition API (delegates to SkillComposer)
+    # ------------------------------------------------------------------
+
+    def compose_skill(
+        self,
+        name: str,
+        steps: list[str],
+        description: str = "",
+    ) -> dict[str, Any]:
+        """Create and register a composed skill from a list of step names.
+
+        Delegates to the internal :class:`SkillComposer`.
+        """
+        record = self._composer.compose(name, steps, description)
+        self._publish("skill.composed", {"name": name, "steps": steps})
+        return record
+
+    def list_composed_skills(self) -> list[dict[str, Any]]:
+        """Return all composed skills.
+
+        Delegates to the internal :class:`SkillComposer`.
+        """
+        return self._composer.list_composed()
 
     # ------------------------------------------------------------------
     # Runtime invocation

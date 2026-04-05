@@ -621,3 +621,155 @@ class MetaLearning:
                 "alpha": self._alpha,
                 "exploration_rate": self._exploration_rate,
             }
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Hyperparameter Self-Tuning
+# ---------------------------------------------------------------------------
+
+class HyperparameterTuner:
+    """Auto-tunes subsystem hyperparameters based on observed performance.
+
+    Uses simple hill-climbing: for each registered numeric parameter, the
+    tuner records metric observations and, on request, nudges each parameter
+    ±10 % in the direction that correlates with the most recent improvement.
+
+    Thread-safe.
+    """
+
+    def __init__(self) -> None:
+        self._params: Dict[str, Dict[str, float]] = {}  # subsystem → {param → value}
+        self._history: List[Dict[str, Any]] = []
+        self._lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Registration
+    # ------------------------------------------------------------------
+
+    def register_subsystem(self, name: str, defaults: Dict[str, float]) -> None:
+        """Store default hyperparameters for *name*.
+
+        Calling this a second time for the same subsystem is a no-op so that
+        runtime restarts do not overwrite learned values.
+        """
+        with self._lock:
+            if name not in self._params:
+                self._params[name] = dict(defaults)
+                log.debug("[HyperparameterTuner] Registered subsystem '%s' with %d params", name, len(defaults))
+
+    # ------------------------------------------------------------------
+    # Observation
+    # ------------------------------------------------------------------
+
+    def observe(self, subsystem: str, metric_name: str, metric_value: float) -> None:
+        """Record a scalar metric observation for *subsystem*."""
+        entry: Dict[str, Any] = {
+            "subsystem": subsystem,
+            "metric_name": metric_name,
+            "metric_value": float(metric_value),
+            "timestamp": time.time(),
+            "params_snapshot": dict(self._params.get(subsystem, {})),
+        }
+        with self._lock:
+            self._history.append(entry)
+        log.debug(
+            "[HyperparameterTuner] observe subsystem=%s metric=%s value=%.4f",
+            subsystem, metric_name, metric_value,
+        )
+
+    # ------------------------------------------------------------------
+    # Tuning
+    # ------------------------------------------------------------------
+
+    def tune(self, subsystem: str) -> Dict[str, float]:
+        """Run one hill-climbing step for *subsystem*.
+
+        For each numeric parameter, the tuner compares the most-recent metric
+        value against the second-most-recent for the same subsystem.  If the
+        metric improved (higher is better), the current parameter direction is
+        preserved; otherwise the direction is reversed.  The magnitude of the
+        change is 10 % of the current value (minimum 0.001 to avoid stalling).
+
+        If fewer than two observations exist, the current params are returned
+        unchanged.
+        """
+        with self._lock:
+            if subsystem not in self._params:
+                log.debug("[HyperparameterTuner] tune: subsystem '%s' not registered", subsystem)
+                return {}
+
+            # Collect subsystem-specific history
+            sub_history = [h for h in self._history if h["subsystem"] == subsystem]
+            if len(sub_history) < 2:
+                return dict(self._params[subsystem])
+
+            latest = sub_history[-1]
+            previous = sub_history[-2]
+
+            metric_improved = latest["metric_value"] >= previous["metric_value"]
+
+            current_params = self._params[subsystem]
+            prev_params = previous.get("params_snapshot", {})
+
+            new_params: Dict[str, float] = {}
+            for param, value in current_params.items():
+                prev_value = prev_params.get(param, value)
+                delta = prev_value - value  # direction of last change (negative = decreased)
+
+                if delta == 0.0:
+                    # No prior change — default to a small positive nudge
+                    delta = max(abs(value) * 0.1, 0.001)
+
+                if not metric_improved:
+                    delta = -delta  # reverse direction
+
+                step = max(abs(value) * 0.10, 0.001)
+                if delta >= 0:
+                    new_value = value + step
+                else:
+                    new_value = value - step
+
+                new_params[param] = round(new_value, 6)
+
+            self._params[subsystem] = new_params
+            log.info(
+                "[HyperparameterTuner] Tuned subsystem '%s': %s",
+                subsystem, new_params,
+            )
+            return dict(new_params)
+
+    # ------------------------------------------------------------------
+    # Accessors
+    # ------------------------------------------------------------------
+
+    def get_params(self, subsystem: str) -> Dict[str, float]:
+        """Return the current hyperparameters for *subsystem* (or {} if unknown)."""
+        with self._lock:
+            return dict(self._params.get(subsystem, {}))
+
+    def export_history(self) -> List[Dict[str, Any]]:
+        """Return the full observation history (copy)."""
+        with self._lock:
+            return list(self._history)
+
+
+# ---------------------------------------------------------------------------
+# Module-level singleton and convenience API
+# ---------------------------------------------------------------------------
+
+_TUNER = HyperparameterTuner()
+
+
+def register_subsystem(name: str, defaults: Dict[str, float]) -> None:
+    """Register a subsystem with default hyperparameters (module-level API)."""
+    _TUNER.register_subsystem(name, defaults)
+
+
+def observe_metric(subsystem: str, metric_name: str, value: float) -> None:
+    """Record a metric observation (module-level API)."""
+    _TUNER.observe(subsystem, metric_name, value)
+
+
+def tune_subsystem(subsystem: str) -> Dict[str, float]:
+    """Run one tuning step for *subsystem* (module-level API)."""
+    return _TUNER.tune(subsystem)

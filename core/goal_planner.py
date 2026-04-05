@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import sqlite3
+import threading
 import time
 import uuid
 from dataclasses import dataclass
@@ -13,6 +14,102 @@ from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
 
 log = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Phase 4 — Goal Decomposition Strategy Learning
+# ---------------------------------------------------------------------------
+
+class DecompositionStrategyLearner:
+    """Learns which decomposition strategies succeed for which goal types.
+
+    Tracks per-goal-type decomposition attempts and their outcomes, allowing
+    the planner to surface the historically best-performing step sequence for
+    a given goal type.
+
+    Thread-safe.
+    """
+
+    def __init__(self) -> None:
+        # goal_type → list[{"steps": list[str], "successes": int, "attempts": int}]
+        self._strategies: dict[str, list[dict[str, Any]]] = {}
+        self._lock = threading.Lock()
+
+    # ------------------------------------------------------------------
+    # Recording
+    # ------------------------------------------------------------------
+
+    def record_decomposition(
+        self,
+        goal_type: str,
+        steps: list[str],
+        succeeded: bool,
+    ) -> None:
+        """Store a decomposition attempt and its outcome.
+
+        If an identical *steps* sequence already exists for *goal_type*, only
+        its counters are updated.  Otherwise a new entry is appended.
+        """
+        steps_key = tuple(steps)
+        with self._lock:
+            entries = self._strategies.setdefault(goal_type, [])
+            for entry in entries:
+                if tuple(entry["steps"]) == steps_key:
+                    entry["attempts"] += 1
+                    if succeeded:
+                        entry["successes"] += 1
+                    entry["success_rate"] = (
+                        entry["successes"] / entry["attempts"]
+                    )
+                    log.debug(
+                        "[DecompositionStrategyLearner] Updated %s strategy (rate=%.2f)",
+                        goal_type, entry["success_rate"],
+                    )
+                    return
+            # New entry
+            entry = {
+                "steps": list(steps),
+                "successes": 1 if succeeded else 0,
+                "attempts": 1,
+                "success_rate": 1.0 if succeeded else 0.0,
+            }
+            entries.append(entry)
+            log.debug(
+                "[DecompositionStrategyLearner] Recorded new %s strategy with %d steps",
+                goal_type, len(steps),
+            )
+
+    # ------------------------------------------------------------------
+    # Selection
+    # ------------------------------------------------------------------
+
+    def best_strategy(self, goal_type: str) -> list[str] | None:
+        """Return the steps list with the highest *success_rate* for *goal_type*.
+
+        Returns ``None`` if no history exists for this goal type.
+        Ties are broken in favour of the most recently added entry.
+        """
+        with self._lock:
+            entries = self._strategies.get(goal_type)
+            if not entries:
+                return None
+            best = max(entries, key=lambda e: e["success_rate"])
+            return list(best["steps"])
+
+    # ------------------------------------------------------------------
+    # Introspection
+    # ------------------------------------------------------------------
+
+    def all_strategies(self) -> dict[str, list[dict[str, Any]]]:
+        """Return the full internal strategy dict (deep-copied)."""
+        with self._lock:
+            return {
+                goal_type: [
+                    {**e, "steps": list(e["steps"])}
+                    for e in entries
+                ]
+                for goal_type, entries in self._strategies.items()
+            }
 
 
 class GoalStatus:
@@ -58,6 +155,7 @@ class GoalPlanner:
         """
         self._db = db
         self._bus = bus
+        self._strategy_learner = DecompositionStrategyLearner()
 
     # ========== CRUD Operations ==========
 
@@ -738,7 +836,27 @@ class GoalPlanner:
 
         duration = round(time.time() - start_time, 4)
         self._bus.publish("planner.goal.executed", {"goal_id": goal_id, "status": final_status})
+
+        # --- Phase 4: record decomposition strategy outcome ---
+        try:
+            recorded_goal = self.get_goal(goal_id)
+            if recorded_goal is not None:
+                goal_type = recorded_goal.domain or "general"
+                steps = recorded_goal.preconditions or []
+                succeeded = final_status == GoalStatus.COMPLETED
+                self._strategy_learner.record_decomposition(goal_type, steps, succeeded)
+        except Exception as _rec_exc:
+            log.debug("[GoalPlanner] Strategy record skipped: %s", _rec_exc)
+
         return {"goal_id": goal_id, "status": final_status, "result": result, "duration_seconds": duration}
+
+    def suggest_decomposition(self, goal_type: str) -> list[str] | None:
+        """Suggest the best known decomposition steps for *goal_type*.
+
+        Delegates to the internal :class:`DecompositionStrategyLearner`.
+        Returns ``None`` when no history is available for this goal type.
+        """
+        return self._strategy_learner.best_strategy(goal_type)
 
     def auto_decompose(self, goal_id: str, max_subgoals: int = 5) -> list[str]:
         """Decompose a goal into subgoals by splitting its description on conjunctions.
