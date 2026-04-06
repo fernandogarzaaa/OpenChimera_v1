@@ -64,7 +64,7 @@ Parallel task orchestration in `core/multi_agent_orchestrator.py`:
 
 ### AGI Completeness
 
-OpenChimera targets 10 cognitive capabilities.  Current status: **8 / 10** implemented and tested.
+OpenChimera targets 10 cognitive capabilities.  Current status: **10 / 10** implemented and tested.
 
 | # | Capability | Module | Status |
 |---|-----------|--------|--------|
@@ -76,8 +76,8 @@ OpenChimera targets 10 cognitive capabilities.  Current status: **8 / 10** imple
 | 6 | Self-Model | `core/self_model.py` | ✅ |
 | 7 | Cross-Domain Transfer | `core/transfer_learning.py` | ✅ |
 | 8 | Causal Reasoning | `core/causal_reasoning.py` | ✅ |
-| 9 | Embodied Interaction | — | 🔲 Planned |
-| 10 | Social Cognition | — | 🔲 Planned |
+| 9 | Embodied Interaction | `core/embodied_interaction.py` | ✅ |
+| 10 | Social Cognition | `core/social_cognition.py` | ✅ |
 
 ## Install
 

@@ -805,10 +805,17 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 return
 
             if self.path == "/v1/media/understand-image":
+                raw_image_path = str(payload.get("image_path", ""))
+                if ".." in raw_image_path.replace("\\", "/"):
+                    raise RequestValidationFailure(
+                        "Validation failed",
+                        status=HTTPStatus.UNPROCESSABLE_ENTITY,
+                        details=[{"field": "image_path", "msg": "path traversal detected"}],
+                    )
                 self._write_json(
                     self.server.provider.media_understand_image(
                         prompt=str(payload.get("prompt", "")),
-                        image_path=str(payload.get("image_path", "")),
+                        image_path=raw_image_path,
                         image_base64=str(payload.get("image_base64", "")),
                     )
                 )
