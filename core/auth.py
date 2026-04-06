@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+import logging
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any, Mapping
@@ -131,4 +132,4 @@ class RequestAuthorizer:
                     },
                 )
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Failed to emit auth event", exc_info=True)

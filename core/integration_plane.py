@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -252,7 +253,7 @@ class IntegrationPlane:
             if self._bus is not None:
                 self._bus.publish_nowait("integration/bridge/activated", result)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Bus publish failed for bridge activation %s", bridge_id, exc_info=True)
         return result
 
     def invoke_bridge(self, bridge_id: str, payload: dict | None = None) -> dict:
@@ -294,5 +295,5 @@ class IntegrationPlane:
             if self._bus is not None:
                 self._bus.publish_nowait("integration/bridge/invoked", result)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Bus publish failed for bridge invocation %s", bridge_id, exc_info=True)
         return result

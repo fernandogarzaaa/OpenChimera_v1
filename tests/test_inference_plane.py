@@ -247,5 +247,66 @@ class TestFreeModelFallbackEnabled(unittest.TestCase):
         self.assertFalse(plane._free_model_fallback_enabled())
 
 
+class TestHuggingFaceFreeSupport(unittest.TestCase):
+
+    def test_huggingface_provider_always_supported(self):
+        plane = _make_plane()
+        self.assertTrue(plane._supports_free_fallback_candidate({"provider": "huggingface", "id": "huggingface/meta-llama/Llama-3"}))
+
+    def test_huggingface_prefix_id_always_supported(self):
+        plane = _make_plane()
+        self.assertTrue(plane._supports_free_fallback_candidate({"provider": "scouted", "id": "huggingface/bloom-560m"}))
+
+    def test_huggingface_api_key_from_env(self):
+        plane = _make_plane()
+        with patch.dict("os.environ", {"HF_TOKEN": "hf_test123"}):
+            self.assertEqual(plane._huggingface_api_key(), "hf_test123")
+
+    def test_huggingface_api_key_from_credential_store(self):
+        cred = MagicMock()
+        def _creds(provider):
+            if provider == "huggingface":
+                return {"HF_TOKEN": "hf_stored"}
+            return {}
+        cred.get_provider_credentials.side_effect = _creds
+        plane = _make_plane(credential_store=cred)
+        with patch.dict("os.environ", {}, clear=False):
+            import os
+            os.environ.pop("HF_TOKEN", None)
+            self.assertEqual(plane._huggingface_api_key(), "hf_stored")
+
+    def test_call_huggingface_free_model_strips_prefix(self):
+        plane = _make_plane()
+        with patch.object(plane, "_post_json_request", return_value={"choices": [{"message": {"content": "hello"}}]}) as mock_post:
+            result = plane._call_huggingface_free_model(
+                "huggingface/meta-llama/Llama-3.2-3B-Instruct",
+                [{"role": "user", "content": "hi"}],
+                temperature=0.7,
+                max_tokens=256,
+                timeout=30.0,
+            )
+        args = mock_post.call_args
+        url = args[0][0]
+        self.assertIn("meta-llama/Llama-3.2-3B-Instruct", url)
+        self.assertNotIn("huggingface/huggingface/", url)
+        self.assertEqual(result["choices"][0]["message"]["content"], "hello")
+
+    def test_fallback_dispatcher_routes_to_huggingface(self):
+        cloud_models = [
+            {"id": "huggingface/bloom-560m", "provider": "huggingface", "recommended_for": ["general"], "source": "autonomy-discovery"},
+        ]
+        plane = _make_plane(cloud_models=cloud_models)
+        with patch.object(plane, "_call_huggingface_free_model", return_value={"choices": [{"message": {"content": "response"}}]}) as mock_hf:
+            result = plane._run_free_model_fallback(
+                "general",
+                [{"role": "user", "content": "test"}],
+                temperature=0.7,
+                max_tokens=256,
+                timeout=30.0,
+            )
+        mock_hf.assert_called_once()
+        self.assertEqual(result["model"], "huggingface/bloom-560m")
+
+
 if __name__ == "__main__":
     unittest.main()

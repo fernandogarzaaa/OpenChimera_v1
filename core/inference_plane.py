@@ -156,6 +156,13 @@ class InferencePlane:
         stored = self.credential_store.get_provider_credentials("openrouter")
         return str(stored.get("OPENROUTER_API_KEY", "")).strip()
 
+    def _huggingface_api_key(self) -> str:
+        env_value = os.getenv("HF_TOKEN", "").strip()
+        if env_value:
+            return env_value
+        stored = self.credential_store.get_provider_credentials("huggingface")
+        return str(stored.get("HF_TOKEN", "")).strip()
+
     def _post_json_request(
         self,
         url: str,
@@ -222,6 +229,32 @@ class InferencePlane:
             timeout=timeout,
         )
 
+    def _call_huggingface_free_model(
+        self,
+        model_id: str,
+        messages: list[dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        timeout: float,
+    ) -> dict[str, Any]:
+        hf_model = model_id.removeprefix("huggingface/")
+        api_key = self._huggingface_api_key()
+        headers: dict[str, str] = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        return self._post_json_request(
+            f"https://router.huggingface.co/hf-inference/models/{hf_model}/v1/chat/completions",
+            {
+                "model": hf_model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": False,
+            },
+            headers=headers,
+            timeout=timeout,
+        )
+
     def _extract_remote_completion_text(self, payload: dict[str, Any]) -> str:
         choices = payload.get("choices", []) if isinstance(payload, dict) else []
         if choices:
@@ -240,6 +273,8 @@ class InferencePlane:
         model_id = str(candidate.get("id") or "").strip()
         source = str(candidate.get("source") or "").strip().lower()
         if provider == "ollama":
+            return True
+        if provider == "huggingface" or model_id.startswith("huggingface/"):
             return True
         if source in {"autonomy-sync", "autonomy-discovery"} and self._openrouter_api_key():
             return True
@@ -291,6 +326,9 @@ class InferencePlane:
             try:
                 if provider == "ollama":
                     payload = self._call_ollama_free_model(model_id, messages, temperature, max_tokens, timeout)
+                elif provider == "huggingface" or model_id.startswith("huggingface/"):
+                    provider = "huggingface"
+                    payload = self._call_huggingface_free_model(model_id, messages, temperature, max_tokens, timeout)
                 else:
                     provider = "openrouter"
                     payload = self._call_openrouter_free_model(model_id, messages, temperature, max_tokens, timeout)

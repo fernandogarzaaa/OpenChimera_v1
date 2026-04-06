@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -341,7 +342,7 @@ class AutonomySchedulerTests(unittest.TestCase):
                     provider_activation=lambda: {
                         "prefer_free_models": False,
                         "fallback_learning": {},
-                        "discovery": {"local_model_assets_available": False, "local_search_roots": ["D:/models"]},
+                        "discovery": {"local_model_assets_available": False, "local_search_roots": ["fake/models"]},
                     },
                     onboarding=lambda: {"blockers": ["No push channel configured for operator notifications."]},
                     integrations=lambda: {"remediation": []},
@@ -356,6 +357,105 @@ class AutonomySchedulerTests(unittest.TestCase):
             finding_ids = [item["id"] for item in payload["findings"]]
             self.assertIn("local-model-assets-missing", finding_ids)
             self.assertIn("operator-channel-missing", finding_ids)
+
+
+class TestProbeHuggingFaceModels(unittest.TestCase):
+
+    def test_probe_huggingface_models_returns_text_gen_models(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            profile = {"autonomy": {"enabled": True, "auto_start": False, "jobs": {}}, "model_inventory": {}}
+
+            class _Response:
+                def __init__(self, body: str):
+                    self._body = body.encode("utf-8")
+
+                def read(self):
+                    return self._body
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+
+            hf_models = [
+                {"id": "meta-llama/Llama-3.2-3B-Instruct", "pipeline_tag": "text-generation", "inference": "warm", "likes": 500, "downloads": 10000},
+                {"id": "bigscience/bloom-560m", "pipeline_tag": "text-generation", "inference": "hot", "likes": 100, "downloads": 5000},
+                {"id": "gated/model-x", "pipeline_tag": "text-generation", "inference": "warm", "gated": True, "likes": 50, "downloads": 200},
+            ]
+
+            def fake_urlopen(req, timeout=0):
+                return _Response(json.dumps(hf_models))
+
+            with patch("core.autonomy.ROOT", temp_root), patch("core.autonomy.load_runtime_profile", return_value=profile), patch("core.autonomy.get_legacy_workspace_root", return_value=temp_root / "legacy"), patch("core.autonomy.request.urlopen", side_effect=fake_urlopen), patch.dict("os.environ", {}, clear=False):
+                os.environ.pop("HF_TOKEN", None)
+                scheduler = AutonomyScheduler(EventBus(), harness_port=object(), minimind=_FakeMiniMind(), identity_snapshot={})
+                results = scheduler._probe_huggingface_models("https://huggingface.co/api/models", "huggingface")
+
+            self.assertEqual(len(results), 2)
+            self.assertTrue(all(item["id"].startswith("huggingface/") for item in results))
+            self.assertTrue(any(item["id"] == "huggingface/meta-llama/Llama-3.2-3B-Instruct" for item in results))
+            self.assertEqual(results[0]["cost"], 0)
+            self.assertEqual(results[0]["provider"], "huggingface")
+
+    def test_probe_huggingface_includes_gated_when_token_present(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            profile = {"autonomy": {"enabled": True, "auto_start": False, "jobs": {}}, "model_inventory": {}}
+
+            class _Response:
+                def __init__(self, body: str):
+                    self._body = body.encode("utf-8")
+
+                def read(self):
+                    return self._body
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc, tb):
+                    return False
+
+            hf_models = [
+                {"id": "gated/model-x", "pipeline_tag": "text-generation", "inference": "warm", "gated": True, "likes": 50, "downloads": 200},
+            ]
+
+            def fake_urlopen(req, timeout=0):
+                return _Response(json.dumps(hf_models))
+
+            with patch("core.autonomy.ROOT", temp_root), patch("core.autonomy.load_runtime_profile", return_value=profile), patch("core.autonomy.get_legacy_workspace_root", return_value=temp_root / "legacy"), patch("core.autonomy.request.urlopen", side_effect=fake_urlopen), patch.dict("os.environ", {"HF_TOKEN": "hf_test123"}):
+                scheduler = AutonomyScheduler(EventBus(), harness_port=object(), minimind=_FakeMiniMind(), identity_snapshot={})
+                results = scheduler._probe_huggingface_models("https://huggingface.co/api/models", "huggingface")
+
+            self.assertEqual(len(results), 1)
+            self.assertEqual(results[0]["id"], "huggingface/gated/model-x")
+
+    def test_discovery_sources_defaults_include_huggingface(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            profile = {"autonomy": {"enabled": True, "auto_start": False, "jobs": {}}, "model_inventory": {}}
+            with patch("core.autonomy.ROOT", temp_root), patch("core.autonomy.load_runtime_profile", return_value=profile), patch("core.autonomy.get_legacy_workspace_root", return_value=temp_root / "legacy"):
+                scheduler = AutonomyScheduler(EventBus(), harness_port=object(), minimind=_FakeMiniMind(), identity_snapshot={})
+                sources = scheduler._discovery_sources()
+
+            names = [s["name"] for s in sources]
+            self.assertIn("huggingface-free", names)
+            hf_source = next(s for s in sources if s["name"] == "huggingface-free")
+            self.assertEqual(hf_source["kind"], "remote-huggingface")
+            self.assertEqual(hf_source["provider"], "huggingface")
+
+    def test_probe_dispatcher_routes_huggingface_kind(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_root = Path(temp_dir)
+            profile = {"autonomy": {"enabled": True, "auto_start": False, "jobs": {}}, "model_inventory": {}}
+            with patch("core.autonomy.ROOT", temp_root), patch("core.autonomy.load_runtime_profile", return_value=profile), patch("core.autonomy.get_legacy_workspace_root", return_value=temp_root / "legacy"):
+                scheduler = AutonomyScheduler(EventBus(), harness_port=object(), minimind=_FakeMiniMind(), identity_snapshot={})
+                with patch.object(scheduler, "_probe_huggingface_models", return_value=[{"id": "hf/test"}]) as mock_hf:
+                    result = scheduler._probe_discovery_source({"kind": "remote-huggingface", "url": "https://huggingface.co/api/models", "provider": "huggingface"})
+
+            mock_hf.assert_called_once()
+            self.assertEqual(result, [{"id": "hf/test"}])
 
 
 class TestRecordLearning(unittest.TestCase):

@@ -10,6 +10,8 @@ programmatically registered entries.
 """
 from __future__ import annotations
 
+import logging
+
 from typing import Any
 
 
@@ -204,4 +206,4 @@ class SkillRegistry:
         try:
             self._bus.publish_nowait(topic, payload)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug("Bus publish failed for topic %s", topic, exc_info=True)

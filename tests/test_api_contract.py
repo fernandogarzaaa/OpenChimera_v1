@@ -119,8 +119,8 @@ class _FakeProvider:
     def browser_status(self) -> dict[str, object]:
         return {
             "enabled": True,
-            "artifact_root": "d:/OpenChimera/sandbox/artifacts/browser",
-            "history_path": "d:/OpenChimera/data/browser_sessions.json",
+            "artifact_root": "fake/openchimera/sandbox/artifacts/browser",
+            "history_path": "fake/openchimera/data/browser_sessions.json",
             "recent_sessions": list(self._browser_history),
             "supported_actions": ["fetch", "submit_form"],
         }
@@ -260,7 +260,7 @@ class _FakeProvider:
         if subsystem_id == "ascension_engine":
             return {"status": "ok", "prompt": str((payload or {}).get("prompt", ""))}
         if subsystem_id == "aegis_swarm":
-            return {"status": "preview", "target": str((payload or {}).get("target_project", "d:/OpenChimera"))}
+            return {"status": "preview", "target": str((payload or {}).get("target_project", "fake/openchimera"))}
         return {"status": "ok", "action": action}
 
     def browser_fetch(self, url: str, max_chars: int = 4000) -> dict[str, object]:
@@ -269,7 +269,7 @@ class _FakeProvider:
             "url": url,
             "content_type": "text/html",
             "text_preview": "Example page",
-            "artifact": {"path": "d:/OpenChimera/sandbox/artifacts/browser/fetch.json"},
+            "artifact": {"path": "fake/openchimera/sandbox/artifacts/browser/fetch.json"},
             "recorded_at": 0,
         }
         self._browser_history.append(record)
@@ -282,7 +282,7 @@ class _FakeProvider:
             "method": method.upper(),
             "content_type": "text/html",
             "text_preview": "Submitted",
-            "artifact": {"path": "d:/OpenChimera/sandbox/artifacts/browser/form.json"},
+            "artifact": {"path": "fake/openchimera/sandbox/artifacts/browser/form.json"},
             "recorded_at": 0,
         }
         self._browser_history.append(record)
@@ -331,7 +331,7 @@ class _FakeProvider:
             jobs = jobs[:limit]
         return {
             "running": True,
-            "store_path": "d:/OpenChimera/data/job_queue.json",
+            "store_path": "fake/openchimera/data/job_queue.json",
             "jobs": jobs,
             "counts": {
                 "total": len(jobs),
@@ -415,7 +415,7 @@ class _FakeProvider:
     def autonomy_diagnostics(self) -> dict[str, object]:
         return {
             "status": "ok",
-            "scheduler": {"artifacts": {"self_audit": "d:/OpenChimera/data/autonomy/self_audit.json"}},
+            "scheduler": {"artifacts": {"self_audit": "fake/openchimera/data/autonomy/self_audit.json"}},
             "provider_activation": {"prefer_free_models": self._prefer_free_models},
             "job_queue": self.job_queue_status(),
             "artifacts": {
@@ -624,14 +624,14 @@ class _FakeProvider:
         return {"available": True, "running": True}
 
     def run_aegis_workflow(self, target_project: str | None = None, preview: bool = True) -> dict[str, object]:
-        return {"status": "preview" if preview else "ok", "target": target_project or "d:/OpenChimera"}
+        return {"status": "preview" if preview else "ok", "target": target_project or "fake/openchimera"}
 
     def preview_self_repair(self, target_project: str | None = None, enqueue: bool = False, max_attempts: int = 3) -> dict[str, object]:
         if enqueue:
-            return self.create_operator_job("autonomy", {"job": "preview_self_repair", "target_project": target_project or "d:/OpenChimera"}, max_attempts)
+            return self.create_operator_job("autonomy", {"job": "preview_self_repair", "target_project": target_project or "fake/openchimera"}, max_attempts)
         return {
             "status": "preview",
-            "target": "d:/OpenChimera/data/autonomy/preview_self_repair.json",
+            "target": "fake/openchimera/data/autonomy/preview_self_repair.json",
             "focus_area_count": 2,
             "recommendation_count": 3,
         }
@@ -698,7 +698,7 @@ class _FakeProvider:
         return {
             "status": "ok",
             "dispatch_topic": dispatch_topic or "system/briefing/daily",
-            "target": "d:/OpenChimera/data/autonomy/operator_digest.json",
+            "target": "fake/openchimera/data/autonomy/operator_digest.json",
             "recent_alert_count": history_limit or 1,
         }
 
@@ -1160,7 +1160,7 @@ class ApiContractTests(unittest.TestCase):
 
         repair_job = self._post(
             "/v1/jobs/create",
-            {"job_type": "autonomy", "payload": {"job": "preview_self_repair", "target_project": "d:/OpenChimera"}, "max_attempts": 2},
+            {"job_type": "autonomy", "payload": {"job": "preview_self_repair", "target_project": "fake/openchimera"}, "max_attempts": 2},
         )
 
         filtered = self._get("/v1/jobs/status?job_type=autonomy.preview_repair")
@@ -1197,10 +1197,10 @@ class ApiContractTests(unittest.TestCase):
         artifact = self._get("/v1/autonomy/artifacts/get?artifact=self_audit")
         self.assertEqual(artifact["artifact_name"], "self_audit")
 
-        preview = self._post("/v1/autonomy/preview-repair", {"target_project": "d:/OpenChimera"})
+        preview = self._post("/v1/autonomy/preview-repair", {"target_project": "fake/openchimera"})
         self.assertEqual(preview["status"], "preview")
 
-        queued = self._post("/v1/autonomy/preview-repair", {"target_project": "d:/OpenChimera", "enqueue": True, "max_attempts": 2})
+        queued = self._post("/v1/autonomy/preview-repair", {"target_project": "fake/openchimera", "enqueue": True, "max_attempts": 2})
         self.assertEqual(queued["job_class"], "autonomy.preview_repair")
 
         operator_digest = self._get("/v1/autonomy/operator-digest")
@@ -1220,9 +1220,9 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(queued_digest["job_type"], "autonomy")
 
     def test_autonomy_run_endpoint_forwards_payload(self) -> None:
-        result = self._post("/v1/autonomy/run", {"job": "preview_self_repair", "target_project": "d:/OpenChimera"})
+        result = self._post("/v1/autonomy/run", {"job": "preview_self_repair", "target_project": "fake/openchimera"})
         self.assertEqual(result["job"], "preview_self_repair")
-        self.assertEqual(result["payload"]["target_project"], "d:/OpenChimera")
+        self.assertEqual(result["payload"]["target_project"], "fake/openchimera")
 
     def test_query_model_roles_plugin_and_subsystem_endpoints(self) -> None:
         model_roles = self._get("/v1/model-roles/status")
@@ -1355,7 +1355,7 @@ class ApiContractTests(unittest.TestCase):
         self.assertTrue(self._get("/v1/aegis/status")["available"])
         self.assertTrue(self._get("/v1/ascension/status")["running"])
         self.assertEqual(self._get("/v1/briefings/daily")["summary"], "OpenChimera daily briefing")
-        aegis_run = self._post("/v1/aegis/run", {"preview": True, "target_project": "d:/OpenChimera"})
+        aegis_run = self._post("/v1/aegis/run", {"preview": True, "target_project": "fake/openchimera"})
         self.assertEqual(aegis_run["status"], "preview")
         ascension = self._post("/v1/ascension/deliberate", {"prompt": "What should we improve next?"})
         self.assertEqual(ascension["status"], "ok")

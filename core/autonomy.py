@@ -914,6 +914,13 @@ class AutonomyScheduler:
                 "kind": "local-ollama",
                 "enabled": True,
             },
+            {
+                "name": "huggingface-free",
+                "provider": "huggingface",
+                "url": "https://huggingface.co/api/models",
+                "kind": "remote-huggingface",
+                "enabled": True,
+            },
         ]
 
     def _probe_discovery_source(self, source: dict[str, Any]) -> list[dict[str, Any]]:
@@ -922,6 +929,8 @@ class AutonomyScheduler:
         provider = str(source.get("provider") or "scouted").strip() or "scouted"
         if kind == "local-ollama" or "11434" in url:
             return self._probe_ollama_models(url, provider)
+        if kind == "remote-huggingface" or "huggingface.co" in url:
+            return self._probe_huggingface_models(url, provider)
         return self._probe_openrouter_models(url, provider)
 
     def _probe_openrouter_models(self, url: str, provider: str) -> list[dict[str, Any]]:
@@ -975,6 +984,48 @@ class AutonomyScheduler:
                     "context_length": 0,
                     "cost": 0,
                     "source": "autonomy-discovery",
+                }
+            )
+        return discovered
+
+    def _probe_huggingface_models(self, url: str, provider: str) -> list[dict[str, Any]]:
+        import os as _os
+
+        hf_token = _os.getenv("HF_TOKEN", "").strip()
+        params = "?pipeline_tag=text-generation&inference_provider=all&sort=likes&direction=-1&limit=50"
+        headers: dict[str, str] = {"User-Agent": "OpenChimera/1.0"}
+        if hf_token:
+            headers["Authorization"] = f"Bearer {hf_token}"
+        req = request.Request(url + params, headers=headers)
+        with request.urlopen(req, timeout=20) as response:
+            items = json.loads(response.read().decode("utf-8"))
+        if not isinstance(items, list):
+            return []
+        discovered: list[dict[str, Any]] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            model_id = str(item.get("id") or item.get("modelId") or "").strip()
+            if not model_id:
+                continue
+            inference_status = str(item.get("inference") or "").strip().lower()
+            gated = bool(item.get("gated"))
+            if gated and not hf_token:
+                continue
+            if inference_status not in {"", "warm", "hot", "loaded"}:
+                if not item.get("inference_provider_mapping"):
+                    continue
+            discovered.append(
+                {
+                    "id": f"huggingface/{model_id}",
+                    "provider": provider,
+                    "recommended_for": ["fallback", "general"],
+                    "strength": str(item.get("pipeline_tag") or "text-generation"),
+                    "context_length": 0,
+                    "cost": 0,
+                    "source": "autonomy-discovery",
+                    "likes": int(item.get("likes") or 0),
+                    "downloads": int(item.get("downloads") or 0),
                 }
             )
         return discovered

@@ -1,0 +1,1 @@
+# OpenChimera plugin discovery package.

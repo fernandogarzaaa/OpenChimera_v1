@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class OpenChimeraCLITests(unittest.TestCase):
     def test_bootstrap_command_emits_json(self) -> None:
-        with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "D:/OpenChimera", "created_directories": [], "created_files": [], "normalized_files": []}):
+        with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "fake/openchimera", "created_directories": [], "created_files": [], "normalized_files": []}):
             output = io.StringIO()
             with redirect_stdout(output):
                 exit_code = run.main(["bootstrap", "--json"])
@@ -93,17 +93,17 @@ class OpenChimeraCLITests(unittest.TestCase):
                     return_value={
                         "llama_server_exists": True,
                         "models": {},
-                        "discovery": {"search_roots": ["D:/models"], "discovered_files": []},
+                        "discovery": {"search_roots": ["fake/models"], "discovered_files": []},
                     }
                 )
             )
         )
         fake_identity = {
-            "root": "D:/OpenChimera",
+            "root": "fake/openchimera",
             "integration_roots": {
-                "harness_repo": "D:/repos/upstream-harness-repo",
-                "legacy_harness_snapshot": "D:/OpenChimera/data/harness-snapshots",
-                "minimind": "D:/openclaw/research/minimind",
+                "harness_repo": "fake/upstream-harness-repo",
+                "legacy_harness_snapshot": "fake/openchimera/data/harness-snapshots",
+                "minimind": "fake/minimind",
             },
         }
         with patch.object(run, "bootstrap_workspace", return_value={"status": "ok"}), patch.object(
@@ -112,11 +112,11 @@ class OpenChimeraCLITests(unittest.TestCase):
             run, "_build_provider", return_value=fake_provider
         ), patch.object(
             run, "AetherService", return_value=SimpleNamespace(status=lambda: {"available": True, "immune_loop_available": False, "immune_loop_error": "No module named 'psutil'"})
-        ), patch.object(run, "get_runtime_profile_path", return_value=Path("D:/OpenChimera/config/runtime_profile.json")), patch.object(
-            run, "get_runtime_profile_override_path", return_value=Path("D:/OpenChimera/config/runtime_profile.local.json")
-        ), patch.object(run, "get_harness_repo_root", return_value=Path("D:/repos/upstream-harness-repo")), patch.object(
-            run, "get_legacy_harness_snapshot_root", return_value=Path("D:/OpenChimera/data/harness-snapshots")
-        ), patch.object(run, "get_minimind_root", return_value=Path("D:/openclaw/research/minimind")), patch.object(
+        ), patch.object(run, "get_runtime_profile_path", return_value=Path("fake/openchimera/config/runtime_profile.json")), patch.object(
+            run, "get_runtime_profile_override_path", return_value=Path("fake/openchimera/config/runtime_profile.local.json")
+        ), patch.object(run, "get_harness_repo_root", return_value=Path("fake/upstream-harness-repo")), patch.object(
+            run, "get_legacy_harness_snapshot_root", return_value=Path("fake/openchimera/data/harness-snapshots")
+        ), patch.object(run, "get_minimind_root", return_value=Path("fake/minimind")), patch.object(
             run, "is_supported_harness_repo_root", return_value=True
         ), patch.object(run, "is_api_auth_enabled", return_value=False), patch.object(run, "get_api_auth_header", return_value="Authorization"), patch.object(
             run, "get_api_auth_token", return_value=""
@@ -125,16 +125,16 @@ class OpenChimeraCLITests(unittest.TestCase):
 
         self.assertFalse(payload["checks"]["aether_immune_loop_available"])
         self.assertTrue(any("AETHER immune loop is unavailable" in warning for warning in payload["warnings"]))
-        self.assertEqual(payload["local_model_discovery"]["search_roots"], ["D:/models"])
+        self.assertEqual(payload["local_model_discovery"]["search_roots"], ["fake/models"])
 
     def test_doctor_payload_warns_when_public_bind_has_no_auth(self) -> None:
         fake_provider = SimpleNamespace(llm_manager=SimpleNamespace(get_runtime_status=MagicMock(return_value={"llama_server_exists": True, "models": {}, "discovery": {"search_roots": [], "discovered_files": []}})))
-        fake_identity = {"root": "D:/OpenChimera", "integration_roots": {"harness_repo": "D:/repos/upstream-harness-repo", "legacy_harness_snapshot": "D:/OpenChimera/data/harness-snapshots", "minimind": "D:/openclaw/research/minimind"}}
+        fake_identity = {"root": "fake/openchimera", "integration_roots": {"harness_repo": "fake/upstream-harness-repo", "legacy_harness_snapshot": "fake/openchimera/data/harness-snapshots", "minimind": "fake/minimind"}}
         safe_config = {
             "network": {"public_bind": True},
             "auth": {"enabled": False},
         }
-        with patch.object(run, "bootstrap_workspace", return_value={"status": "ok"}), patch.object(run, "load_runtime_profile", return_value={"providers": {}}), patch.object(run, "build_identity_snapshot", return_value=fake_identity), patch.object(run, "build_runtime_configuration_status", return_value=safe_config), patch.object(run, "_build_provider", return_value=fake_provider), patch.object(run, "AetherService", return_value=SimpleNamespace(status=lambda: {"available": False, "immune_loop_available": False, "immune_loop_error": None})), patch.object(run, "get_runtime_profile_path", return_value=Path("D:/OpenChimera/config/runtime_profile.json")), patch.object(run, "get_runtime_profile_override_path", return_value=Path("D:/OpenChimera/config/runtime_profile.local.json")), patch.object(run, "get_harness_repo_root", return_value=Path("D:/repos/upstream-harness-repo")), patch.object(run, "get_legacy_harness_snapshot_root", return_value=Path("D:/OpenChimera/data/harness-snapshots")), patch.object(run, "get_minimind_root", return_value=Path("D:/openclaw/research/minimind")), patch.object(run, "is_supported_harness_repo_root", return_value=True), patch.object(run, "is_api_auth_enabled", return_value=False), patch.object(run, "get_api_auth_header", return_value="Authorization"), patch.object(run, "get_api_auth_token", return_value=""), patch.object(run, "get_api_admin_token", return_value=""):
+        with patch.object(run, "bootstrap_workspace", return_value={"status": "ok"}), patch.object(run, "load_runtime_profile", return_value={"providers": {}}), patch.object(run, "build_identity_snapshot", return_value=fake_identity), patch.object(run, "build_runtime_configuration_status", return_value=safe_config), patch.object(run, "_build_provider", return_value=fake_provider), patch.object(run, "AetherService", return_value=SimpleNamespace(status=lambda: {"available": False, "immune_loop_available": False, "immune_loop_error": None})), patch.object(run, "get_runtime_profile_path", return_value=Path("fake/openchimera/config/runtime_profile.json")), patch.object(run, "get_runtime_profile_override_path", return_value=Path("fake/openchimera/config/runtime_profile.local.json")), patch.object(run, "get_harness_repo_root", return_value=Path("fake/upstream-harness-repo")), patch.object(run, "get_legacy_harness_snapshot_root", return_value=Path("fake/openchimera/data/harness-snapshots")), patch.object(run, "get_minimind_root", return_value=Path("fake/minimind")), patch.object(run, "is_supported_harness_repo_root", return_value=True), patch.object(run, "is_api_auth_enabled", return_value=False), patch.object(run, "get_api_auth_header", return_value="Authorization"), patch.object(run, "get_api_auth_token", return_value=""), patch.object(run, "get_api_admin_token", return_value=""):
             payload = run._doctor_payload()
 
         self.assertFalse(payload["checks"]["external_bind_protected"])

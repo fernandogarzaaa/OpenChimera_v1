@@ -427,7 +427,7 @@ class ProviderReasoningTests(unittest.TestCase):
                 "providers": [{"provider_id": "local-llama-cpp"}],
                 "discovery": {
                     "local_model_assets_available": False,
-                    "local_search_roots": ["D:/models"],
+                    "local_search_roots": ["fake/models"],
                 },
             }
         )
@@ -435,7 +435,7 @@ class ProviderReasoningTests(unittest.TestCase):
         status = provider.provider_activation_status()
 
         provider.model_registry.refresh.assert_called_once()
-        self.assertEqual(status["discovery"]["local_search_roots"], ["D:/models"])
+        self.assertEqual(status["discovery"]["local_search_roots"], ["fake/models"])
 
     def test_operator_job_executor_forwards_autonomy_payload(self) -> None:
         provider = self._build_provider()

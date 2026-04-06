@@ -166,7 +166,7 @@ Phase 3:
 Track active God Swarm executions:
 
 ```yaml
-# D:\openclaw\swarms\registry\god-swarm-active.yaml
+# swarms/registry/god-swarm-active.yaml
 god_swarms:
   - id: "gs-20260224-001"
     created: "2026-02-24T03:45:00Z"
@@ -193,7 +193,7 @@ god_swarms:
     
     shared_context:
       requirements: "path/to/reqs.yaml"
-      artifacts_dir: "D:/openclaw/swarms/artifacts/gs-001"
+      artifacts_dir: "swarms/artifacts/gs-001"
 ```
 
 ## Escalation Triggers

@@ -71,9 +71,9 @@ class BootstrapPlaneTests(unittest.TestCase):
         plane, _ = self._build_plane()
         plane.harness_port.available = True
         plane.harness_port.status.return_value = {"summary": "Harness summary"}
-        plane.harness_port.root = Path("D:/Harness")
+        plane.harness_port.root = Path("fake/harness")
         plane.minimind.available = True
-        plane.minimind.root = Path("D:/MiniMind")
+        plane.minimind.root = Path("fake/minimind")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -95,6 +95,6 @@ class BootstrapPlaneTests(unittest.TestCase):
         self.assertIn(root / "README.md", added_files)
         self.assertIn(root / "config" / "runtime_profile.json", added_files)
         self.assertIn(legacy_root / "README.md", added_files)
-        self.assertIn(Path("D:/Harness") / "README.md", added_files)
-        self.assertIn(Path("D:/MiniMind") / "README.md", added_files)
-        self.assertIn(Path("D:/MiniMind") / "CHIMERA_MINI_PROPOSAL.md", added_files)
+        self.assertIn(Path("fake/harness") / "README.md", added_files)
+        self.assertIn(Path("fake/minimind") / "README.md", added_files)
+        self.assertIn(Path("fake/minimind") / "CHIMERA_MINI_PROPOSAL.md", added_files)
