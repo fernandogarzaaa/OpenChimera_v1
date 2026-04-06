@@ -166,16 +166,41 @@ class AutonomyScheduler:
         self.bus.publish_nowait("system/autonomy", {"status": "offline"})
         return self.status()
 
+    def _compute_ece_score(self) -> float | None:
+        candidates = [
+            self.runtime_context_providers.get("metacognition"),
+            self._memory,
+            self.minimind,
+        ]
+        for candidate in candidates:
+            if candidate is None:
+                continue
+            compute_ece = getattr(candidate, "compute_ece", None)
+            if not callable(compute_ece):
+                continue
+            try:
+                score = compute_ece()
+            except Exception as exc:
+                log.debug("Failed to compute ECE from %r: %s", candidate, exc)
+                continue
+            if score is None:
+                continue
+            # compute_ece may return a dict (e.g. MetacognitionEngine) or a float
+            if isinstance(score, dict):
+                score = score.get("ece")
+            if score is None:
+                continue
+            try:
+                return float(score)
+            except (TypeError, ValueError):
+                log.debug("Ignoring non-numeric ECE score from %r: %r", candidate, score)
+        return None
+
     def _run_loop(self) -> None:
         while self._running:
             now = time.time()
             # Fetch ECE score lazily — used by predictive scheduling
-            ece_score: float | None = None
-            try:
-                if self._causal is not None:
-                    ece_score = self._causal.summary().get("avg_confidence")
-            except Exception:
-                pass
+            ece_score = self._compute_ece_score()
 
             for job in self.jobs.values():
                 if not job.enabled:

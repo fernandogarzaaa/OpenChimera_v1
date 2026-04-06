@@ -10,7 +10,7 @@ SystemWorldModel       Causal graph of OpenChimera runtime components.
 InterventionSimulator  Predicts outcomes of proposed interventions/repairs
                        without executing them (safe preview).
 
-Both classes are thread-safe and publish events via EventBus when available.
+Both classes are thread-safe.
 """
 from __future__ import annotations
 
@@ -19,7 +19,6 @@ import threading
 import time
 from typing import Any
 
-from core._bus_fallback import EventBus
 from core.causal_reasoning import CausalReasoning
 
 log = logging.getLogger(__name__)

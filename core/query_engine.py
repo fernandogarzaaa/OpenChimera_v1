@@ -349,17 +349,12 @@ class QueryEngine:
         cleared: list[str] = []
 
         if scope in (None, "sessions"):
-            # Clearing sessions: we don't delete historical sessions from the
-            # database (that could break traceability), but we return the count
-            # so callers know the current state.  A future admin-only variant
-            # could purge them entirely; for now this is a safe no-op that
-            # documents what *would* be cleared.
-            session_count = len(self._load_sessions().get("sessions", []))
-            cleared.append(f"sessions_inspected={session_count}")
+            deleted = self.database.clear_query_sessions()
+            cleared.append(f"sessions_deleted={deleted}")
 
         if scope in (None, "tool_history"):
-            tool_event_count = len(self._load_tool_history().get("events", []))
-            cleared.append(f"tool_events_inspected={tool_event_count}")
+            deleted = self.database.clear_tool_events()
+            cleared.append(f"tool_events_deleted={deleted}")
 
         return {
             "scope": scope or "all",

@@ -120,12 +120,14 @@ class UnifiedToolRegistry:
 
         Raises ``ValueError`` if the tool is not found in either registry.
         """
-        # Try RuntimeToolRegistry (has admin-scope permission gating)
+        # Try RuntimeToolRegistry first via its public API.
         if self._runtime_registry is not None:
-            if name_or_id in self._runtime_registry._specs:
+            try:
                 return self._runtime_registry.execute(
                     name_or_id, arguments, permission_scope=permission_scope
                 )
+            except ValueError:
+                pass
 
         # Verify the tool exists in the metadata registry before executing
         # (ToolRegistry.execute returns a failed ToolResult rather than raising)
