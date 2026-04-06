@@ -374,7 +374,9 @@ def main() -> int:
 
     # 6. Determine next cycle ID
     existing_cycles = memory.get("cycles", [])
-    cycle_id = (existing_cycles[-1]["cycle_id"] if existing_cycles else 0) + 1
+    last_cycle = existing_cycles[-1] if existing_cycles else {}
+    last_cycle_id = last_cycle.get("cycle_id", 0) if isinstance(last_cycle, dict) else 0
+    cycle_id = last_cycle_id + 1
 
     # 7. Write insights report
     report_path = write_insights_report(cycle_id, health, engine_result, copilot_insights)
