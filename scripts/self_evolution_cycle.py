@@ -257,7 +257,13 @@ def build_copilot_prompt(health: dict[str, Any], engine_result: dict[str, Any]) 
         if recs:
             lines.append("- Recommendations from EvolutionEngine:")
             for rec in recs[:5]:
-                lines.append(f"  • {rec}")
+                if isinstance(rec, dict):
+                    model = rec.get("model", "unknown")
+                    action = rec.get("action", "unknown")
+                    reason = rec.get("reason", "")
+                    lines.append(f"  • [{action.upper()}] {model}: {reason}")
+                else:
+                    lines.append(f"  • {rec}")
     else:
         lines.append(f"- Skipped reason: {engine_result.get('reason', '')}")
 
@@ -333,7 +339,13 @@ def _engine_section(engine_result: dict[str, Any]) -> str:
     if recs:
         lines.append("\n**Recommendations:**")
         for rec in recs:
-            lines.append(f"- {rec}")
+            if isinstance(rec, dict):
+                model = rec.get("model", "unknown")
+                action = rec.get("action", "unknown")
+                reason = rec.get("reason", "")
+                lines.append(f"- **[{action.upper()}]** `{model}`: {reason}")
+            else:
+                lines.append(f"- {rec}")
     return "\n".join(lines)
 
 
