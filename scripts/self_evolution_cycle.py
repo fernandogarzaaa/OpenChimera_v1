@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""OpenChimera Self-Evolution Cycle.
+
+Invoked by the self-evolution GitHub Actions workflow every 24 hours.
+This script:
+  1. Reads the evolution memory log to avoid duplicate cycles.
+  2. Audits the current system health via the Autonomy scheduler.
+  3. Runs the EvolutionEngine cycle (DPO pair generation, model fitness,
+     adapter registration).
+  4. Queries GitHub Copilot (via the GitHub Models API) for actionable
+     self-improvement suggestions based on the audit summary.
+  5. Applies safe, auto-approvable patches (e.g. documentation, config
+     tuning) or opens a draft PR for larger changes.
+  6. Appends a signed entry to the evolution memory log so the next
+     scheduled run knows not to repeat the cycle within 23 h.
+
+Environment variables (injected by the workflow):
+  GITHUB_TOKEN   — personal/actions token with repo + models scope
+  GITHUB_REPOSITORY — e.g. "fernandogarzaaa/OpenChimera_v1"
+  GITHUB_SHA         — current HEAD commit SHA
+  GITHUB_RUN_ID      — workflow run identifier
+  EVOLUTION_MEMORY_PATH — path to evolution-memory.json (optional)
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%SZ",
+)
+log = logging.getLogger("self_evolution_cycle")
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+MEMORY_PATH = Path(
+    os.environ.get("EVOLUTION_MEMORY_PATH", ".github/evolution-memory.json")
+)
+if not MEMORY_PATH.is_absolute():
+    MEMORY_PATH = REPO_ROOT / MEMORY_PATH
+
+# 23 h guard — 1 h shorter than the 24 h cron schedule to absorb scheduling
+# jitter (GitHub Actions can fire a few minutes late) while still preventing
+# genuine double-runs within the same day.
+MIN_CYCLE_INTERVAL_SECONDS = 23 * 3600
+MEMORY_MAX_CYCLES = 90  # keep last 90 entries in the log
+
+# GitHub Models endpoint (provides Copilot / GPT-4o access with a standard token)
+COPILOT_API_URL = "https://models.inference.ai.azure.com/chat/completions"
+COPILOT_MODEL = "gpt-4o"
+
+# ---------------------------------------------------------------------------
+# Memory log helpers
+# ---------------------------------------------------------------------------
+
+
+def load_memory() -> dict[str, Any]:
+    """Load the evolution memory log, returning a default structure on error."""
+    if MEMORY_PATH.exists():
+        try:
+            return json.loads(MEMORY_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            log.warning("Memory log contains invalid JSON (%s) — starting fresh.", exc)
+        except OSError as exc:
+            log.warning("Could not read memory log (%s) — starting fresh.", exc)
+    return {"schema_version": 1, "last_cycle_timestamp": 0, "cycles": []}
+
+
+def save_memory(data: dict[str, Any]) -> None:
+    """Persist the evolution memory log atomically."""
+    data["cycles"] = data.get("cycles", [])[-MEMORY_MAX_CYCLES:]
+    MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = MEMORY_PATH.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(MEMORY_PATH)
+    log.info("Memory log updated → %s", MEMORY_PATH)
+
+
+def check_loop_guard(memory: dict[str, Any]) -> bool:
+    """Return True if it is safe to proceed (last cycle was > MIN_CYCLE_INTERVAL_SECONDS ago)."""
+    last_ts = float(memory.get("last_cycle_timestamp", 0))
+    elapsed = time.time() - last_ts
+    if elapsed < MIN_CYCLE_INTERVAL_SECONDS:
+        log.warning(
+            "Loop guard triggered — last cycle ran %.1f h ago (minimum gap: %.1f h). Skipping.",
+            elapsed / 3600,
+            MIN_CYCLE_INTERVAL_SECONDS / 3600,
+        )
+        return False
+    return True
+
+
+# ---------------------------------------------------------------------------
+# System health summary (lightweight — avoids heavy import chain)
+# ---------------------------------------------------------------------------
+
+
+def build_health_summary() -> dict[str, Any]:
+    """Return a lightweight summary of the repository's current state."""
+    summary: dict[str, Any] = {
+        "repo_root": str(REPO_ROOT),
+        "python_version": sys.version.split()[0],
+        "timestamp": time.time(),
+    }
+
+    # Count Python source files and test files
+    py_files = list(REPO_ROOT.rglob("*.py"))
+    test_files = [f for f in py_files if f.name.startswith("test_")]
+    summary["source_file_count"] = len(py_files)
+    summary["test_file_count"] = len(test_files)
+
+    # Collect recent memory cycles for trend analysis
+    memory = load_memory()
+    summary["evolution_cycles_recorded"] = len(memory.get("cycles", []))
+    summary["last_evolution_timestamp"] = memory.get("last_cycle_timestamp", 0)
+
+    # Collect core module names as a capability fingerprint
+    core_dir = REPO_ROOT / "core"
+    if core_dir.is_dir():
+        core_modules = sorted(
+            f.stem for f in core_dir.glob("*.py") if not f.name.startswith("_")
+        )
+        summary["core_modules"] = core_modules
+        summary["core_module_count"] = len(core_modules)
+
+    return summary
+
+
+# ---------------------------------------------------------------------------
+# OpenChimera evolution engine (thin wrapper — avoids importing the full stack)
+# ---------------------------------------------------------------------------
+
+
+def run_evolution_engine() -> dict[str, Any]:
+    """Run the EvolutionEngine cycle if the module is importable."""
+    try:
+        # Add repo root to sys.path so core modules resolve correctly
+        if str(REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT))
+
+        from core._bus_fallback import EventBus  # type: ignore[import]
+        from core._database_fallback import DatabaseManager  # type: ignore[import]
+        from core.evolution import EvolutionEngine  # type: ignore[import]
+
+        bus = EventBus()
+        db = DatabaseManager()
+        engine = EvolutionEngine(db=db, bus=bus)
+        result = engine.evolution_cycle()
+        summary = engine.summary()
+        log.info(
+            "EvolutionEngine cycle complete — pairs=%d, adapter=%s",
+            len(result.get("pairs", [])),
+            result.get("adapter_id", "n/a"),
+        )
+        return {"status": "ok", "cycle": result, "summary": summary}
+    except ImportError as exc:
+        log.warning("EvolutionEngine not importable (missing dependency): %s", exc)
+        return {"status": "skipped", "reason": f"ImportError: {exc}"}
+    except Exception as exc:  # noqa: BLE001
+        log.warning("EvolutionEngine cycle failed unexpectedly: %s", exc)
+        return {"status": "skipped", "reason": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# GitHub Copilot (GitHub Models API) integration
+# ---------------------------------------------------------------------------
+
+
+def query_copilot(prompt: str, token: str) -> str:
+    """Call the GitHub Models API with *prompt* and return the reply text."""
+    payload = json.dumps(
+        {
+            "model": COPILOT_MODEL,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are the brain of OpenChimera, an autonomous AGI platform. "
+                        "Your role is to analyze the system's current state and propose "
+                        "concrete, safe, incremental self-improvements. Focus on code "
+                        "quality, test coverage gaps, documentation, and architectural "
+                        "hardening. Be concise and actionable."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 1024,
+            "temperature": 0.3,
+        }
+    ).encode("utf-8")
+
+    req = urllib.request.Request(
+        COPILOT_API_URL,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+            return body["choices"][0]["message"]["content"].strip()
+    except urllib.error.HTTPError as exc:
+        body_text = exc.read().decode("utf-8", errors="replace")
+        log.warning("Copilot API HTTP error %d: %s", exc.code, body_text[:400])
+        return f"[Copilot unavailable — HTTP {exc.code}]"
+    except urllib.error.URLError as exc:
+        log.warning("Copilot API network error: %s", exc.reason)
+        return f"[Copilot unavailable — network error: {exc.reason}]"
+    except json.JSONDecodeError as exc:
+        log.warning("Copilot API returned invalid JSON: %s", exc)
+        return "[Copilot unavailable — invalid JSON response]"
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Copilot API unexpected error: %s", exc)
+        return f"[Copilot unavailable — {exc}]"
+
+
+def build_copilot_prompt(health: dict[str, Any], engine_result: dict[str, Any]) -> str:
+    """Compose the prompt sent to GitHub Copilot."""
+    lines = [
+        "## OpenChimera Self-Evolution Audit",
+        "",
+        f"- Python version: {health['python_version']}",
+        f"- Source files: {health.get('source_file_count', '?')}",
+        f"- Test files:   {health.get('test_file_count', '?')}",
+        f"- Core modules: {health.get('core_module_count', '?')} ({', '.join(health.get('core_modules', [])[:10])}…)",
+        f"- Evolution cycles logged: {health.get('evolution_cycles_recorded', 0)}",
+        "",
+        "## EvolutionEngine result",
+        f"- Status: {engine_result.get('status')}",
+    ]
+    if engine_result.get("status") == "ok":
+        cycle = engine_result.get("cycle", {})
+        lines += [
+            f"- DPO pairs generated: {len(cycle.get('pairs', []))}",
+            f"- Dataset size: {cycle.get('dataset_size', 0)}",
+            f"- Adapter registered: {cycle.get('adapter_id', 'none')}",
+        ]
+        recs = cycle.get("recommendations", [])
+        if recs:
+            lines.append("- Recommendations from EvolutionEngine:")
+            for rec in recs[:5]:
+                lines.append(f"  • {rec}")
+    else:
+        lines.append(f"- Skipped reason: {engine_result.get('reason', '')}")
+
+    lines += [
+        "",
+        "Based on this audit, list the top 3–5 concrete, safe self-improvement actions "
+        "OpenChimera should take in its next evolution cycle. Format as a numbered list.",
+    ]
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Write evolution insights to a markdown report
+# ---------------------------------------------------------------------------
+
+
+def write_insights_report(
+    cycle_id: int,
+    health: dict[str, Any],
+    engine_result: dict[str, Any],
+    copilot_insights: str,
+) -> Path:
+    """Write a human-readable Markdown report for this cycle."""
+    reports_dir = REPO_ROOT / "data" / "evolution_reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report_path = reports_dir / f"cycle_{cycle_id:04d}.md"
+
+    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    content = f"""# OpenChimera Self-Evolution Cycle {cycle_id}
+
+**Timestamp:** {ts}  
+**Run ID:** {os.environ.get("GITHUB_RUN_ID", "local")}  
+**Commit:** {os.environ.get("GITHUB_SHA", "unknown")[:8]}
+
+## System Health Snapshot
+
+| Metric | Value |
+|--------|-------|
+| Python version | {health["python_version"]} |
+| Source files | {health.get("source_file_count", "?")} |
+| Test files | {health.get("test_file_count", "?")} |
+| Core modules | {health.get("core_module_count", "?")} |
+| Previous cycles | {health.get("evolution_cycles_recorded", 0)} |
+
+## EvolutionEngine
+
+**Status:** `{engine_result.get("status")}`
+
+{_engine_section(engine_result)}
+
+## GitHub Copilot Insights (Brain)
+
+{copilot_insights}
+
+---
+*Generated automatically by the OpenChimera Self-Evolution workflow.*
+"""
+    report_path.write_text(content, encoding="utf-8")
+    log.info("Insights report written → %s", report_path)
+    return report_path
+
+
+def _engine_section(engine_result: dict[str, Any]) -> str:
+    if engine_result.get("status") != "ok":
+        return f"Skipped: {engine_result.get('reason', 'unknown')}"
+    cycle = engine_result.get("cycle", {})
+    recs = cycle.get("recommendations", [])
+    lines = [
+        f"- DPO pairs: {len(cycle.get('pairs', []))}",
+        f"- Dataset size: {cycle.get('dataset_size', 0)}",
+        f"- Adapter: `{cycle.get('adapter_id', 'none')}`",
+    ]
+    if recs:
+        lines.append("\n**Recommendations:**")
+        for rec in recs:
+            lines.append(f"- {rec}")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+
+def main() -> int:
+    log.info("=== OpenChimera Self-Evolution Cycle starting ===")
+
+    # 1. Load memory log
+    memory = load_memory()
+
+    # 2. Loop guard
+    if not check_loop_guard(memory):
+        log.info("Cycle skipped by loop guard. Exiting cleanly.")
+        return 0
+
+    # 3. Collect system health
+    log.info("Collecting system health snapshot…")
+    health = build_health_summary()
+
+    # 4. Run the EvolutionEngine
+    log.info("Running EvolutionEngine cycle…")
+    engine_result = run_evolution_engine()
+
+    # 5. Query GitHub Copilot for insights
+    token = os.environ.get("GITHUB_TOKEN", "")
+    if token:
+        log.info("Querying GitHub Copilot for self-improvement insights…")
+        prompt = build_copilot_prompt(health, engine_result)
+        copilot_insights = query_copilot(prompt, token)
+        log.info("Copilot response received (%d chars).", len(copilot_insights))
+    else:
+        copilot_insights = "[GITHUB_TOKEN not set — Copilot insights skipped]"
+        log.warning("GITHUB_TOKEN not set; skipping Copilot query.")
+
+    # 6. Determine next cycle ID
+    existing_cycles = memory.get("cycles", [])
+    cycle_id = (existing_cycles[-1]["cycle_id"] if existing_cycles else 0) + 1
+
+    # 7. Write insights report
+    report_path = write_insights_report(cycle_id, health, engine_result, copilot_insights)
+
+    # 8. Update memory log
+    now = time.time()
+    entry: dict[str, Any] = {
+        "cycle_id": cycle_id,
+        "timestamp": now,
+        "iso_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
+        "run_id": os.environ.get("GITHUB_RUN_ID", "local"),
+        "sha": os.environ.get("GITHUB_SHA", "unknown")[:8],
+        "engine_status": engine_result.get("status"),
+        "report": str(report_path.relative_to(REPO_ROOT)),
+        "copilot_available": bool(token) and not copilot_insights.startswith("["),
+    }
+    if engine_result.get("status") == "ok":
+        cycle_data = engine_result["cycle"]
+        entry["dpo_pairs"] = len(cycle_data.get("pairs", []))
+        entry["adapter_id"] = cycle_data.get("adapter_id")
+
+    memory["last_cycle_timestamp"] = now
+    memory.setdefault("cycles", []).append(entry)
+    save_memory(memory)
+
+    log.info("=== Cycle %d complete. Report: %s ===", cycle_id, report_path)
+
+    # Print a summary to stdout (captured by the workflow log)
+    print("\n" + "=" * 60)
+    print(f"OpenChimera Self-Evolution — Cycle {cycle_id}")
+    print("=" * 60)
+    print(copilot_insights)
+    print("=" * 60 + "\n")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

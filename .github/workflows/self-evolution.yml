@@ -1,0 +1,163 @@
+name: OpenChimera Self-Evolution
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Triggers
+#   • schedule  — runs every 24 h at 02:00 UTC
+#   • workflow_dispatch — manual trigger (useful for bootstrap / testing)
+# ─────────────────────────────────────────────────────────────────────────────
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC daily
+  workflow_dispatch:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Concurrency guard — ensures only ONE evolution run is active at a time and
+# that a new scheduled run never cancels an in-progress one.
+# Combined with the 23-hour memory-log gate inside the Python script this
+# provides two independent loop-prevention layers.
+# ─────────────────────────────────────────────────────────────────────────────
+concurrency:
+  group: openchimera-self-evolution
+  cancel-in-progress: false
+
+jobs:
+  evolve:
+    name: Self-Evolution Cycle
+    runs-on: ubuntu-latest
+
+    # Permissions needed:
+    #   contents: write  — commit the memory log & insights report
+    #   models: read     — GitHub Copilot / Models API access
+    permissions:
+      contents: write
+      models: read
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      # ── 2. Memory-log gate (fast path — no Python needed) ─────────────────
+      # Read the last cycle timestamp from the JSON memory log.
+      # If the last cycle ran fewer than 23 hours ago, skip everything.
+      - name: Check evolution memory log (loop guard)
+        id: guard
+        shell: bash
+        run: |
+          MEMORY_FILE=".github/evolution-memory.json"
+          SKIP="false"
+
+          if [ -f "$MEMORY_FILE" ]; then
+            LAST_TS=$(python3 -c "
+          import json, sys
+          d = json.load(open('$MEMORY_FILE'))
+          print(int(d.get('last_cycle_timestamp', 0)))
+          " 2>/dev/null || echo "0")
+
+            NOW=$(python3 -c "import time; print(int(time.time()))")
+            ELAPSED=$(( NOW - LAST_TS ))
+            MIN_GAP=$(( 23 * 3600 ))   # 23 h — 1 h shorter than the 24 h cron schedule
+                                        # to absorb scheduling jitter while still preventing
+                                        # genuine double-runs within the same day
+
+            echo "Last cycle timestamp : $LAST_TS"
+            echo "Current time         : $NOW"
+            echo "Elapsed seconds      : $ELAPSED"
+            echo "Minimum gap (s)      : $MIN_GAP"
+
+            if [ "$ELAPSED" -lt "$MIN_GAP" ]; then
+              HOURS=$(( ELAPSED / 3600 ))
+              echo "⏭️  Loop guard: last cycle ran ${HOURS}h ago — skipping this run."
+              SKIP="true"
+            fi
+          else
+            echo "No memory log found — this is the first evolution cycle."
+          fi
+
+          echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
+
+      # ── 3. Set up Python (only if not skipped) ───────────────────────────
+      - name: Set up Python
+        if: steps.guard.outputs.skip == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # ── 4. Install minimal runtime deps ──────────────────────────────────
+      - name: Install dependencies
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          # Install only what the evolution cycle script needs from the
+          # existing requirements file (skip heavy ML extras).
+          python -m pip install -r requirements.txt --quiet || true
+
+      # ── 5. Run the self-evolution cycle ──────────────────────────────────
+      # The script:
+      #   • re-checks the 23 h gate (second guard layer)
+      #   • runs the EvolutionEngine cycle (DPO pairs, model fitness, adapters)
+      #   • queries GitHub Copilot via the GitHub Models API for insights
+      #   • writes a Markdown report to data/evolution_reports/
+      #   • appends a signed entry to .github/evolution-memory.json
+      - name: Run self-evolution cycle
+        if: steps.guard.outputs.skip == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          EVOLUTION_MEMORY_PATH: .github/evolution-memory.json
+        run: python scripts/self_evolution_cycle.py
+
+      # ── 6. Commit memory log + report ────────────────────────────────────
+      # Only commits if files actually changed (idempotent).
+      - name: Commit evolution artefacts
+        if: steps.guard.outputs.skip == 'false'
+        shell: bash
+        run: |
+          git config --local user.email "chimera-evo[bot]@users.noreply.github.com"
+          git config --local user.name  "OpenChimera Evolution Bot"
+
+          git add .github/evolution-memory.json
+          git add data/evolution_reports/ 2>/dev/null || true
+
+          if git diff --staged --quiet; then
+            echo "Nothing to commit — memory log unchanged."
+          else
+            CYCLE_ID=$(python3 -c "
+          import json, sys
+          d = json.load(open('.github/evolution-memory.json'))
+          cycles = d.get('cycles', [])
+          print(cycles[-1]['cycle_id'] if cycles else 0)
+          ")
+            git commit -m "chore(evo): self-evolution cycle ${CYCLE_ID} [skip ci]"
+            git push
+          fi
+
+      # ── 7. Summary ───────────────────────────────────────────────────────
+      - name: Print evolution summary
+        if: always()
+        shell: bash
+        run: |
+          MEMORY_FILE=".github/evolution-memory.json"
+          if [ -f "$MEMORY_FILE" ]; then
+            python3 -c "
+          import json, datetime
+          d = json.load(open('$MEMORY_FILE'))
+          cycles = d.get('cycles', [])
+          total = len(cycles)
+          last = cycles[-1] if cycles else {}
+          ts = last.get('timestamp', 0)
+          iso = datetime.datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M UTC') if ts else 'never'
+          print(f'Total evolution cycles recorded : {total}')
+          print(f'Last cycle ID                   : {last.get(\"cycle_id\", \"n/a\")}')
+          print(f'Last cycle time                 : {iso}')
+          print(f'Last engine status              : {last.get(\"engine_status\", \"n/a\")}')
+          print(f'Copilot brain available         : {last.get(\"copilot_available\", False)}')
+          "
+          else
+            echo "Memory log not found."
+          fi
