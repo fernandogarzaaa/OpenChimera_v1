@@ -89,11 +89,13 @@ jobs:
       # ── 4. Install minimal runtime deps ──────────────────────────────────
       - name: Install dependencies
         if: steps.guard.outputs.skip == 'false'
+        shell: bash
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
           # Install only what the evolution cycle script needs from the
           # existing requirements file (skip heavy ML extras).
-          python -m pip install -r requirements.txt --quiet || true
+          python -m pip install -r requirements.txt --quiet
 
       # ── 5. Run the self-evolution cycle ──────────────────────────────────
       # The script:
