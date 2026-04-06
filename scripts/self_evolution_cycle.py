@@ -4,14 +4,11 @@
 Invoked by the self-evolution GitHub Actions workflow every 24 hours.
 This script:
   1. Reads the evolution memory log to avoid duplicate cycles.
-  2. Audits the current system health via the Autonomy scheduler.
-  3. Runs the EvolutionEngine cycle (DPO pair generation, model fitness,
-     adapter registration).
-  4. Queries GitHub Copilot (via the GitHub Models API) for actionable
-     self-improvement suggestions based on the audit summary.
-  5. Applies safe, auto-approvable patches (e.g. documentation, config
-     tuning) or opens a draft PR for larger changes.
-  6. Appends a signed entry to the evolution memory log so the next
+  2. Collects a snapshot/summary of the current repository state for review.
+  3. Queries GitHub Copilot (via the GitHub Models API) for actionable
+     self-improvement suggestions based on that summary.
+  4. Writes the generated report/artifacts for the workflow run.
+  5. Appends an unsigned entry to the evolution memory log so the next
      scheduled run knows not to repeat the cycle within 23 h.
 
 Environment variables (injected by the workflow):
