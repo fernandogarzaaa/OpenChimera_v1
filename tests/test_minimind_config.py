@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ from core.minimind_service import MiniMindService
 
 
 class MiniMindConfigTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows-only: python executable is python.exe")
     def test_minimind_runtime_config_is_resolved(self) -> None:
         self.assertEqual(get_minimind_api_port(), 8998)
         self.assertEqual(get_minimind_api_base_url(), "http://127.0.0.1:8998")
