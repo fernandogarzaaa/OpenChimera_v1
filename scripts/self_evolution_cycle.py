@@ -40,6 +40,8 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%SZ",
 )
+# Ensure log timestamps use UTC so the trailing "Z" designator is accurate.
+logging.Formatter.converter = time.gmtime
 log = logging.getLogger("self_evolution_cycle")
 
 # ---------------------------------------------------------------------------
@@ -323,7 +325,24 @@ def write_insights_report(
 """
     report_path.write_text(content, encoding="utf-8")
     log.info("Insights report written → %s", report_path)
+
+    # Prune old reports so the directory doesn't grow without bound.
+    # Keep the same number of reports as the memory log cap (MEMORY_MAX_CYCLES).
+    _prune_old_reports(reports_dir, keep=MEMORY_MAX_CYCLES)
+
     return report_path
+
+
+def _prune_old_reports(reports_dir: Path, keep: int) -> None:
+    """Delete the oldest cycle_NNNN.md files, retaining at most *keep* files."""
+    existing = sorted(reports_dir.glob("cycle_*.md"))
+    to_delete = existing[: max(0, len(existing) - keep)]
+    for old in to_delete:
+        try:
+            old.unlink()
+            log.info("Pruned old report: %s", old.name)
+        except OSError as exc:
+            log.warning("Could not prune %s: %s", old, exc)
 
 
 def _engine_section(engine_result: dict[str, Any]) -> str:

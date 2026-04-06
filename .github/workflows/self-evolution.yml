@@ -116,8 +116,10 @@ jobs:
 
       # ── 6. Commit memory log + report ────────────────────────────────────
       # Only commits if files actually changed (idempotent).
+      # Restricted to the repository's default branch to avoid pushing to
+      # feature branches or failing on forks where push access is unavailable.
       - name: Commit evolution artefacts
-        if: steps.guard.outputs.skip == 'false'
+        if: steps.guard.outputs.skip == 'false' && github.ref_name == github.event.repository.default_branch
         shell: bash
         run: |
           git config --local user.email "chimera-evo[bot]@users.noreply.github.com"
@@ -136,7 +138,7 @@ jobs:
           print(cycles[-1]['cycle_id'] if cycles else 0)
           ")
             git commit -m "chore(evo): self-evolution cycle ${CYCLE_ID} [skip ci]"
-            git push
+            git push origin HEAD:${{ github.event.repository.default_branch }}
           fi
 
       # ── 7. Summary ───────────────────────────────────────────────────────
