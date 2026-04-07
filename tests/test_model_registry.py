@@ -225,6 +225,88 @@ class ModelRegistryTests(unittest.TestCase):
             self.assertIn(str(recovered_models), payload["discovery"]["local_search_roots"])
             self.assertIn("qwen2.5-7b", payload["discovery"]["local_discovered_models"])
 
+    def test_ollama_discovery_in_provider_catalog(self) -> None:
+        """Provider catalog for 'ollama' includes discovered models from live Ollama probe."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            registry = ModelRegistry()
+            registry.registry_path = Path(temp_dir) / "model_registry.json"
+            registry.profile = {
+                "hardware": {"cpu_count": 4, "ram_gb": 8, "gpu": {"available": False, "name": "cpu-only", "vram_gb": 0, "device_count": 0}},
+                "providers": {"enabled": ["openchimera-gateway", "local-llama-cpp", "ollama"], "prefer_free_models": True},
+                "model_inventory": {"available_models": [], "model_files": {}, "models_dir": temp_dir},
+            }
+            fake_ollama_models = ["llama3.2:latest", "gemma3:4b"]
+            with patch("core.model_registry.discover_ollama_models", return_value=fake_ollama_models):
+                payload = registry.refresh()
+
+            ollama_provider = next((p for p in payload["providers"] if p["id"] == "ollama"), None)
+            self.assertIsNotNone(ollama_provider)
+            self.assertEqual(ollama_provider["discovered_models"], fake_ollama_models)
+            self.assertTrue(ollama_provider["ollama_reachable"])
+            self.assertIn("ollama_discovered_models", payload["discovery"])
+            self.assertEqual(payload["discovery"]["ollama_discovered_models"], fake_ollama_models)
+            self.assertTrue(payload["discovery"]["ollama_reachable"])
+
+    def test_ollama_not_reachable_produces_empty_discovery(self) -> None:
+        """When Ollama is unreachable, discovered_models is empty and ollama_reachable is False."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            registry = ModelRegistry()
+            registry.registry_path = Path(temp_dir) / "model_registry.json"
+            registry.profile = {
+                "hardware": {"cpu_count": 4, "ram_gb": 8, "gpu": {"available": False, "name": "cpu-only", "vram_gb": 0, "device_count": 0}},
+                "providers": {"prefer_free_models": False},
+                "model_inventory": {"available_models": [], "model_files": {}, "models_dir": temp_dir},
+            }
+            with patch("core.model_registry.discover_ollama_models", return_value=None):
+                payload = registry.refresh()
+
+            ollama_provider = next((p for p in payload["providers"] if p["id"] == "ollama"), None)
+            self.assertIsNotNone(ollama_provider)
+            self.assertEqual(ollama_provider["discovered_models"], [])
+            self.assertFalse(ollama_provider["ollama_reachable"])
+            self.assertFalse(payload["discovery"]["ollama_reachable"])
+
+    def test_huggingface_provider_accepts_hf_token_alias(self) -> None:
+        """HuggingFace provider checks both HUGGINGFACEHUB_API_TOKEN and HF_TOKEN."""
+        from core.model_registry import PROVIDER_MODULE_SEEDS
+
+        hf_seed = next((p for p in PROVIDER_MODULE_SEEDS if p["id"] == "huggingface-inference"), None)
+        self.assertIsNotNone(hf_seed, "huggingface-inference provider must be in PROVIDER_MODULE_SEEDS")
+        auth_vars = hf_seed.get("auth_env_vars", [])
+        self.assertIn("HUGGINGFACEHUB_API_TOKEN", auth_vars)
+        self.assertIn("HF_TOKEN", auth_vars)
+
+    def test_failover_chain_in_profile_is_preserved(self) -> None:
+        """failover_chain from provider config is preserved in profile after normalize."""
+        from core.config import normalize_runtime_profile, validate_runtime_profile
+
+        profile_input = {
+            "providers": {
+                "enabled": ["openchimera-gateway", "local-llama-cpp"],
+                "prefer_free_models": True,
+                "failover_chain": ["openai", "anthropic", "groq"],
+            },
+        }
+        normalized, _ = normalize_runtime_profile(profile_input)
+        errors = validate_runtime_profile(normalized)
+        self.assertFalse(any("failover_chain" in e for e in errors))
+        self.assertEqual(normalized.get("providers", {}).get("failover_chain"), ["openai", "anthropic", "groq"])
+
+    def test_failover_chain_validation_rejects_non_list(self) -> None:
+        """validate_runtime_profile emits an error when failover_chain is not a list."""
+        from core.config import normalize_runtime_profile, validate_runtime_profile
+
+        profile_input = {
+            "providers": {
+                "enabled": ["openchimera-gateway"],
+                "failover_chain": "openai,anthropic",
+            },
+        }
+        normalized, _ = normalize_runtime_profile(profile_input)
+        normalized.setdefault("providers", {})["failover_chain"] = "openai,anthropic"
+        errors = validate_runtime_profile(normalized)
+        self.assertTrue(any("failover_chain" in e for e in errors))
+
 
 if __name__ == "__main__":
     unittest.main()

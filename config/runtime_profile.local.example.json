@@ -23,7 +23,8 @@
       "minimind"
     ],
     "preferred_cloud_provider": "",
-    "prefer_free_models": true
+    "prefer_free_models": true,
+    "failover_chain": []
   },
   "logging": {
     "level": "INFO",
@@ -49,6 +50,7 @@
     "aether": "external/aether",
     "wraith": "external/wraith",
     "evo": "external/evo",
-    "minimind": "external/minimind"
+    "minimind": "external/minimind",
+    "openclaw": "external/legacy-workspace"
   }
 }

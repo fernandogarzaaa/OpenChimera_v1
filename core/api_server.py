@@ -634,6 +634,16 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 self._write_json(self.server.provider.reset_onboarding())
                 return
 
+            if self.path == "/v1/onboarding/validate-credential":
+                provider_id = str(payload.get("provider_id") or "").strip()
+                key = str(payload.get("key") or "").strip()
+                value = str(payload.get("value") or "").strip()
+                if not provider_id or not key:
+                    self._write_json({"error": "provider_id and key are required"}, status=400)
+                    return
+                self._write_json(self.server.provider.validate_onboarding_credential(provider_id, key, value))
+                return
+
             if self.path == "/v1/aegis/run":
                 self._write_json(
                     self.server.provider.run_aegis_workflow(

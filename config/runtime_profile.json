@@ -37,7 +37,8 @@
       "minimind"
     ],
     "preferred_cloud_provider": "",
-    "prefer_free_models": true
+    "prefer_free_models": true,
+    "failover_chain": []
   },
   "onboarding": {
     "completed_at": null,

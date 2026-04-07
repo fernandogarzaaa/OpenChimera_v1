@@ -5,6 +5,7 @@ import os
 import time
 from pathlib import Path
 from typing import Any
+from urllib import error, request
 
 from core.channels import ChannelManager
 from core.config import (
@@ -28,6 +29,26 @@ from core.credential_store import CredentialStore
 from core.local_model_inventory import identify_model_name_for_path
 from core.model_registry import ModelRegistry
 from core.transactions import atomic_write_json
+
+
+# Read-only probe endpoint for each cloud provider used by validate_credential().
+# The request is a simple GET that lists models (or any lightweight endpoint).
+_CREDENTIAL_PROBE_URLS: dict[str, str] = {
+    "openai": "https://api.openai.com/v1/models",
+    "anthropic": "https://api.anthropic.com/v1/models",
+    "google": "https://generativelanguage.googleapis.com/v1beta/models",
+    "groq": "https://api.groq.com/openai/v1/models",
+    "openrouter": "https://openrouter.ai/api/v1/models",
+    "moonshot": "https://api.moonshot.cn/v1/models",
+    "xai": "https://api.x.ai/v1/models",
+    "huggingface-inference": "https://api-inference.huggingface.co/models",
+}
+
+# Providers that use a non-standard auth header instead of Bearer.
+# A value of "" means use the credential value itself as the header value.
+_CREDENTIAL_AUTH_HEADERS: dict[str, dict[str, str]] = {
+    "anthropic": {"x-api-key": "", "anthropic-version": "2023-06-01"},
+}
 
 
 class OnboardingManager:
@@ -206,6 +227,65 @@ class OnboardingManager:
         }
         self._save_state(state)
         return self.status()
+
+    def validate_credential(self, provider_id: str, key: str, value: str) -> dict[str, Any]:
+        """Perform a lightweight probe to verify a provider credential before persisting it.
+
+        Makes a read-only API call (e.g. list models) to confirm the credential
+        is accepted by the provider.  Returns a dict with ``valid`` (bool),
+        ``provider_id``, ``key``, and an optional ``error`` message.
+
+        Providers that require no credentials (Ollama, llama.cpp) are treated as
+        always valid when no value is required.
+        """
+        provider_id = str(provider_id).strip().lower()
+        key = str(key).strip()
+        value = str(value).strip()
+
+        if not value:
+            return {"valid": False, "provider_id": provider_id, "key": key, "error": "Credential value must not be empty"}
+
+        probe_url = _CREDENTIAL_PROBE_URLS.get(provider_id)
+        if probe_url is None:
+            return {"valid": True, "provider_id": provider_id, "key": key, "note": "No probe endpoint configured for this provider; credential accepted without validation"}
+
+        try:
+            headers: dict[str, str] = {"Accept": "application/json"}
+            extra_headers = _CREDENTIAL_AUTH_HEADERS.get(provider_id, {})
+            for h_key, h_val in extra_headers.items():
+                headers[h_key] = h_val if h_val else value
+            if provider_id not in _CREDENTIAL_AUTH_HEADERS:
+                headers["Authorization"] = f"Bearer {value}"
+
+            if provider_id == "google":
+                separator = "&" if "?" in probe_url else "?"
+                probe_url = f"{probe_url}{separator}key={value}"
+
+            req = request.Request(probe_url, headers=headers, method="GET")
+            with request.urlopen(req, timeout=10) as resp:
+                if resp.status in (200, 206):
+                    return {"valid": True, "provider_id": provider_id, "key": key}
+                return {
+                    "valid": False,
+                    "provider_id": provider_id,
+                    "key": key,
+                    "error": f"Provider returned HTTP {resp.status}",
+                }
+        except error.HTTPError as exc:
+            if exc.code == 401:
+                return {"valid": False, "provider_id": provider_id, "key": key, "error": "Invalid or expired credential (HTTP 401)"}
+            if exc.code == 403:
+                return {"valid": False, "provider_id": provider_id, "key": key, "error": "Credential lacks required permissions (HTTP 403)"}
+            if exc.code in (429, 503):
+                return {
+                    "valid": True,
+                    "provider_id": provider_id,
+                    "key": key,
+                    "note": f"Provider rate-limited or temporarily unavailable (HTTP {exc.code}); credential may still be valid",
+                }
+            return {"valid": False, "provider_id": provider_id, "key": key, "error": f"HTTP {exc.code} from provider probe"}
+        except (error.URLError, OSError) as exc:
+            return {"valid": False, "provider_id": provider_id, "key": key, "error": f"Network error reaching provider: {exc}"}
 
     def _derive_steps(self, profile: dict[str, Any], recommendations: dict[str, Any], validation: dict[str, Any], discovery: dict[str, Any]) -> list[dict[str, Any]]:
         credentials = self.credential_store.status().get("providers", {})

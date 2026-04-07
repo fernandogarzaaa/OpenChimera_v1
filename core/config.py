@@ -112,6 +112,7 @@ def default_runtime_profile() -> dict[str, Any]:
             "enabled": ["openchimera-gateway", "local-llama-cpp", "minimind"],
             "preferred_cloud_provider": "",
             "prefer_free_models": False,
+            "failover_chain": [],
         },
         "onboarding": {
             "completed_at": None,
@@ -286,6 +287,9 @@ def validate_runtime_profile(profile: dict[str, Any] | None) -> list[str]:
     enabled_providers = [str(item).strip() for item in providers.get("enabled", []) if str(item).strip()]
     if preferred_cloud_provider and preferred_cloud_provider not in enabled_providers:
         errors.append("providers.preferred_cloud_provider must also appear in providers.enabled")
+    failover_chain = providers.get("failover_chain", [])
+    if not isinstance(failover_chain, list):
+        errors.append("providers.failover_chain must be a list of provider IDs")
 
     context_length = local_runtime.get("context_length", 4096)
     try:
@@ -731,6 +735,7 @@ def build_runtime_configuration_status() -> dict[str, Any]:
             "enabled": providers.get("enabled", []),
             "preferred_cloud_provider": providers.get("preferred_cloud_provider", ""),
             "prefer_free_models": bool(providers.get("prefer_free_models", False)),
+            "failover_chain": list(providers.get("failover_chain", [])),
         },
         "local_runtime": {
             "mode": local_runtime.get("mode", "bootstrap-safe"),
