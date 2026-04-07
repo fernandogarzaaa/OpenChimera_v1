@@ -7,8 +7,8 @@ Every command below runs without API keys, paid accounts, or external services.
 
 ## Requirements
 
-- Python 3.11 or later
-- A terminal with internet access (for initial `pip install`)
+- **Python 3.11 or later** (3.12+ recommended)
+- A terminal with internet access for initial `pip install`
 - That's it — no Docker, no cloud accounts, no GPU required for the basic runtime
 
 ---
@@ -23,16 +23,20 @@ cd openchimera
 # 2. Create a virtual environment and install
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+
+# 3. Install all production dependencies
+pip install -r requirements-prod.lock
+
+# 4. Install OpenChimera in editable mode
 pip install -e .
 
-# 3. Bootstrap missing local state (creates data/ dirs, seed JSON)
+# 5. Bootstrap missing local state (creates data/ dirs, seed JSON)
 openchimera bootstrap
 
-# 4. Run the diagnostics check
+# 6. Run the diagnostics check
 openchimera doctor
 
-# 5. Start the runtime
+# 7. Start the runtime (Ctrl+C to stop)
 openchimera serve
 ```
 
@@ -42,9 +46,12 @@ The server starts on `http://127.0.0.1:7870` by default (loopback only).
 
 ## Verify it's alive
 
-From a second terminal:
+From a second terminal (keep the server running):
 
 ```bash
+# Activate the same virtual environment
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+
 # Health ping
 curl http://127.0.0.1:7870/health
 
@@ -110,11 +117,14 @@ The runtime merges this file on top of the committed defaults at startup.
 ## Running the tests
 
 ```bash
+# Install dev dependencies (includes pytest, coverage, pre-commit)
 pip install -r requirements-dev.txt
+
+# Run the full test suite (2467 tests, ~40 seconds)
 python -m pytest tests/ -q
 ```
 
-Expected output: all tests pass in under two minutes on any modern machine.
+Expected output: **2467 passed, 2 skipped** in under one minute on any modern machine.
 
 ---
 

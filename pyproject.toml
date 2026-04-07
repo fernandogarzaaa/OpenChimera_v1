@@ -1,13 +1,6 @@
 [build-system]
-requires = ["maturin>=1.5,<2"]
-build-backend = "maturin"
-
-[tool.maturin]
-# Build the chimera_core extension module from the Rust workspace.
-features = ["pyo3/extension-module"]
-# Python source is in the repo root (packages discovered via [tool.setuptools]).
-python-source = "."
-module-name = "chimera_core"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "openchimera"

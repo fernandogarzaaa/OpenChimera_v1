@@ -1,2 +1,5 @@
+# Core dependencies
 psutil>=5.9,<8
 pydantic>=2.12,<3
+networkx>=3.0,<4
+numpy>=1.24,<3
