@@ -157,8 +157,6 @@ python -m pytest tests/ -q
 
 If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
 
-If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
-
 Runtime logs are emitted to the console and, by default, to `logs/openchimera-runtime.jsonl` as structured JSON lines. Use `OPENCHIMERA_LOG_LEVEL`, `OPENCHIMERA_STRUCTURED_LOG_ENABLED`, or `OPENCHIMERA_STRUCTURED_LOG_PATH` to override the log level or file destination for a deployment.
 
 Exposed deployments should not bind beyond localhost without auth. If you set `OPENCHIMERA_HOST=0.0.0.0` or any non-loopback host, also set `OPENCHIMERA_API_TOKEN` and `OPENCHIMERA_ADMIN_TOKEN`.

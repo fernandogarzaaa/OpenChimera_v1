@@ -34,7 +34,7 @@ jobs:
           python -m pip install pip-audit
 
       - name: Audit Python dependencies for CVEs
-        run: python -m pip_audit --requirement requirements.txt --strict
+        run: python -m pip_audit --requirement requirements-prod.lock --strict
 
       - name: Run pre-commit checks
         if: runner.os == 'Linux'
