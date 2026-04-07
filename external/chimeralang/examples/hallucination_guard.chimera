@@ -1,0 +1,33 @@
+// hallucination_guard.chimera
+// Hallucination detection and integrity proofs.
+
+fn risky_inference(input: Text) -> Explore<Text>
+  allow:
+    "speculative reasoning"
+  forbidden:
+    "fabricating citations"
+    "inventing statistics"
+  val hypothesis: Explore<Text> = Explore(input)
+  return hypothesis
+end
+
+gate validated_answer(raw_input: Text) -> Converge<Text>
+  branches: 7
+  collapse: majority
+  threshold: 0.85
+  fallback: "Cannot reach consensus — flagging as uncertain"
+
+  val candidate: Text = "Validated: " + raw_input
+  return candidate
+end
+
+// Run a risky inference through the consensus gate
+val raw: Explore<Text> = risky_inference("dark matter hypothesis")
+val validated: Converge<Text> = validated_answer("dark matter hypothesis")
+
+emit raw
+emit validated
+
+// Integrity checks
+assert consensus(validated)
+assert no_hallucination(validated)

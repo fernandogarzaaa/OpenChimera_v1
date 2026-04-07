@@ -1032,3 +1032,37 @@ class OpenChimeraProvider:
 
     def status(self) -> dict[str, Any]:
         return self.runtime_plane.status()
+
+    # ------------------------------------------------------------------
+    # ChimeraLang integration
+    # ------------------------------------------------------------------
+
+    def chimera_status(self) -> dict[str, Any]:
+        """Return ChimeraLang integration availability and version info."""
+        from core.chimera_bridge import get_bridge
+        return get_bridge().status()
+
+    def chimera_run(self, source: str, filename: str = "<chimera>") -> dict[str, Any]:
+        """Execute a ChimeraLang program and return structured results."""
+        from core.chimera_bridge import get_bridge
+        return get_bridge().run(source, filename=filename)
+
+    def chimera_check(self, source: str, filename: str = "<chimera>") -> dict[str, Any]:
+        """Type-check a ChimeraLang program without executing it."""
+        from core.chimera_bridge import get_bridge
+        return get_bridge().check(source, filename=filename)
+
+    def chimera_prove(self, source: str, filename: str = "<chimera>") -> dict[str, Any]:
+        """Execute a ChimeraLang program and produce a full integrity proof."""
+        from core.chimera_bridge import get_bridge
+        return get_bridge().prove(source, filename=filename)
+
+    def chimera_scan(
+        self,
+        response_text: str,
+        confidence: float = 0.8,
+        trace: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Scan an LLM response through ChimeraLang's hallucination detector."""
+        from core.chimera_bridge import get_bridge
+        return get_bridge().scan_response(response_text, confidence=confidence, trace=trace)
