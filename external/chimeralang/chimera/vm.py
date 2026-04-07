@@ -435,6 +435,38 @@ class ChimeraVM:
         return self._wrap(None)
 
     # ------------------------------------------------------------------
+    # Constraint enforcement
+    # ------------------------------------------------------------------
+
+    def _enforce_constraints(self, constraints: list, fn_name: str) -> None:
+        """Evaluate must/allow/forbidden constraints for a function or gate."""
+        for constraint in constraints:
+            if isinstance(constraint, MustConstraint):
+                val = self._eval(constraint.expr)
+                if not val.raw:
+                    raise AssertionFailed(
+                        f"[{fn_name}] must-constraint violated: "
+                        f"'{constraint.expr}' (confidence={val.confidence.value:.2f})",
+                        trace=val.trace,
+                    )
+                self._trace(
+                    f"[{fn_name}] must-constraint satisfied "
+                    f"(confidence={val.confidence.value:.2f})"
+                )
+            elif isinstance(constraint, AllowConstraint):
+                caps = ", ".join(constraint.capabilities)
+                self._trace(f"[{fn_name}] allow: {caps}")
+            elif isinstance(constraint, ForbiddenConstraint):
+                caps = ", ".join(constraint.capabilities)
+                self._trace(f"[{fn_name}] forbidden: {caps}")
+                # Record forbidden capabilities in the current scope so downstream
+                # tooling can inspect what is not permitted.
+                forbidden_key = f"__forbidden_{fn_name}__"
+                existing = self._env.get(forbidden_key)
+                combined = (existing.raw if existing else []) + constraint.capabilities
+                self._env.set(forbidden_key, self._wrap(combined))
+
+    # ------------------------------------------------------------------
     # Function call
     # ------------------------------------------------------------------
 
@@ -446,6 +478,7 @@ class ChimeraVM:
         self._env = scope
         result = self._wrap(None)
         try:
+            self._enforce_constraints(fn.constraints, fn.name)
             for stmt in fn.body:
                 self._exec_stmt(stmt)
         except ReturnSignal as sig:
@@ -465,14 +498,20 @@ class ChimeraVM:
         for i in range(gate.branches):
             self._trace(f"[gate] Branch {i+1}/{gate.branches} executing...")
             scope = self._env.child()
+
+            # Expose per-branch metadata so body code can produce divergent outputs.
+            branch_seed = self._rng.randint(0, 2**32 - 1)
+            scope.set("branch_index", self._wrap(i, confidence=1.0))
+            scope.set("branch_seed", self._wrap(branch_seed, confidence=1.0))
+
             for param, arg in zip(gate.params, args):
-                # Inject slight randomness to simulate diverse reasoning
+                # Inject slight randomness to simulate diverse reasoning paths.
+                # Both confidence AND a per-branch seed diverge so that branches
+                # using branch_index / branch_seed produce genuinely different values.
+                noisy_conf = min(1.0, max(0.0, arg.confidence.value + self._rng.gauss(0, 0.05)))
                 noisy = ChimeraValue(
                     raw=arg.raw,
-                    confidence=Confidence(
-                        min(1.0, max(0.0, arg.confidence.value + self._rng.gauss(0, 0.05))),
-                        f"branch_{i}",
-                    ),
+                    confidence=Confidence(noisy_conf, f"branch_{i}"),
                     trace=[*arg.trace, f"branch_{i}_input"],
                 )
                 scope.set(param.name, noisy)
@@ -487,6 +526,9 @@ class ChimeraVM:
                 result = sig.value
             finally:
                 self._env = old_env
+
+            # Tag the branch result with its index for consensus tracing.
+            result.trace.append(f"branch_{i}_output")
             branches.append(result)
 
         # Collapse
@@ -611,7 +653,7 @@ class ChimeraVM:
             self._trace(f"[reason] Committed via: {reason.commit_strategy}")
             return result if result is not None else self._wrap(None)
 
-        self._env.set("about", _invoke)
+        self._env.set(reason.name, _invoke)
 
     # ------------------------------------------------------------------
     # Value construction helpers

@@ -60,8 +60,12 @@ def _lex_and_parse(source: str, filename: str = "<chimera>"):
 
 
 def _chimera_value_to_dict(val: "ChimeraValue") -> dict[str, Any]:
-    """Serialise a ChimeraLang runtime value to a plain dict."""
-    return {
+    """Serialise a ChimeraLang runtime value to a plain dict.
+
+    For ConvergeValue (gate collapse result), includes per-branch trace data so
+    that operators can inspect which branches contributed and how their traces diverged.
+    """
+    d: dict[str, Any] = {
         "raw": val.raw,
         "confidence": val.confidence.value,
         "confidence_level": val.confidence.level.name,
@@ -69,6 +73,10 @@ def _chimera_value_to_dict(val: "ChimeraValue") -> dict[str, Any]:
         "trace": list(val.trace),
         "fingerprint": val.fingerprint,
     }
+    # ConvergeValue carries per-branch provenance — expose it for operator visibility.
+    if hasattr(val, "branch_values") and val.branch_values:  # type: ignore[union-attr]
+        d["branch_traces"] = [list(bv.trace) for bv in val.branch_values]  # type: ignore[union-attr]
+    return d
 
 
 def _detection_report_to_dict(report: "DetectionReport") -> dict[str, Any]:
