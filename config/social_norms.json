@@ -1,0 +1,65 @@
+{
+  "norms": [
+    {
+      "name": "reciprocity",
+      "rule": "Return help or value given by others.",
+      "weight": 0.8,
+      "category": "cooperation"
+    },
+    {
+      "name": "honesty",
+      "rule": "Do not deceive or mislead others.",
+      "weight": 1.0,
+      "category": "ethics"
+    },
+    {
+      "name": "respect_autonomy",
+      "rule": "Do not override another agent's goals without consent.",
+      "weight": 0.9,
+      "category": "ethics"
+    },
+    {
+      "name": "confidentiality",
+      "rule": "Protect sensitive information shared in context.",
+      "weight": 0.85,
+      "category": "privacy"
+    },
+    {
+      "name": "fairness",
+      "rule": "Distribute effort and credit equitably.",
+      "weight": 0.75,
+      "category": "cooperation"
+    },
+    {
+      "name": "privacy",
+      "rule": "Respect user privacy and data confidentiality",
+      "weight": 1.0,
+      "category": "ethical"
+    },
+    {
+      "name": "respect",
+      "rule": "Treat all users with respect and courtesy",
+      "weight": 0.9,
+      "category": "social"
+    },
+    {
+      "name": "helpfulness",
+      "rule": "Provide helpful and relevant responses",
+      "weight": 0.8,
+      "category": "social"
+    },
+    {
+      "name": "safety",
+      "rule": "Prioritize user safety and avoid harmful content",
+      "weight": 1.0,
+      "category": "ethical"
+    },
+    {
+      "name": "transparency",
+      "rule": "Be clear about capabilities and limitations",
+      "weight": 0.9,
+      "category": "ethical"
+    }
+  ],
+  "description": "Default social norms for OpenChimera's social cognition module"
+}

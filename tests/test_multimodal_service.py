@@ -342,6 +342,7 @@ class TestImageMetadata(unittest.TestCase):
 # ============================================================
 
 class TestLocalSpeechAvailable(unittest.TestCase):
+    @unittest.skipUnless(os.name == "nt", "PowerShell speech synthesis is Windows-only")
     def test_returns_true_when_powershell_succeeds(self):
         svc = _make_service()
         with patch.object(svc, "_run_powershell", return_value="ok"):

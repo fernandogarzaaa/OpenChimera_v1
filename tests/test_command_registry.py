@@ -388,9 +388,13 @@ class TestCommandRegistryAdminEnforcement(unittest.TestCase):
         bus.reset_mock()
         with self.assertRaises(PermissionError):
             reg.execute("locked")
-        bus.publish_nowait.assert_called_once()
-        _, payload = bus.publish_nowait.call_args[0]
-        self.assertEqual(payload["reason"], "admin_required")
+        self.assertEqual(bus.publish_nowait.call_count, 2)
+        # First call should be security event
+        security_call = bus.publish_nowait.call_args_list[0]
+        self.assertEqual(security_call[0][0], "security.unauthorized_access")
+        # Second call should be system/commands event
+        cmd_call = bus.publish_nowait.call_args_list[1]
+        self.assertEqual(cmd_call[0][1]["reason"], "admin_required")
 
 
 # ---------------------------------------------------------------------------

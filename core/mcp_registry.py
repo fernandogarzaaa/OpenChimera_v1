@@ -8,6 +8,7 @@ from typing import Any
 from urllib import error, request
 
 from core.config import ROOT
+from core.mcp_normalization import normalize_mcp_server_entry
 
 
 def get_mcp_registry_path(root: Path | None = None) -> Path:
@@ -29,7 +30,9 @@ def load_mcp_registry(root: Path | None = None) -> dict[str, Any]:
         normalized_id = str(server_id).strip()
         if not normalized_id:
             continue
-        servers[normalized_id] = _normalize_registry_entry(normalized_id, details, path)
+        servers[normalized_id] = normalize_mcp_server_entry(
+            normalized_id, details, source_path=path
+        )
     return {"servers": servers, "source": str(path)}
 
 
@@ -137,7 +140,7 @@ def upsert_mcp_registry_entry(
 
     raw_servers[normalized_id] = stored_entry
     _write_registry_document(path, document)
-    return _normalize_registry_entry(normalized_id, stored_entry, path)
+    return normalize_mcp_server_entry(normalized_id, stored_entry, source_path=path)
 
 
 def delete_mcp_registry_entry(server_id: str, root: Path | None = None) -> dict[str, Any]:
@@ -207,36 +210,6 @@ def _write_registry_document(path: Path, document: dict[str, Any]) -> None:
 def _write_mcp_health_state(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(document, indent=2, sort_keys=True), encoding="utf-8")
-
-
-def _normalize_registry_entry(server_id: str, details: dict[str, Any], path: Path) -> dict[str, Any]:
-    transport = str(details.get("transport") or "").strip().lower()
-    if not transport:
-        if details.get("url"):
-            transport = "http"
-        elif details.get("command"):
-            transport = "stdio"
-        else:
-            transport = "unknown"
-    enabled = bool(details.get("enabled", True))
-    entry: dict[str, Any] = {
-        "id": server_id,
-        "name": str(details.get("name") or server_id.replace("_", " ").replace("-", " ").title()),
-        "transport": transport,
-        "status": "registered" if enabled else "disabled",
-        "enabled": enabled,
-        "source": str(path),
-        "kind": "mcp_server",
-    }
-    if details.get("description"):
-        entry["description"] = str(details.get("description"))
-    if details.get("url"):
-        entry["url"] = str(details.get("url"))
-    if details.get("command"):
-        entry["command"] = str(details.get("command"))
-    if isinstance(details.get("args"), list):
-        entry["args"] = [str(item) for item in details.get("args", [])]
-    return entry
 
 
 def _probe_entry(entry: dict[str, Any], timeout_seconds: float) -> dict[str, Any]:

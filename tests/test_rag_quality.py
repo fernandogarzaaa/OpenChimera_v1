@@ -51,3 +51,30 @@ class RagQualityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# ---------------------------------------------------------------------------
+# Tests: retrieval_backend field and embedding-aware status
+# ---------------------------------------------------------------------------
+
+class TestRAGStatusRetrievalBackend(unittest.TestCase):
+    """Verify get_status() reports the active retrieval backend."""
+
+    def test_status_has_retrieval_backend_key(self):
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            rag = SimpleRAG(path)
+            status = rag.get_status()
+            self.assertIn("retrieval_backend", status)
+        finally:
+            import os; os.unlink(path)
+
+    def test_retrieval_backend_is_valid_string(self):
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+            path = f.name
+        try:
+            rag = SimpleRAG(path)
+            backend = rag.get_status()["retrieval_backend"]
+            self.assertIn(backend, {"embedding", "keyword"})
+        finally:
+            import os; os.unlink(path)

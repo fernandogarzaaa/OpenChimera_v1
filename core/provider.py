@@ -81,22 +81,41 @@ class OpenChimeraProvider:
         self.bus = bus
         self.personality = personality
         self.profile = load_runtime_profile()
+        # Tracks subsystems that failed at init so health() can surface them.
+        self._init_errors: dict[str, str] = {}
+
+        # ------------------------------------------------------------------
+        # Core subsystems — low-risk, always needed, no individual guards.
+        # ------------------------------------------------------------------
         self.llm_manager = LocalLLMManager()
         self.rag = SimpleRAG(get_rag_storage_path())
         self.database = DatabaseManager()
         self.database.initialize()
-        self.harness_port = HarnessPortAdapter()
-        self.minimind = MiniMindService()
-        self.autonomy = AutonomyScheduler(self.bus, self.harness_port, self.minimind, self.personality.identity)
         self.credential_store = CredentialStore(database=self.database)
-        self.browser = BrowserService()
-        self.multimodal = MultimodalService(credential_store=self.credential_store)
-        self.channels = ChannelManager(database=self.database)
         self.capabilities = CapabilityRegistry()
         self.model_registry = ModelRegistry(credential_store=self.credential_store)
         self.model_roles = ModelRoleManager(self.model_registry)
         self.router = OpenChimeraRouter(self.llm_manager, self.model_roles)
         self.plugins = PluginManager(self.capabilities)
+
+        # ------------------------------------------------------------------
+        # Optional subsystems — each wrapped so a single failure never aborts
+        # the entire provider boot.  Failures are recorded in _init_errors and
+        # surfaced via health() so operators have visibility.
+        # ------------------------------------------------------------------
+        self.harness_port = self._safe_init(HarnessPortAdapter, "harness_port")
+        self.minimind = self._safe_init(MiniMindService, "minimind")
+
+        try:
+            self.autonomy = AutonomyScheduler(self.bus, self.harness_port, self.minimind, self.personality.identity)
+        except Exception as exc:
+            LOGGER.warning("[Provider] autonomy init failed: %s", exc)
+            self._init_errors["autonomy"] = str(exc)
+            self.autonomy = None  # type: ignore[assignment]  # callers guard via _init_errors
+
+        self.browser = self._safe_init(BrowserService, "browser")
+        self.multimodal = self._safe_init(lambda: MultimodalService(credential_store=self.credential_store), "multimodal")
+        self.channels = self._safe_init(lambda: ChannelManager(database=self.database), "channels")
         self.capability_plane = CapabilityPlane(capabilities=self.capabilities, plugins=self.plugins, bus=self.bus)
         self.tool_runtime = RuntimeToolRegistry(
             capability_registry=self.capabilities,
@@ -318,10 +337,16 @@ class OpenChimeraProvider:
             recent_limit=get_observability_recent_limit(),
             persist_path=get_observability_db_path(),
         )
-        self.onboarding = OnboardingManager(self.model_registry, self.credential_store, self.channels)
-        self.integration_audit = IntegrationAudit()
-        self.aegis = AegisService()
-        self.ascension = AscensionService(self.llm_manager, self.minimind)
+        self.onboarding = self._safe_init(
+            lambda: OnboardingManager(self.model_registry, self.credential_store, self.channels),
+            "onboarding",
+        )
+        self.integration_audit = self._safe_init(IntegrationAudit, "integration_audit")
+        self.aegis = self._safe_init(AegisService, "aegis")
+        self.ascension = self._safe_init(
+            lambda: AscensionService(self.llm_manager, self.minimind),
+            "ascension",
+        )
         self.started = False
         self.base_url = get_provider_base_url()
         self.bootstrap_plane = BootstrapPlane(
@@ -500,6 +525,24 @@ class OpenChimeraProvider:
         self.bus.subscribe("system/autonomy/job", self._handle_autonomy_job_event)
         self._seed_knowledge()
 
+    # ------------------------------------------------------------------
+    # Subsystem initialisation helper
+    # ------------------------------------------------------------------
+
+    def _safe_init(self, factory, name: str):
+        """Instantiate a subsystem via *factory*, returning None on failure.
+
+        Failures are logged at WARNING level and recorded in ``_init_errors``
+        so that the ``health()`` endpoint can surface them to operators without
+        causing a complete provider boot failure.
+        """
+        try:
+            return factory()
+        except Exception as exc:
+            LOGGER.warning("[Provider] %s init failed: %s", name, exc)
+            self._init_errors[name] = str(exc)
+            return None
+
     def start(self) -> None:
         self.bootstrap_plane.start()
 
@@ -596,7 +639,11 @@ class OpenChimeraProvider:
         )
 
     def health(self) -> dict[str, Any]:
-        return self.runtime_plane.health()
+        result = self.runtime_plane.health()
+        if self._init_errors:
+            result["init_errors"] = dict(self._init_errors)
+            result["partially_degraded"] = True
+        return result
 
     def list_models(self) -> dict[str, Any]:
         return self.runtime_plane.list_models()
@@ -1069,3 +1116,49 @@ class OpenChimeraProvider:
         """Scan an LLM response through ChimeraLang's hallucination detector."""
         from core.chimera_bridge import get_bridge
         return get_bridge().scan_response(response_text, confidence=confidence, trace=trace)
+
+    def inquiry_pending(self) -> list[dict[str, Any]]:
+        """Return all pending inquiry questions."""
+        if not hasattr(self, "_active_inquiry") or self._active_inquiry is None:
+            return []
+        return self._active_inquiry.pending_questions()
+
+    def inquiry_resolve(self, question_id: str, answer: str) -> bool:
+        """Resolve an inquiry question with an answer."""
+        if not hasattr(self, "_active_inquiry") or self._active_inquiry is None:
+            raise RuntimeError("ActiveInquiry not initialized")
+        return self._active_inquiry.resolve_question(question_id, answer)
+
+    def health_monitor_status(self) -> dict[str, Any]:
+        """Return health status from HealthMonitor if available."""
+        if not hasattr(self, "_health_monitor") or self._health_monitor is None:
+            return {"status": "unavailable", "message": "HealthMonitor not initialized"}
+        
+        # Aggregate current health from all subsystems
+        from core.health_monitor import HealthMonitor
+        monitor: HealthMonitor = self._health_monitor
+        
+        # Collect health data for all known subsystems
+        subsystems = []
+        all_healthy = True
+        
+        # Check a few key subsystems
+        for subsystem_name in ["provider", "bus", "database", "memory", "router"]:
+            current = monitor.get_current_health(subsystem_name)
+            if current:
+                subsystems.append({
+                    "name": subsystem_name,
+                    "status": current.status,
+                    "timestamp": current.timestamp,
+                    "details": current.details,
+                })
+                if current.status not in ("healthy", "unknown"):
+                    all_healthy = False
+        
+        overall_status = "healthy" if all_healthy and subsystems else "degraded"
+        
+        return {
+            "status": overall_status,
+            "subsystems": subsystems,
+            "timestamp": __import__("time").time(),
+        }

@@ -10,6 +10,24 @@ from core.integration_audit import IntegrationAudit
 from core.transactions import atomic_write_json
 
 
+def load_subsystem_definitions(root: Path | None = None) -> list[dict[str, Any]]:
+    """Load subsystem definitions from config/subsystems.json.
+    
+    Returns a list of subsystem dicts with id, name, description, category.
+    Falls back to an empty list if the file is missing or invalid.
+    """
+    config_path = (root or ROOT) / "config" / "subsystems.json"
+    if not config_path.exists():
+        return []
+    try:
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict) and isinstance(payload.get("subsystems"), list):
+            return payload["subsystems"]
+    except (json.JSONDecodeError, OSError):
+        pass
+    return []
+
+
 class ManagedSubsystemRegistry:
     def __init__(
         self,
@@ -37,26 +55,33 @@ class ManagedSubsystemRegistry:
 
     def snapshot(self) -> dict[str, Any]:
         audit = self.integration_audit.build_report().get("engines", {})
-        subsystems = [
-            self._build_subsystem_entry("aether", audit.get("aether", {}), "Managed runtime kernel bridge."),
-            self._build_subsystem_entry("wraith", audit.get("wraith", {}), "Background orchestration and evolution loop."),
-            self._build_subsystem_entry("project_evo_swarm", audit.get("project_evo_swarm", {}), "Autonomous swarm execution and healing bridge."),
-            self._build_subsystem_entry("quantum_engine", audit.get("quantum_engine", {}), "Quantum engine evidence and capability bridge."),
-            self._build_subsystem_entry("aegis_swarm", audit.get("aegis_swarm", {}), "Aegis workflow and remediation subsystem."),
-            self._build_subsystem_entry("ascension_engine", audit.get("ascension_engine", {}), "Ascension deliberation and consensus subsystem."),
-            self._build_subsystem_entry("clawd_hybrid_rtx", audit.get("clawd_hybrid_rtx", {}), "Legacy CHIMERA Quantum and hybrid RTX inference surface."),
-            self._build_subsystem_entry("qwen_agent", audit.get("qwen_agent", {}), "Historical Qwen-Agent bridge and agent framework integration."),
-            self._build_subsystem_entry("project_seraph", audit.get("project_seraph", {}), "Personal swarm, voice bridge, and desktop telemetry interface."),
-            self._build_subsystem_entry("aether_operator_stack", audit.get("aether_operator_stack", {}), "Recovered AETHER operator stack covering router, context sensing, and voice-actuation lineage."),
-            self._build_subsystem_entry("aegis_mobile_gateway", audit.get("aegis_mobile_gateway", {}), "Mobile operator client and gateway bridge."),
-            self._build_subsystem_entry("aegis_core_control_plane", audit.get("aegis_core_control_plane", {}), "Recovered Aegis Core gateway, dashboard, and Python runtime replacement control plane."),
-            self._build_subsystem_entry("context_hub", audit.get("context_hub", {}), "Context-Hub integration and MCP-adjacent memory bridge."),
-            self._build_subsystem_entry("deepagents_stack", audit.get("deepagents_stack", {}), "Recovered deepagents, BettaFish, and everything-claude-code integration set."),
-            self._build_subsystem_entry("tri_core_architecture", audit.get("tri_core_architecture", {}), "RuView, RuVector, and RuFlo tri-core architecture recovered from memory."),
-            self._build_subsystem_entry("hitchhiker_protocol", audit.get("hitchhiker_protocol", {}), "Model drift, reasoning shim, and arbiter feedback loop."),
-            self._build_subsystem_entry("prometheus_research", audit.get("prometheus_research", {}), "Prometheus swarm research and Q-ANC experimentation surface."),
-            self._build_subsystem_entry("minimind", {"name": "minimind", "detected": True, "integrated_runtime": True, "root": str(ROOT / "data" / "minimind"), "evidence": []}, "MiniMind reasoning and training subsystem."),
-        ]
+        
+        # Load subsystem definitions from config
+        subsystem_defs = load_subsystem_definitions()
+        subsystems = []
+        
+        for spec in subsystem_defs:
+            subsystem_id = spec["id"]
+            audit_entry = audit.get(subsystem_id, {})
+            
+            # Special case for minimind — inject detected=True if not in audit
+            if subsystem_id == "minimind" and not audit_entry.get("detected"):
+                audit_entry = {
+                    "name": "minimind",
+                    "detected": True,
+                    "integrated_runtime": True,
+                    "root": str(ROOT / "data" / "minimind"),
+                    "evidence": [],
+                }
+            
+            subsystems.append(
+                self._build_subsystem_entry(
+                    subsystem_id,
+                    audit_entry,
+                    spec["description"],
+                )
+            )
+        
         return {
             "generated_at": int(time.time()),
             "subsystems": subsystems,

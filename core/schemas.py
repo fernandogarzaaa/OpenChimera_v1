@@ -22,6 +22,8 @@ def ensure_safe_local_path(value: str) -> str:
     normalized = str(value or "").strip()
     if not normalized:
         return ""
+    # Normalize Windows-style backslashes so path traversal is detected cross-platform
+    normalized = normalized.replace("\\", "/")
     candidate = Path(normalized).expanduser().resolve(strict=False)
     allowed_roots = [ROOT.resolve(), Path(tempfile.gettempdir()).resolve()]
     if not any(_is_within_root(candidate, root) for root in allowed_roots):

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import enum
 import logging
 import threading
 import time
@@ -25,6 +26,13 @@ from core.wraith_service import WraithService
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+class BootStatus(enum.Enum):
+    """Kernel boot status levels."""
+    FULL = "FULL"           # All subsystems initialized successfully
+    DEGRADED = "DEGRADED"   # Some subsystems failed but kernel is operational
+    FAILED = "FAILED"       # Critical subsystems failed, kernel is not operational
 
 
 class OpenChimeraKernel:
@@ -64,7 +72,8 @@ class OpenChimeraKernel:
 
         try:
             self.provider.start()
-        except Exception:
+        except Exception as exc:
+            LOGGER.error("Provider failed to start: %s", exc, exc_info=True)
             self._running = False
             raise
 
@@ -103,7 +112,7 @@ class OpenChimeraKernel:
                     return str(result.get("content") or result.get("choices", [{}])[0].get("message", {}).get("content", ""))
                 self.consensus_plane.register_agent("local-llm", _local_llm_agent)
         except Exception as exc:
-            LOGGER.warning("Failed to wire local-llm consensus agent: %s", exc)
+            LOGGER.warning("Failed to wire local-llm consensus agent: %s", exc, exc_info=False)
 
         try:
             _minimind = getattr(self.provider, "minimind", None)
@@ -118,7 +127,7 @@ class OpenChimeraKernel:
                     return str(result.get("content", ""))
                 self.consensus_plane.register_agent("minimind", _minimind_agent)
         except Exception as exc:
-            LOGGER.warning("Failed to wire minimind consensus agent: %s", exc)
+            LOGGER.warning("Failed to wire minimind consensus agent: %s", exc, exc_info=False)
 
         # --- Wire AGI cognitive modules to bus events ---
         self._wire_cognitive_modules()
@@ -149,6 +158,17 @@ class OpenChimeraKernel:
             )
         else:
             LOGGER.info("Onboarding hardware recommendations: no suitable local model detected; cloud fallback recommended.")
+
+        # Emit boot status event
+        boot_status_report = self.boot_report()
+        self.bus.publish_nowait("system/boot_status", boot_status_report)
+        LOGGER.info(
+            "Boot status: %s (%d subsystems ok, %d degraded, %d failed)",
+            boot_status_report["status"],
+            sum(1 for s in boot_status_report["subsystems"].values() if s == "ok"),
+            sum(1 for s in boot_status_report["subsystems"].values() if s == "degraded"),
+            sum(1 for s in boot_status_report["subsystems"].values() if s == "failed"),
+        )
 
         if run_forever:
             while True:
@@ -264,33 +284,61 @@ class OpenChimeraKernel:
     def status_snapshot(self, provider_status: dict | None = None) -> dict:
         provider_status = provider_status or self.provider.status()
         agi_status: dict = {}
+        
+        # Improved error handling with structured logging
+        subsystem_health = {}
+        
         try:
             agi_status["self_model"] = self.self_model.self_assessment()
-        except Exception:
+            subsystem_health["self_model"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("self_model subsystem unavailable: %s", exc, exc_info=False)
             agi_status["self_model"] = {"error": "unavailable"}
+            subsystem_health["self_model"] = "failed"
+            
         try:
             agi_status["transfer_learning"] = {
                 "domains": self.transfer_learning.list_domains(),
                 "patterns": len(self.transfer_learning.list_patterns()),
             }
-        except Exception:
+            subsystem_health["transfer_learning"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("transfer_learning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["transfer_learning"] = {"error": "unavailable"}
+            subsystem_health["transfer_learning"] = "failed"
+            
         try:
             agi_status["meta_learning"] = self.meta_learning.status()
-        except Exception:
+            subsystem_health["meta_learning"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("meta_learning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["meta_learning"] = {"error": "unavailable"}
+            subsystem_health["meta_learning"] = "failed"
+            
         try:
             agi_status["ethical_reasoning"] = self.ethical_reasoning.status()
-        except Exception:
+            subsystem_health["ethical_reasoning"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("ethical_reasoning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["ethical_reasoning"] = {"error": "unavailable"}
+            subsystem_health["ethical_reasoning"] = "failed"
+            
         try:
             agi_status["social_cognition"] = self.social_cognition.snapshot()
-        except Exception:
+            subsystem_health["social_cognition"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("social_cognition subsystem unavailable: %s", exc, exc_info=False)
             agi_status["social_cognition"] = {"error": "unavailable"}
+            subsystem_health["social_cognition"] = "failed"
+            
         try:
             agi_status["embodied_interaction"] = self.embodied_interaction.snapshot()
-        except Exception:
+            subsystem_health["embodied_interaction"] = "ok"
+        except Exception as exc:
+            LOGGER.warning("embodied_interaction subsystem unavailable: %s", exc, exc_info=False)
             agi_status["embodied_interaction"] = {"error": "unavailable"}
+            subsystem_health["embodied_interaction"] = "failed"
+            
         return {
             "aether": self.aether.status(),
             "wraith": self.wraith.status(),
@@ -310,7 +358,63 @@ class OpenChimeraKernel:
             "watch_files": self.watch_files,
             "swarm_agents": self._swarm_status(),
             "agi": agi_status,
+            "subsystem_health": subsystem_health,
         }
+
+    def boot_report(self) -> dict[str, Any]:
+        """Generate a boot status report showing which subsystems initialized successfully.
+        
+        Returns:
+            dict with:
+                - subsystems: dict mapping subsystem name to status ("ok"|"degraded"|"failed")
+                - status: overall BootStatus ("FULL"|"DEGRADED"|"FAILED")
+                - timestamp: boot report generation time
+        """
+        report = {
+            "timestamp": time.time(),
+            "subsystems": {},
+            "status": BootStatus.FULL.value,
+        }
+        
+        # Check core services
+        report["subsystems"]["aether"] = "ok" if self.aether.status().get("running") else "degraded"
+        report["subsystems"]["wraith"] = "ok" if self.wraith.status().get("running") else "degraded"
+        report["subsystems"]["evo"] = "ok" if self.evo.status().get("running") else "degraded"
+        report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "failed"
+        report["subsystems"]["api_server"] = "ok" if self.api_server else "failed"
+        
+        # Check AGI modules
+        for module_name in ["self_model", "transfer_learning", "meta_learning", 
+                           "ethical_reasoning", "social_cognition", "embodied_interaction"]:
+            try:
+                module = getattr(self, module_name, None)
+                if module is None:
+                    report["subsystems"][module_name] = "failed"
+                else:
+                    # Try to call a status method to verify it's working
+                    if hasattr(module, "status"):
+                        module.status()
+                    elif hasattr(module, "snapshot"):
+                        module.snapshot()
+                    elif hasattr(module, "self_assessment"):
+                        module.self_assessment()
+                    report["subsystems"][module_name] = "ok"
+            except Exception as exc:
+                LOGGER.debug("Boot check failed for %s: %s", module_name, exc)
+                report["subsystems"][module_name] = "degraded"
+        
+        # Determine overall status
+        failed_count = sum(1 for s in report["subsystems"].values() if s == "failed")
+        degraded_count = sum(1 for s in report["subsystems"].values() if s == "degraded")
+        
+        if failed_count > 0 and "provider" in [k for k, v in report["subsystems"].items() if v == "failed"]:
+            report["status"] = BootStatus.FAILED.value
+        elif failed_count > 0 or degraded_count > 2:
+            report["status"] = BootStatus.DEGRADED.value
+        else:
+            report["status"] = BootStatus.FULL.value
+        
+        return report
 
     def _swarm_status(self) -> dict:
         """Return lightweight swarm surface info."""

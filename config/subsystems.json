@@ -1,0 +1,112 @@
+{
+  "subsystems": [
+    {
+      "id": "aether",
+      "name": "Aether",
+      "description": "Managed runtime kernel bridge.",
+      "category": "runtime"
+    },
+    {
+      "id": "wraith",
+      "name": "Wraith",
+      "description": "Background orchestration and evolution loop.",
+      "category": "orchestration"
+    },
+    {
+      "id": "project_evo_swarm",
+      "name": "Project Evo Swarm",
+      "description": "Autonomous swarm execution and healing bridge.",
+      "category": "swarm"
+    },
+    {
+      "id": "quantum_engine",
+      "name": "Quantum Engine",
+      "description": "Quantum engine evidence and capability bridge.",
+      "category": "reasoning"
+    },
+    {
+      "id": "aegis_swarm",
+      "name": "Aegis Swarm",
+      "description": "Aegis workflow and remediation subsystem.",
+      "category": "swarm"
+    },
+    {
+      "id": "ascension_engine",
+      "name": "Ascension Engine",
+      "description": "Ascension deliberation and consensus subsystem.",
+      "category": "deliberation"
+    },
+    {
+      "id": "clawd_hybrid_rtx",
+      "name": "Clawd Hybrid RTX",
+      "description": "Legacy CHIMERA Quantum and hybrid RTX inference surface.",
+      "category": "legacy"
+    },
+    {
+      "id": "qwen_agent",
+      "name": "Qwen Agent",
+      "description": "Historical Qwen-Agent bridge and agent framework integration.",
+      "category": "legacy"
+    },
+    {
+      "id": "project_seraph",
+      "name": "Project Seraph",
+      "description": "Personal swarm, voice bridge, and desktop telemetry interface.",
+      "category": "interface"
+    },
+    {
+      "id": "aether_operator_stack",
+      "name": "Aether Operator Stack",
+      "description": "Recovered AETHER operator stack covering router, context sensing, and voice-actuation lineage.",
+      "category": "operator"
+    },
+    {
+      "id": "aegis_mobile_gateway",
+      "name": "Aegis Mobile Gateway",
+      "description": "Mobile operator client and gateway bridge.",
+      "category": "gateway"
+    },
+    {
+      "id": "aegis_core_control_plane",
+      "name": "Aegis Core Control Plane",
+      "description": "Recovered Aegis Core gateway, dashboard, and Python runtime replacement control plane.",
+      "category": "control"
+    },
+    {
+      "id": "context_hub",
+      "name": "Context Hub",
+      "description": "Context-Hub integration and MCP-adjacent memory bridge.",
+      "category": "memory"
+    },
+    {
+      "id": "deepagents_stack",
+      "name": "DeepAgents Stack",
+      "description": "Recovered deepagents, BettaFish, and everything-claude-code integration set.",
+      "category": "integration"
+    },
+    {
+      "id": "tri_core_architecture",
+      "name": "Tri-Core Architecture",
+      "description": "RuView, RuVector, and RuFlo tri-core architecture recovered from memory.",
+      "category": "architecture"
+    },
+    {
+      "id": "hitchhiker_protocol",
+      "name": "Hitchhiker Protocol",
+      "description": "Model drift, reasoning shim, and arbiter feedback loop.",
+      "category": "protocol"
+    },
+    {
+      "id": "prometheus_research",
+      "name": "Prometheus Research",
+      "description": "Prometheus swarm research and Q-ANC experimentation surface.",
+      "category": "research"
+    },
+    {
+      "id": "minimind",
+      "name": "MiniMind",
+      "description": "MiniMind reasoning and training subsystem.",
+      "category": "training"
+    }
+  ]
+}

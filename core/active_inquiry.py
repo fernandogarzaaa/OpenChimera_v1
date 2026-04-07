@@ -20,7 +20,7 @@ import logging
 import threading
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ActiveInquiry:
         self._semantic = semantic
         self._episodic = episodic
         self._bus = bus
-        self._open_questions: List[Dict[str, Any]] = []
+        self._open_questions: list[dict[str, Any]] = []
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -51,8 +51,8 @@ class ActiveInquiry:
     # ------------------------------------------------------------------
 
     def detect_contradictions(
-        self, domain: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, domain: str | None = None
+    ) -> list[dict[str, Any]]:
         """Scan semantic triples for contradictions.
 
         A contradiction exists when the same (subject, predicate) pair maps to
@@ -72,15 +72,15 @@ class ActiveInquiry:
         """
         # Fetch all triples (optionally we could filter by domain metadata
         # in future; for now, scan everything)
-        all_triples: List[Dict[str, Any]] = self._semantic.get_triples()
+        all_triples: list[dict[str, Any]] = self._semantic.get_triples()
 
         # Group by (subject, predicate)
-        groups: Dict[tuple, List[Dict[str, Any]]] = {}
+        groups: dict[tuple, list[dict[str, Any]]] = {}
         for triple in all_triples:
             key = (triple["subject"], triple["predicate"])
             groups.setdefault(key, []).append(triple)
 
-        contradictions: List[Dict[str, Any]] = []
+        contradictions: list[dict[str, Any]] = []
         for (subject, predicate), triples in groups.items():
             if len(triples) < 2:
                 continue
@@ -118,7 +118,7 @@ class ActiveInquiry:
     # Question generation
     # ------------------------------------------------------------------
 
-    def generate_question(self, contradiction: Dict[str, Any]) -> str:
+    def generate_question(self, contradiction: dict[str, Any]) -> str:
         """Generate a natural-language clarifying question for a contradiction.
 
         Parameters
@@ -159,8 +159,8 @@ class ActiveInquiry:
     def post_question(
         self,
         question: str,
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Post a clarifying question to the open questions list.
 
         Parameters
@@ -173,7 +173,7 @@ class ActiveInquiry:
         dict with keys: question_id, question, context, created_at, resolved.
         """
         qid = str(uuid.uuid4())
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "question_id": qid,
             "question": question,
             "context": context or {},
@@ -219,7 +219,7 @@ class ActiveInquiry:
                     return True
         return False
 
-    def pending_questions(self) -> List[Dict[str, Any]]:
+    def pending_questions(self) -> list[dict[str, Any]]:
         """Return all unresolved questions (snapshot, not live view)."""
         with self._lock:
             return [dict(q) for q in self._open_questions if not q["resolved"]]
@@ -229,8 +229,8 @@ class ActiveInquiry:
     # ------------------------------------------------------------------
 
     def run_inquiry_cycle(
-        self, domain: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, domain: str | None = None
+    ) -> list[dict[str, Any]]:
         """Run a full contradiction → question → post cycle.
 
         1. Detect contradictions in semantic memory.
@@ -246,7 +246,7 @@ class ActiveInquiry:
         List of newly posted question dicts.
         """
         contradictions = self.detect_contradictions(domain=domain)
-        newly_posted: List[Dict[str, Any]] = []
+        newly_posted: list[dict[str, Any]] = []
 
         # Avoid double-posting for the same (subject, predicate) pair
         with self._lock:

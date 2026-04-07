@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -11,6 +13,32 @@ from core.capabilities import CapabilityRegistry
 from core.config import ROOT
 from core.database import DatabaseManager
 from core.model_roles import ModelRoleManager
+
+_log = logging.getLogger(__name__)
+
+# Maximum characters of SKILL.md content to inject as a system prompt.
+MAX_SKILL_PROMPT_LENGTH = 2000
+
+# ---------------------------------------------------------------------------
+# Lazy ChimeraLang hallucination detection
+# ---------------------------------------------------------------------------
+
+def _scan_response_for_hallucination(content: str) -> dict[str, Any] | None:
+    """Run *content* through ChimeraLang's hallucination detector.
+
+    Returns a scan-result dict, or *None* if ChimeraLang is unavailable.
+    The call is intentionally best-effort: any exception is swallowed so that
+    hallucination detection never blocks or breaks a query response.
+    """
+    try:
+        from core.chimera_bridge import get_bridge  # local import — avoid circular at module load
+        bridge = get_bridge()
+        if not bridge.status().get("available"):
+            return None
+        return bridge.scan_response(content)
+    except Exception as exc:
+        _log.debug("ChimeraLang scan_response skipped: %s", exc)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +93,7 @@ class QueryEngine:
         tool_history_path: Path | None = None,
         database: DatabaseManager | None = None,
         database_path: Path | None = None,
+        skills_root: Path | None = None,
     ):
         self.capability_registry = capability_registry
         self.model_roles = model_roles
@@ -74,6 +103,7 @@ class QueryEngine:
         self.sessions_path = sessions_path or (ROOT / "data" / "query_sessions.json")
         self.tool_history_path = tool_history_path or (ROOT / "data" / "tool_execution_history.json")
         self.database = database or DatabaseManager(db_path=database_path or (self.sessions_path.parent / "openchimera.db"))
+        self._skills_root = skills_root or ROOT
         self.database.initialize()
 
     def status(self) -> dict[str, Any]:
@@ -130,6 +160,7 @@ class QueryEngine:
             memory=memory,
             role_selection=role_selection,
             executed_tools=executed_tools,
+            user_query=user_query,
         )
         completion = self.completion_callback(
             messages=hydrated_messages,
@@ -139,6 +170,10 @@ class QueryEngine:
             stream=False,
         )
         content = str(completion.get("choices", [{}])[0].get("message", {}).get("content", ""))
+
+        # Gate the response through ChimeraLang hallucination detection (best-effort, non-blocking).
+        hallucination_scan = _scan_response_for_hallucination(content)
+
         tool_event = {
             "session_id": session["session_id"],
             "query_type": query_type,
@@ -196,6 +231,7 @@ class QueryEngine:
             "suggested_tools": suggested_tools,
             "executed_tools": executed_tools,
             "spawned_job": spawned_job,
+            "hallucination_scan": hallucination_scan,
             "response": completion,
         }
 
@@ -390,8 +426,15 @@ class QueryEngine:
         memory: dict[str, Any],
         role_selection: dict[str, Any],
         executed_tools: list[dict[str, Any]] | None = None,
+        user_query: str = "",
     ) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = []
+
+        # Inject the best-matching skill as a system prompt when one is found.
+        skill_prompt = self._select_skill_prompt(user_query) if user_query else None
+        if skill_prompt:
+            messages.append({"role": "system", "content": skill_prompt})
+
         summaries = memory.get("summaries", []) if isinstance(memory.get("summaries", []), list) else []
         if summaries:
             messages.append({"role": "system", "content": "Memory hydration:\n- " + "\n- ".join(str(item) for item in summaries)})
@@ -413,6 +456,63 @@ class QueryEngine:
             messages.append({"role": str(turn.get("role", "user")), "content": str(turn.get("content", ""))})
         messages.extend(payload_messages)
         return messages
+
+    def _select_skill_prompt(self, query: str) -> str | None:
+        """Find the best-matching skill for *query* and return its SKILL.md content.
+
+        Scoring: count keyword overlaps between the query tokens and each skill's
+        name + description + id tokens.  Returns the SKILL.md body of the top
+        skill only when its score exceeds a minimum threshold, to avoid
+        injecting an irrelevant skill persona into every query.
+
+        Returns ``None`` when no skill is a good match (score < 2 matching tokens).
+        """
+        try:
+            skills = self.capability_registry.list_kind("skills")
+        except Exception:
+            return None
+
+        if not skills:
+            return None
+
+        query_tokens = set(re.sub(r"[^a-z0-9\s]", " ", query.lower()).split())
+        if not query_tokens:
+            return None
+
+        best_skill: dict[str, Any] | None = None
+        best_score = 0
+
+        for skill in skills:
+            skill_text = " ".join([
+                str(skill.get("name", "")),
+                str(skill.get("description", "")),
+                str(skill.get("id", "")),
+                str(skill.get("category", "")),
+            ]).lower()
+            skill_tokens = set(re.sub(r"[^a-z0-9\s]", " ", skill_text).split())
+            score = len(query_tokens & skill_tokens)
+            if score > best_score:
+                best_score = score
+                best_skill = skill
+
+        if best_score < 2 or best_skill is None:
+            return None
+
+        # Load the SKILL.md content from the skill's registered path
+        try:
+            skill_path = Path(str(best_skill.get("path", "")))
+            if skill_path.exists():
+                content = skill_path.read_text(encoding="utf-8", errors="ignore")
+                # Strip YAML frontmatter (--- ... ---) if present
+                if content.startswith("---"):
+                    end = content.find("---", 3)
+                    if end != -1:
+                        content = content[end + 3:].lstrip()
+                return f"[Skill: {best_skill.get('name', best_skill.get('id', ''))}]\n{content[:MAX_SKILL_PROMPT_LENGTH]}"
+        except Exception as exc:
+            _log.debug("Could not load skill prompt for %s: %s", best_skill.get("id"), exc)
+
+        return None
 
     def _execute_requested_tools(
         self,

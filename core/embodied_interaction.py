@@ -229,15 +229,27 @@ class ActuatorInterface:
         actuator_id: str,
         action: str,
         params: "dict[str, Any] | None" = None,
+        *,
+        timeout_s: float | None = None,
+        retry_count: int = 0,
     ) -> ActuatorCommand:
         """Issue a command to *actuator_id*.
 
         The *action* is validated against the allowed-actions whitelist.
-        If a handler is registered it is called synchronously.  Otherwise the
-        command is stored with status ``"pending"``.  Returns the completed
-        (or pending) command.
+        If a handler is registered it is called synchronously with timeout protection.
+        Failed commands can be automatically retried up to *retry_count* times.
+        Otherwise the command is stored with status ``"pending"``.
+        Returns the completed (or pending) command.
+        
+        Parameters
+        ──────────
+        timeout_s:
+            Command timeout in seconds. Defaults to self._command_timeout_s.
+        retry_count:
+            Number of automatic retries on failure (default 0 = no retries).
         """
         cmd = ActuatorCommand(actuator_id=actuator_id, action=action, params=params or {})
+        timeout = timeout_s if timeout_s is not None else self._command_timeout_s
 
         # Validate action against whitelist
         if action not in self._allowed_actions:
@@ -256,16 +268,43 @@ class ActuatorInterface:
 
         with self._lock:
             handler = self._handlers.get(actuator_id)
+            
             if handler is not None:
-                try:
-                    cmd.status = "executing"
-                    result = handler(cmd)
-                    cmd.result = result or {}
-                    cmd.status = "completed"
-                except Exception as exc:
-                    cmd.status = "failed"
-                    cmd.result = {"error": str(exc)}
-                    log.warning("[Actuator] Handler failed for '%s': %s", actuator_id, exc)
+                attempts = 0
+                max_attempts = 1 + max(0, retry_count)
+                
+                while attempts < max_attempts:
+                    attempts += 1
+                    try:
+                        cmd.status = "executing"
+                        started = time.perf_counter()
+                        result = handler(cmd)
+                        elapsed = time.perf_counter() - started
+                        
+                        # Check for timeout
+                        if elapsed > timeout:
+                            raise TimeoutError(f"Command execution exceeded {timeout}s timeout")
+                        
+                        cmd.result = result or {}
+                        cmd.status = "completed"
+                        break  # Success, exit retry loop
+                        
+                    except TimeoutError as exc:
+                        cmd.status = "timeout"
+                        cmd.result = {"error": str(exc), "attempt": attempts}
+                        log.warning("[Actuator] Timeout for '%s' (attempt %d/%d): %s",
+                                   actuator_id, attempts, max_attempts, exc)
+                        if attempts >= max_attempts:
+                            break
+                            
+                    except Exception as exc:
+                        cmd.status = "failed"
+                        cmd.result = {"error": str(exc), "attempt": attempts}
+                        log.warning("[Actuator] Handler failed for '%s' (attempt %d/%d): %s",
+                                   actuator_id, attempts, max_attempts, exc)
+                        if attempts >= max_attempts:
+                            break
+                            
             self._history.append(cmd)
 
         log.debug("[Actuator] Command '%s' → actuator='%s' action='%s' status=%s",

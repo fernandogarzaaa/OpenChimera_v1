@@ -266,3 +266,106 @@ class TestFullGodSwarmFlow:
         result = gs.analyze_and_dispatch("Audit the authentication system for security vulnerabilities")
         assert result.succeeded()
         assert len(result.outputs) == 10  # all 10 agents participated
+
+
+# ===========================================================================
+# Tests: Real LLM callback wiring in SwarmAgent and GodSwarm
+# ===========================================================================
+
+class TestSwarmAgentLLMCallback:
+    def _make_llm_callback(self, response: str = "LLM answer"):
+        """Return a fake chat_completion callback that mimics the provider API."""
+        def _callback(messages, model="openchimera-local", max_tokens=512, temperature=0.7, stream=False):
+            return {
+                "choices": [{"message": {"content": response}}],
+                "model": model,
+            }
+        return _callback
+
+    def test_offline_stub_used_when_no_callback(self):
+        agent = SwarmAgent(agent_id="a", role="Analyst", description="test")
+        result = asyncio.run(agent.execute("test task", {}))
+        assert result == "Analyst completed: test task"
+        assert agent.status == "done"
+
+    def test_llm_callback_invoked_when_bound(self):
+        callback = self._make_llm_callback("Real LLM response here")
+        agent = SwarmAgent(agent_id="b", role="Expert", description="test", llm_callback=callback)
+        result = asyncio.run(agent.execute("answer this question", {}))
+        assert result == "Real LLM response here"
+        assert agent.status == "done"
+
+    def test_llm_callback_failure_sets_failed_status_returns_error_string(self):
+        def bad_callback(**kwargs):
+            raise RuntimeError("model offline")
+        agent = SwarmAgent(agent_id="c", role="Broken", description="test", llm_callback=bad_callback)
+        result = asyncio.run(agent.execute("task", {}))
+        assert agent.status == "failed"
+        assert "error" in result.lower() or "broken" in result.lower()
+
+    def test_to_dict_reflects_llm_bound_true(self):
+        callback = self._make_llm_callback()
+        agent = SwarmAgent(agent_id="d", role="R", description="t", llm_callback=callback)
+        d = agent.to_dict()
+        assert d["llm_bound"] is True
+
+    def test_to_dict_reflects_llm_bound_false(self):
+        agent = SwarmAgent(agent_id="e", role="R", description="t")
+        d = agent.to_dict()
+        assert d["llm_bound"] is False
+
+    def test_context_injected_into_messages(self):
+        """Verify that context dict is reflected in the messages sent to the callback."""
+        captured = []
+        def capturing_callback(messages, **kwargs):
+            captured.extend(messages)
+            return {"choices": [{"message": {"content": "ok"}}], "model": "test"}
+
+        agent = SwarmAgent(agent_id="f", role="Scribe", description="test", llm_callback=capturing_callback)
+        asyncio.run(agent.execute("summarise", context={"phase": "execute", "coord_id": "abc123"}))
+        # Context entries should appear in system messages
+        combined = " ".join(m.get("content", "") for m in captured)
+        assert "phase" in combined or "coord_id" in combined
+
+
+class TestGodSwarmKernelWiring:
+    def _make_kernel_with_llm(self, response: str = "kernel LLM"):
+        class FakeProvider:
+            def chat_completion(self, messages, model, max_tokens, temperature, stream):
+                return {"choices": [{"message": {"content": response}}], "model": model}
+
+        class FakeKernel:
+            provider = FakeProvider()
+
+        return FakeKernel()
+
+    def test_wire_to_kernel_binds_llm_to_all_agents(self):
+        gs = GodSwarm()
+        kernel = self._make_kernel_with_llm("swarm LLM response")
+        gs.wire_to_kernel(kernel)
+        for agent in gs.list_agents():
+            assert agent.llm_callback is not None, f"Agent {agent.agent_id} missing callback"
+
+    def test_wire_to_kernel_without_provider_uses_offline_stub(self):
+        gs = GodSwarm()
+        class KernelNoBus:
+            pass
+        gs.wire_to_kernel(KernelNoBus())
+        for agent in gs.list_agents():
+            assert agent.llm_callback is None, f"Agent {agent.agent_id} should have no callback"
+
+    def test_spawn_agent_inherits_llm_callback(self):
+        gs = GodSwarm()
+        kernel = self._make_kernel_with_llm()
+        gs.wire_to_kernel(kernel)
+        record = gs.spawn_agent({"role": "Dynamic", "description": "spawned"})
+        spawned = gs.get_agent(record["agent_id"])
+        assert spawned is not None
+        assert spawned.llm_callback is not None
+
+    def test_status_reports_kernel_wired(self):
+        gs = GodSwarm()
+        kernel = self._make_kernel_with_llm()
+        gs.wire_to_kernel(kernel)
+        status = gs.status()
+        assert status["kernel_wired"] is True

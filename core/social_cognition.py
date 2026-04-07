@@ -16,13 +16,16 @@ All classes are thread-safe and publish events via EventBus when available.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from core._bus_fallback import EventBus
+from core.config import ROOT
 
 log = logging.getLogger(__name__)
 
@@ -420,6 +423,8 @@ class SocialNormRegistry:
         self._seed_defaults()
 
     def _seed_defaults(self) -> None:
+        """Load default norms from config file, with fallback to hardcoded defaults."""
+        config_path = ROOT / "config" / "social_norms.json"
         defaults = [
             SocialNorm("reciprocity", "Return help or value given by others.", weight=0.8, category="cooperation"),
             SocialNorm("honesty", "Do not deceive or mislead others.", weight=1.0, category="ethics"),
@@ -427,6 +432,26 @@ class SocialNormRegistry:
             SocialNorm("confidentiality", "Protect sensitive information shared in context.", weight=0.85, category="privacy"),
             SocialNorm("fairness", "Distribute effort and credit equitably.", weight=0.75, category="cooperation"),
         ]
+        
+        # Try loading from config
+        try:
+            if config_path.exists():
+                data = json.loads(config_path.read_text(encoding="utf-8"))
+                norms_data = data.get("norms", [])
+                if norms_data:
+                    defaults = [
+                        SocialNorm(
+                            name=n.get("name", "unknown"),
+                            rule=n.get("rule", ""),
+                            weight=float(n.get("weight", 1.0)),
+                            category=n.get("category", "general")
+                        )
+                        for n in norms_data
+                    ]
+                    log.info("Loaded %d social norms from config", len(defaults))
+        except Exception as exc:
+            log.warning("Failed to load social_norms.json, using hardcoded defaults: %s", exc)
+        
         for norm in defaults:
             self._norms[norm.name] = norm
 
@@ -444,11 +469,11 @@ class SocialNormRegistry:
     def evaluate(self, action_description: str) -> dict[str, Any]:
         """Score an action description against all registered norms.
 
-        Uses a two-layer approach:
+        Uses a three-layer approach:
         1. *Keyword violation* — fast-fail on well-known violating phrases.
-        2. *Semantic overlap* — word-level overlap between the action and
-           the norm's rule text produces a continuous compliance score
-           rather than a binary 0/1.
+        2. *Word embedding similarity* — cosine similarity on simple word vectors
+           to detect semantic alignment between action and norm rule text.
+        3. *Fallback to word overlap* — when embeddings are unavailable.
 
         Returns a dict with a ``total_score`` in [0, 1] (higher = more
         norm-compliant) and per-norm breakdowns.
@@ -463,6 +488,7 @@ class SocialNormRegistry:
         action_lower = action_description.lower()
         action_words = set(action_lower.split())
         results: list[dict[str, Any]] = []
+        
         with self._lock:
             for name, norm in self._norms.items():
                 # Layer 1: keyword violation → score = 0
@@ -470,18 +496,55 @@ class SocialNormRegistry:
                 if violated:
                     score = 0.0
                 else:
-                    # Layer 2: semantic overlap with the norm's rule text
+                    # Layer 2: word embedding similarity (simple implementation)
                     rule_words = set(norm.rule.lower().split())
-                    overlap = len(action_words & rule_words)
-                    rule_len = max(len(rule_words), 1)
-                    alignment = min(1.0, overlap / rule_len)
-                    # High alignment with a positive rule → compliant
-                    score = round(0.6 + 0.4 * alignment, 4)
+                    similarity = self._compute_word_embedding_similarity(action_words, rule_words)
+                    
+                    # High similarity with a positive rule → compliant
+                    score = round(0.6 + 0.4 * similarity, 4)
                 results.append({"norm": name, "weight": norm.weight, "score": score, "violated": violated})
 
         total_weight = sum(r["weight"] for r in results) or 1.0
         weighted_score = sum(r["score"] * r["weight"] for r in results) / total_weight
         return {"total_score": round(weighted_score, 4), "norms": results}
+
+    def _compute_word_embedding_similarity(self, words1: set[str], words2: set[str]) -> float:
+        """Compute cosine similarity between two word sets using simple character-based vectors.
+        
+        This is a lightweight implementation that doesn't require external embeddings.
+        It creates a simple character n-gram vector for each word set and computes cosine similarity.
+        """
+        if not words1 or not words2:
+            return 0.0
+        
+        # Create character n-gram vectors
+        def make_char_vector(words: set[str], n: int = 3) -> dict[str, int]:
+            vector = {}
+            for word in words:
+                # Generate character n-grams
+                padded = f"#{word}#"  # Padding for boundary n-grams
+                for i in range(len(padded) - n + 1):
+                    ngram = padded[i:i+n]
+                    vector[ngram] = vector.get(ngram, 0) + 1
+            return vector
+        
+        vec1 = make_char_vector(words1)
+        vec2 = make_char_vector(words2)
+        
+        # Compute cosine similarity
+        all_keys = set(vec1.keys()) | set(vec2.keys())
+        if not all_keys:
+            return 0.0
+        
+        dot_product = sum(vec1.get(k, 0) * vec2.get(k, 0) for k in all_keys)
+        magnitude1 = sum(v * v for v in vec1.values()) ** 0.5
+        magnitude2 = sum(v * v for v in vec2.values()) ** 0.5
+        
+        if magnitude1 == 0 or magnitude2 == 0:
+            return 0.0
+        
+        similarity = dot_product / (magnitude1 * magnitude2)
+        return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
 
     def all_norms(self) -> list[dict[str, Any]]:
         with self._lock:

@@ -142,7 +142,7 @@ class CommandRegistry:
     # Execution
     # ------------------------------------------------------------------
 
-    def execute(self, command_id: str, *, is_admin: bool = False, **kwargs: Any) -> Any:
+    def execute(self, command_id: str, *, is_admin: bool = False, permission_scope: str | None = None, **kwargs: Any) -> Any:
         """Invoke a command handler by id.
 
         Raises ``ValueError`` if the command is unknown.
@@ -155,6 +155,11 @@ class CommandRegistry:
         if cmd is None:
             raise ValueError(f"Unknown command: {command_id!r}")
         if cmd.requires_admin and not is_admin:
+            self._publish("security.unauthorized_access", {
+                "command_id": command_id,
+                "requires_admin": True,
+                "permission_scope": permission_scope or "user",
+            })
             self._publish("system/commands", {
                 "action": "execute",
                 "command_id": command_id,
