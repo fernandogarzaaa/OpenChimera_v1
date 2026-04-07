@@ -1,0 +1,17 @@
+{
+  "system_nodes": [
+    "memory",
+    "quantum_engine",
+    "evolution",
+    "metacognition",
+    "goal_planner",
+    "causal_reasoning",
+    "transfer_learning",
+    "ethical_reasoning",
+    "social_cognition",
+    "embodied_interaction",
+    "self_model",
+    "meta_learning"
+  ],
+  "description": "Core system component nodes for OpenChimera's world model graph"
+}

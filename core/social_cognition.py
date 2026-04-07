@@ -16,13 +16,16 @@ All classes are thread-safe and publish events via EventBus when available.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from core._bus_fallback import EventBus
+from core.config import ROOT
 
 log = logging.getLogger(__name__)
 
@@ -420,6 +423,8 @@ class SocialNormRegistry:
         self._seed_defaults()
 
     def _seed_defaults(self) -> None:
+        """Load default norms from config file, with fallback to hardcoded defaults."""
+        config_path = ROOT / "config" / "social_norms.json"
         defaults = [
             SocialNorm("reciprocity", "Return help or value given by others.", weight=0.8, category="cooperation"),
             SocialNorm("honesty", "Do not deceive or mislead others.", weight=1.0, category="ethics"),
@@ -427,6 +432,26 @@ class SocialNormRegistry:
             SocialNorm("confidentiality", "Protect sensitive information shared in context.", weight=0.85, category="privacy"),
             SocialNorm("fairness", "Distribute effort and credit equitably.", weight=0.75, category="cooperation"),
         ]
+        
+        # Try loading from config
+        try:
+            if config_path.exists():
+                data = json.loads(config_path.read_text(encoding="utf-8"))
+                norms_data = data.get("norms", [])
+                if norms_data:
+                    defaults = [
+                        SocialNorm(
+                            name=n.get("name", "unknown"),
+                            rule=n.get("rule", ""),
+                            weight=float(n.get("weight", 1.0)),
+                            category=n.get("category", "general")
+                        )
+                        for n in norms_data
+                    ]
+                    log.info("Loaded %d social norms from config", len(defaults))
+        except Exception as exc:
+            log.warning("Failed to load social_norms.json, using hardcoded defaults: %s", exc)
+        
         for norm in defaults:
             self._norms[norm.name] = norm
 

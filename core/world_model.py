@@ -14,29 +14,44 @@ Both classes are thread-safe and publish events via EventBus when available.
 """
 from __future__ import annotations
 
+import json
 import logging
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from core._bus_fallback import EventBus
 from core.causal_reasoning import CausalReasoning
+from core.config import ROOT
 
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Known system component nodes
+# Known system component nodes (loaded from config)
 # ---------------------------------------------------------------------------
 
-SYSTEM_NODES: list[str] = [
-    "memory",
-    "quantum_engine",
-    "evolution",
-    "metacognition",
-    "goal_planner",
-    "causal_reasoning",
-    "transfer_learning",
-]
+def _load_system_nodes() -> list[str]:
+    """Load system nodes from config file with fallback to defaults."""
+    config_path = ROOT / "config" / "world_model_nodes.json"
+    default_nodes = [
+        "memory",
+        "quantum_engine",
+        "evolution",
+        "metacognition",
+        "goal_planner",
+        "causal_reasoning",
+        "transfer_learning",
+    ]
+    try:
+        if config_path.exists():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            return data.get("system_nodes", default_nodes)
+    except Exception as exc:
+        log.warning("Failed to load world_model_nodes.json, using defaults: %s", exc)
+    return default_nodes
+
+SYSTEM_NODES: list[str] = _load_system_nodes()
 
 
 # ---------------------------------------------------------------------------
