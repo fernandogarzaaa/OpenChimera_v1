@@ -500,13 +500,13 @@ class ChimeraVM:
             scope = self._env.child()
 
             # Expose per-branch metadata so body code can produce divergent outputs.
-            branch_seed = self._rng.randint(0, 2**32 - 1)
+            branch_seed = self._rng.randint(0, 2**31 - 1)
             scope.set("branch_index", self._wrap(i, confidence=1.0))
             scope.set("branch_seed", self._wrap(branch_seed, confidence=1.0))
 
             for param, arg in zip(gate.params, args):
                 # Inject slight randomness to simulate diverse reasoning paths.
-                # Both confidence AND a per-branch seed diverge so that branches
+                # Both confidence AND a per-branch seed diverged so that branches
                 # using branch_index / branch_seed produce genuinely different values.
                 noisy_conf = min(1.0, max(0.0, arg.confidence.value + self._rng.gauss(0, 0.05)))
                 noisy = ChimeraValue(

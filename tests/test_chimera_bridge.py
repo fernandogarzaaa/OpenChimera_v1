@@ -326,10 +326,10 @@ def test_gate_branch_metadata_injected(bridge):
 
     # Each branch trace must carry both _input and _output tags
     for i, bt in enumerate(branch_traces):
-        inputs  = [e for e in bt if "_input"  in e and "branch_" in e]
-        outputs = [e for e in bt if "_output" in e and "branch_" in e]
-        assert inputs,  f"Branch {i} missing branch_N_input tag in trace: {bt}"
-        assert outputs, f"Branch {i} missing branch_N_output tag in trace: {bt}"
+        input_tags  = [e for e in bt if "_input"  in e and "branch_" in e]
+        output_tags = [e for e in bt if "_output" in e and "branch_" in e]
+        assert input_tags,  f"Branch {i} missing branch_N_input tag in trace: {bt}"
+        assert output_tags, f"Branch {i} missing branch_N_output tag in trace: {bt}"
 
 
 def test_gate_branch_index_injectable(bridge):
