@@ -111,27 +111,51 @@ Optional HTTPS: set `api.tls.enabled=true` plus `api.tls.certfile` and `api.tls.
 
 ## Quick Start
 
-Run the local diagnostics first:
+> **Five minutes from zero to running.** No Rust, no Docker, no cloud accounts required.
+> See [QUICKSTART.md](QUICKSTART.md) for the complete guide.
 
-```powershell
+```bash
+# 1. Clone and enter the repo
+git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
+cd openchimera
+
+# 2. Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+
+# 3. Install all production dependencies (pinned, with hashes)
+pip install -r requirements-prod.lock
+
+# 4. Install OpenChimera in editable mode
+pip install -e .
+
+# 5. Bootstrap local state (creates data/ dirs, seed JSON)
+openchimera bootstrap
+
+# 6. Diagnostics check — confirms everything is wired correctly
 openchimera doctor
-openchimera onboard
-```
 
-Start the runtime:
-
-```powershell
+# 7. Start the runtime on http://127.0.0.1:7870 (Ctrl+C to stop)
 openchimera serve
 ```
 
-Query status from another shell:
+**Verify it's alive** (second terminal, same venv active):
 
-```powershell
+```bash
+curl http://127.0.0.1:7870/health
+curl http://127.0.0.1:7870/v1/system/readiness
 openchimera status --json
-Invoke-RestMethod -Method Get -Uri http://127.0.0.1:7870/health
-Invoke-RestMethod -Method Get -Uri http://127.0.0.1:7870/v1/system/readiness
-Invoke-RestMethod -Method Get -Uri http://127.0.0.1:7870/openapi.json
 ```
+
+**Run the test suite** (2 467 tests, ~40 seconds):
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+# Expected: 2467 passed, 2 skipped
+```
+
+If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
 
 If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
 
