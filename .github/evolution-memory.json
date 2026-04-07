@@ -1,5 +1,18 @@
 {
   "schema_version": 1,
-  "last_cycle_timestamp": 0,
-  "cycles": []
+  "last_cycle_timestamp": 1775531596.8986673,
+  "cycles": [
+    {
+      "cycle_id": 1,
+      "timestamp": 1775531596.8986673,
+      "iso_timestamp": "2026-04-07T03:13:16Z",
+      "run_id": "24062435752",
+      "sha": "bde17741",
+      "engine_status": "ok",
+      "report": "data/evolution_reports/cycle_0001.md",
+      "copilot_available": true,
+      "dpo_pairs": 0,
+      "adapter_id": null
+    }
+  ]
 }
