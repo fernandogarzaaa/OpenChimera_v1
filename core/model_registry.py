@@ -9,7 +9,7 @@ from urllib import error, request
 
 from core.config import ROOT, load_runtime_profile
 from core.credential_store import CredentialStore
-from core.local_model_inventory import discover_local_model_inventory
+from core.local_model_inventory import discover_local_model_inventory, discover_ollama_models
 from core.transactions import atomic_write_json
 
 
@@ -73,7 +73,7 @@ PROVIDER_MODULE_SEEDS: list[dict[str, Any]] = [
     {"id": "moonshot", "kind": "cloud", "module": "external.moonshot", "configurable": True, "auth_env_vars": ["MOONSHOT_API_KEY"], "docs_path": "/providers/moonshot"},
     {"id": "minimax", "kind": "cloud", "module": "external.minimax", "configurable": True, "auth_env_vars": ["MINIMAX_API_KEY"], "docs_path": "/providers/minimax"},
     {"id": "xai", "kind": "cloud", "module": "external.xai", "configurable": True, "auth_env_vars": ["XAI_API_KEY"], "docs_path": "/providers/xai"},
-    {"id": "huggingface-inference", "kind": "cloud", "module": "external.huggingface", "configurable": True, "auth_env_vars": ["HUGGINGFACEHUB_API_TOKEN"], "docs_path": "/providers/huggingface"},
+    {"id": "huggingface-inference", "kind": "cloud", "module": "external.huggingface", "configurable": True, "auth_env_vars": ["HUGGINGFACEHUB_API_TOKEN", "HF_TOKEN"], "docs_path": "/providers/huggingface"},
 ]
 
 CLOUD_MODEL_SEEDS: list[dict[str, Any]] = [
@@ -220,10 +220,21 @@ class ModelRegistry:
         providers_config = self.profile.get("providers", {}) if isinstance(self.profile.get("providers", {}), dict) else {}
         enabled_provider_ids = set(str(item) for item in providers_config.get("enabled", []))
         preferred_cloud_provider = str(providers_config.get("preferred_cloud_provider", "")).strip()
+        ollama_config = self.profile.get("ollama", {}) if isinstance(self.profile.get("ollama", {}), dict) else {}
+        ollama_host = str(ollama_config.get("host", "127.0.0.1"))
+        ollama_port = int(ollama_config.get("port", 11434))
+        _ollama_probe_done = False
+        _ollama_discovered: list[str] | None = None
         for provider in PROVIDER_MODULE_SEEDS:
             item = dict(provider)
             if item["id"] == "local-llama-cpp":
                 item["discovered_models"] = sorted(model["id"] for model in local_models if model["provider_module"] == "local-llama-cpp")
+            if item["id"] == "ollama":
+                if not _ollama_probe_done:
+                    _ollama_discovered = discover_ollama_models(ollama_host=ollama_host, ollama_port=ollama_port)
+                    _ollama_probe_done = True
+                item["discovered_models"] = _ollama_discovered if _ollama_discovered is not None else []
+                item["ollama_reachable"] = _ollama_discovered is not None
             default_enabled = item["id"] in {"openchimera-gateway", "local-llama-cpp", "minimind"}
             item["enabled"] = item["id"] in enabled_provider_ids if enabled_provider_ids else default_enabled
             configured_from_env = any(os.getenv(env_var) for env_var in item.get("auth_env_vars", []))
@@ -306,6 +317,10 @@ class ModelRegistry:
         discovered_path = ROOT / "data" / "autonomy" / "discovered_models.json"
         sources = self.profile.get("model_inventory", {}).get("discovery_sources", [])
         local_inventory = discover_local_model_inventory(self.profile, known_model_names=list(LOCAL_MODEL_SEEDS.keys()))
+        ollama_config = self.profile.get("ollama", {}) if isinstance(self.profile.get("ollama", {}), dict) else {}
+        ollama_host = str(ollama_config.get("host", "127.0.0.1"))
+        ollama_port = int(ollama_config.get("port", 11434))
+        ollama_models = discover_ollama_models(ollama_host=ollama_host, ollama_port=ollama_port)
         return {
             "scouted_models_path": str(scouted_path),
             "scouted_models_available": scouted_path.exists(),
@@ -317,6 +332,8 @@ class ModelRegistry:
             "local_discovered_models": list(local_inventory.get("available_models") or []),
             "local_search_roots": list(local_inventory.get("search_roots") or []),
             "remote_sources": [str(source.get("name") or source.get("url") or "unnamed") for source in sources if isinstance(source, dict)],
+            "ollama_discovered_models": ollama_models if ollama_models is not None else [],
+            "ollama_reachable": ollama_models is not None,
         }
 
     def _build_minimind_optimization_profile(self, hardware: dict[str, Any]) -> dict[str, Any]:

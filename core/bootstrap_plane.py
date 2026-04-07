@@ -87,6 +87,9 @@ class BootstrapPlane:
         self.bus.publish_nowait("system/onboarding", {"action": "reset", "result": result})
         return result
 
+    def validate_onboarding_credential(self, provider_id: str, key: str, value: str) -> dict[str, Any]:
+        return self.onboarding.validate_credential(provider_id, key, value)
+
     def seed_knowledge(self) -> None:
         kb_path = get_chimera_kb_path()
         if kb_path.exists():

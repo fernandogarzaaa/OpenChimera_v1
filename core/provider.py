@@ -894,6 +894,9 @@ class OpenChimeraProvider:
     def reset_onboarding(self) -> dict[str, Any]:
         return self.bootstrap_plane.reset_onboarding()
 
+    def validate_onboarding_credential(self, provider_id: str, key: str, value: str) -> dict[str, Any]:
+        return self.bootstrap_plane.validate_onboarding_credential(provider_id, key, value)
+
     def _build_integration_status(self) -> dict[str, Any]:
         return self.integration_plane.build_integration_status()
 

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import json
+import logging
 from pathlib import Path
 from typing import Any
+from urllib import error, request
 
 from core.config import ROOT, get_appforge_root, get_legacy_workspace_root
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 MODEL_FILE_HINTS: dict[str, tuple[str, ...]] = {
@@ -94,3 +100,26 @@ def discover_local_model_inventory(profile: dict[str, Any], known_model_names: l
         "model_files": matched_model_files,
         "available_models": available_models,
     }
+
+
+def discover_ollama_models(ollama_host: str = "127.0.0.1", ollama_port: int = 11434) -> list[str] | None:
+    """Query Ollama's /api/tags endpoint to enumerate locally installed Ollama models.
+
+    Returns a list of model name strings (e.g. ["llama3.2:latest", "gemma3:4b"]) when Ollama
+    is reachable — the list may be empty if no models are installed yet.
+    Returns ``None`` when Ollama is not running or not reachable.
+    """
+    url = f"http://{ollama_host}:{ollama_port}/api/tags"
+    try:
+        req = request.Request(url, headers={"Accept": "application/json"})
+        with request.urlopen(req, timeout=3) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        models = data.get("models", [])
+        if not isinstance(models, list):
+            return []
+        return [str(m["name"]) for m in models if isinstance(m, dict) and m.get("name")]
+    except (error.URLError, OSError, json.JSONDecodeError, KeyError):
+        return None
+    except Exception:
+        LOGGER.debug("Unexpected error while probing Ollama at %s:%s", ollama_host, ollama_port, exc_info=True)
+        return None

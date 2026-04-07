@@ -60,6 +60,7 @@ ROUTE_CATALOG: dict[str, dict[str, dict[str, Any]]] = {
     "/v1/onboarding/status": {"get": {"summary": "Onboarding status", "tag": "onboarding", "public": False}},
     "/v1/onboarding/apply": {"post": {"summary": "Apply onboarding payload", "tag": "onboarding", "public": False}},
     "/v1/onboarding/reset": {"post": {"summary": "Reset onboarding state", "tag": "onboarding", "public": False}},
+    "/v1/onboarding/validate-credential": {"post": {"summary": "Validate a provider API key before storing it", "tag": "onboarding", "public": False}},
     "/v1/subsystems/status": {"get": {"summary": "Managed subsystem status", "tag": "subsystems", "public": False}},
     "/v1/subsystems/invoke": {"post": {"summary": "Invoke managed subsystem", "tag": "subsystems", "public": False}},
     "/v1/plugins/status": {"get": {"summary": "Plugin status", "tag": "plugins", "public": False}},

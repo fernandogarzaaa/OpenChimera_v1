@@ -413,5 +413,80 @@ class OnboardingTests(unittest.TestCase):
             self.assertTrue(roots["minimind"]["exists"])
 
 
+class ValidateCredentialTests(unittest.TestCase):
+    def _make_onboarding(self, temp_dir: str) -> OnboardingManager:
+        temp_root = Path(temp_dir)
+        credentials = CredentialStore(store_path=temp_root / "credentials.json")
+        channels = ChannelManager(store_path=temp_root / "subscriptions.json")
+        registry = ModelRegistry(credential_store=credentials)
+        registry.registry_path = temp_root / "model_registry.json"
+        profile_state: dict = {
+            "hardware": {"cpu_count": 4, "ram_gb": 8, "gpu": {"available": False, "name": "cpu-only", "vram_gb": 0, "device_count": 0}},
+            "model_inventory": {"available_models": [], "model_files": {}, "models_dir": temp_dir},
+            "providers": {"enabled": ["openchimera-gateway", "local-llama-cpp"], "preferred_cloud_provider": ""},
+            "onboarding": {"preferred_channel_id": "", "completed_at": None, "selected_cloud_provider": ""},
+            "external_roots": {},
+            "integration_roots": {"harness_repo": temp_dir, "minimind": temp_dir},
+        }
+        registry.profile = profile_state
+        registry.refresh()
+        return OnboardingManager(
+            registry,
+            credentials,
+            channels,
+            state_path=temp_root / "onboarding_state.json",
+            profile_loader=lambda: json.loads(json.dumps(profile_state)),
+            profile_saver=lambda p: profile_state.update(json.loads(json.dumps(p))),
+        )
+
+    def test_validate_credential_empty_value_returns_invalid(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            onboarding = self._make_onboarding(temp_dir)
+            result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "")
+            self.assertFalse(result["valid"])
+            self.assertIn("error", result)
+
+    def test_validate_credential_unknown_provider_returns_valid_without_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            onboarding = self._make_onboarding(temp_dir)
+            result = onboarding.validate_credential("my-custom-provider", "MY_KEY", "somevalue")
+            self.assertTrue(result["valid"])
+            self.assertIn("note", result)
+
+    def test_validate_credential_network_error_returns_invalid(self) -> None:
+        from unittest.mock import patch
+        from urllib.error import URLError
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            onboarding = self._make_onboarding(temp_dir)
+            with patch("core.onboarding.request.urlopen", side_effect=URLError("connection refused")):
+                result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "sk-fake")
+            self.assertFalse(result["valid"])
+            self.assertIn("error", result)
+            self.assertEqual(result["provider_id"], "openai")
+
+    def test_validate_credential_http_401_returns_invalid(self) -> None:
+        from unittest.mock import patch
+        from urllib.error import HTTPError
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            onboarding = self._make_onboarding(temp_dir)
+            with patch("core.onboarding.request.urlopen", side_effect=HTTPError(url=None, code=401, msg="Unauthorized", hdrs=None, fp=None)):  # type: ignore[arg-type]
+                result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "sk-fake")
+            self.assertFalse(result["valid"])
+            self.assertIn("401", result.get("error", ""))
+
+    def test_validate_credential_rate_limited_returns_valid_with_note(self) -> None:
+        from unittest.mock import patch
+        from urllib.error import HTTPError
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            onboarding = self._make_onboarding(temp_dir)
+            with patch("core.onboarding.request.urlopen", side_effect=HTTPError(url=None, code=429, msg="Too Many Requests", hdrs=None, fp=None)):  # type: ignore[arg-type]
+                result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "sk-fake")
+            self.assertTrue(result["valid"])
+            self.assertIn("note", result)
+
+
 if __name__ == "__main__":
     unittest.main()
