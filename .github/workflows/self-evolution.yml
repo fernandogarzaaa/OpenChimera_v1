@@ -26,10 +26,12 @@ jobs:
     runs-on: ubuntu-latest
 
     # Permissions needed:
-    #   contents: write  — commit the memory log & insights report
-    #   models: read     — GitHub Copilot / Models API access
+    #   contents: write      — commit the memory log & insights report; push branch
+    #   pull-requests: write — open the evolution pull request
+    #   models: read         — GitHub Copilot / Models API access
     permissions:
       contents: write
+      pull-requests: write
       models: read
 
     steps:
@@ -104,7 +106,9 @@ jobs:
       #   • queries GitHub Copilot via the GitHub Models API for insights
       #   • writes a Markdown report to data/evolution_reports/
       #   • appends a signed entry to .github/evolution-memory.json
+      #   • writes `cycle_id` and `branch_name` to $GITHUB_OUTPUT
       - name: Run self-evolution cycle
+        id: evolution
         if: steps.guard.outputs.skip == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -114,14 +118,29 @@ jobs:
           EVOLUTION_MEMORY_PATH: .github/evolution-memory.json
         run: python scripts/self_evolution_cycle.py
 
-      # ── 6. Commit memory log + report ────────────────────────────────────
-      # Only commits if files actually changed (idempotent).
-      # Restricted to the repository's default branch to avoid pushing to
-      # feature branches or failing on forks where push access is unavailable.
-      - name: Commit evolution artefacts
+      # ── 6. Open an evolution pull request ────────────────────────────────
+      # Creates a dedicated branch (evo/cycle-NNNN), commits the memory log
+      # and insights report to that branch, then opens a pull request against
+      # the repository's default branch.  This ensures:
+      #   • The evolution artefacts are always reviewed by a human before merge.
+      #   • The main branch is never directly modified by the bot.
+      #   • A clear audit trail of every evolution cycle exists as a PR.
+      #
+      # Edge cases handled:
+      #   • Nothing changed  → exits without creating a branch or PR.
+      #   • Branch already exists → skips push and PR creation (idempotent).
+      #   • PR already open for the branch → gh reports the existing PR URL.
+      #   • Not on the default branch → skipped (fork / feature-branch safety).
+      - name: Open evolution pull request
         if: steps.guard.outputs.skip == 'false' && github.ref_name == github.event.repository.default_branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CYCLE_BRANCH: ${{ steps.evolution.outputs.branch_name }}
+          CYCLE_ID: ${{ steps.evolution.outputs.cycle_id }}
         shell: bash
         run: |
+          set -euo pipefail
+
           git config --local user.email "chimera-evo[bot]@users.noreply.github.com"
           git config --local user.name  "OpenChimera Evolution Bot"
 
@@ -129,17 +148,49 @@ jobs:
           git add data/evolution_reports/ 2>/dev/null || true
 
           if git diff --staged --quiet; then
-            echo "Nothing to commit — memory log unchanged."
-          else
-            CYCLE_ID=$(python3 -c "
-          import json, sys
-          d = json.load(open('.github/evolution-memory.json'))
-          cycles = d.get('cycles', [])
-          print(cycles[-1]['cycle_id'] if cycles else 0)
-          ")
-            git commit -m "chore(evo): self-evolution cycle ${CYCLE_ID} [skip ci]"
-            git push origin HEAD:${{ github.event.repository.default_branch }}
+            echo "Nothing to commit — skipping branch and PR creation."
+            exit 0
           fi
+
+          BRANCH="${CYCLE_BRANCH:-evo/cycle-unknown}"
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch }}"
+
+          # Abort if the branch already exists remotely (idempotent guard).
+          if git ls-remote --heads origin "${BRANCH}" | grep -q "${BRANCH}"; then
+            echo "⚠️  Branch '${BRANCH}' already exists — skipping PR creation."
+            exit 0
+          fi
+
+          git checkout -b "${BRANCH}"
+          git commit -m "chore(evo): self-evolution cycle ${CYCLE_ID:-?} artefacts [skip ci]"
+          git push origin "${BRANCH}"
+
+          # Derive the report filename from the branch name to avoid duplicating
+          # the zero-padding format (branch is evo/cycle-NNNN, report is cycle_NNNN.md).
+          CYCLE_NUM="${BRANCH##*/cycle-}"
+          REPORT_FILE="data/evolution_reports/cycle_${CYCLE_NUM}.md"
+          if [ -f "${REPORT_FILE}" ]; then
+            PR_BODY=$(head -c 60000 "${REPORT_FILE}")
+          else
+            PR_BODY="Self-evolution cycle ${CYCLE_ID:-?} completed. See attached memory log."
+          fi
+
+          # Open the PR.  Try with the "self-evolution" label first; if the label
+          # does not exist on this repository the second invocation (without --label)
+          # is used as a fallback.  The final `|| echo` line prevents the step from
+          # failing when a PR for this branch already exists.
+          gh pr create \
+            --title "chore(evo): self-evolution cycle ${CYCLE_ID:-?}" \
+            --body "${PR_BODY}" \
+            --base "${DEFAULT_BRANCH}" \
+            --head "${BRANCH}" \
+            --label "self-evolution" \
+          || gh pr create \
+            --title "chore(evo): self-evolution cycle ${CYCLE_ID:-?}" \
+            --body "${PR_BODY}" \
+            --base "${DEFAULT_BRANCH}" \
+            --head "${BRANCH}" \
+          || echo "ℹ️  PR already exists or could not be created; see gh output above."
 
       # ── 7. Summary ───────────────────────────────────────────────────────
       - name: Print evolution summary
