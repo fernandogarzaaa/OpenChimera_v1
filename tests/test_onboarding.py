@@ -5,11 +5,17 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.error import HTTPError
 
 from core.channels import ChannelManager
 from core.credential_store import CredentialStore
 from core.model_registry import ModelRegistry
 from core.onboarding import OnboardingManager
+
+
+def _make_http_error(code: int, msg: str = "Error") -> HTTPError:
+    """Create a urllib HTTPError for use in test mocks."""
+    return HTTPError(url=None, code=code, msg=msg, hdrs=None, fp=None)  # type: ignore[arg-type]
 
 
 class OnboardingTests(unittest.TestCase):
@@ -454,7 +460,6 @@ class ValidateCredentialTests(unittest.TestCase):
             self.assertIn("note", result)
 
     def test_validate_credential_network_error_returns_invalid(self) -> None:
-        from unittest.mock import patch
         from urllib.error import URLError
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -466,23 +471,17 @@ class ValidateCredentialTests(unittest.TestCase):
             self.assertEqual(result["provider_id"], "openai")
 
     def test_validate_credential_http_401_returns_invalid(self) -> None:
-        from unittest.mock import patch
-        from urllib.error import HTTPError
-
         with tempfile.TemporaryDirectory() as temp_dir:
             onboarding = self._make_onboarding(temp_dir)
-            with patch("core.onboarding.request.urlopen", side_effect=HTTPError(url=None, code=401, msg="Unauthorized", hdrs=None, fp=None)):  # type: ignore[arg-type]
+            with patch("core.onboarding.request.urlopen", side_effect=_make_http_error(401, "Unauthorized")):
                 result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "sk-fake")
             self.assertFalse(result["valid"])
             self.assertIn("401", result.get("error", ""))
 
     def test_validate_credential_rate_limited_returns_valid_with_note(self) -> None:
-        from unittest.mock import patch
-        from urllib.error import HTTPError
-
         with tempfile.TemporaryDirectory() as temp_dir:
             onboarding = self._make_onboarding(temp_dir)
-            with patch("core.onboarding.request.urlopen", side_effect=HTTPError(url=None, code=429, msg="Too Many Requests", hdrs=None, fp=None)):  # type: ignore[arg-type]
+            with patch("core.onboarding.request.urlopen", side_effect=_make_http_error(429, "Too Many Requests")):
                 result = onboarding.validate_credential("openai", "OPENAI_API_KEY", "sk-fake")
             self.assertTrue(result["valid"])
             self.assertIn("note", result)

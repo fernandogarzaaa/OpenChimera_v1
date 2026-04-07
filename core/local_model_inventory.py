@@ -118,7 +118,7 @@ def discover_ollama_models(ollama_host: str = "127.0.0.1", ollama_port: int = 11
         if not isinstance(models, list):
             return []
         return [str(m["name"]) for m in models if isinstance(m, dict) and m.get("name")]
-    except (error.URLError, OSError, json.JSONDecodeError, KeyError):
+    except (error.URLError, OSError, json.JSONDecodeError):
         return None
     except Exception:
         LOGGER.debug("Unexpected error while probing Ollama at %s:%s", ollama_host, ollama_port, exc_info=True)

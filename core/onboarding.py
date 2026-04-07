@@ -31,6 +31,26 @@ from core.model_registry import ModelRegistry
 from core.transactions import atomic_write_json
 
 
+# Read-only probe endpoint for each cloud provider used by validate_credential().
+# The request is a simple GET that lists models (or any lightweight endpoint).
+_CREDENTIAL_PROBE_URLS: dict[str, str] = {
+    "openai": "https://api.openai.com/v1/models",
+    "anthropic": "https://api.anthropic.com/v1/models",
+    "google": "https://generativelanguage.googleapis.com/v1beta/models",
+    "groq": "https://api.groq.com/openai/v1/models",
+    "openrouter": "https://openrouter.ai/api/v1/models",
+    "moonshot": "https://api.moonshot.cn/v1/models",
+    "xai": "https://api.x.ai/v1/models",
+    "huggingface-inference": "https://api-inference.huggingface.co/models",
+}
+
+# Providers that use a non-standard auth header instead of Bearer.
+# A value of "" means use the credential value itself as the header value.
+_CREDENTIAL_AUTH_HEADERS: dict[str, dict[str, str]] = {
+    "anthropic": {"x-api-key": "", "anthropic-version": "2023-06-01"},
+}
+
+
 class OnboardingManager:
     def __init__(
         self,
@@ -222,34 +242,19 @@ class OnboardingManager:
         key = str(key).strip()
         value = str(value).strip()
 
-        _PROBE_URLS: dict[str, str] = {
-            "openai": "https://api.openai.com/v1/models",
-            "anthropic": "https://api.anthropic.com/v1/models",
-            "google": "https://generativelanguage.googleapis.com/v1beta/models",
-            "groq": "https://api.groq.com/openai/v1/models",
-            "openrouter": "https://openrouter.ai/api/v1/models",
-            "moonshot": "https://api.moonshot.cn/v1/models",
-            "xai": "https://api.x.ai/v1/models",
-            "huggingface-inference": "https://api-inference.huggingface.co/models",
-        }
-
-        _AUTH_HEADERS: dict[str, dict[str, str]] = {
-            "anthropic": {"x-api-key": "", "anthropic-version": "2023-06-01"},
-        }
-
         if not value:
             return {"valid": False, "provider_id": provider_id, "key": key, "error": "Credential value must not be empty"}
 
-        probe_url = _PROBE_URLS.get(provider_id)
+        probe_url = _CREDENTIAL_PROBE_URLS.get(provider_id)
         if probe_url is None:
             return {"valid": True, "provider_id": provider_id, "key": key, "note": "No probe endpoint configured for this provider; credential accepted without validation"}
 
         try:
             headers: dict[str, str] = {"Accept": "application/json"}
-            extra_headers = _AUTH_HEADERS.get(provider_id, {})
+            extra_headers = _CREDENTIAL_AUTH_HEADERS.get(provider_id, {})
             for h_key, h_val in extra_headers.items():
                 headers[h_key] = h_val if h_val else value
-            if provider_id not in _AUTH_HEADERS:
+            if provider_id not in _CREDENTIAL_AUTH_HEADERS:
                 headers["Authorization"] = f"Bearer {value}"
 
             if provider_id == "google":
