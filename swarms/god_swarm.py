@@ -137,17 +137,26 @@ class GodSwarm(SwarmOrchestrator):
 
         Emits a ``god_swarm.agent.spawned`` event on success.
         Config keys: agent_id (optional), role, description, capabilities (list).
+        Newly spawned agents inherit the current LLM callback (if any).
         """
         agent_id = str(agent_config.get("agent_id") or f"dyn-{uuid.uuid4().hex[:8]}")
         role = str(agent_config.get("role", "Dynamic Agent"))
         description = str(agent_config.get("description", "Dynamically spawned agent."))
         capabilities = list(agent_config.get("capabilities", []))
 
+        # Inherit the LLM callback from a currently-bound agent (if any)
+        existing_callback = None
+        for existing_agent in self._agents.values():
+            if existing_agent.llm_callback is not None:
+                existing_callback = existing_agent.llm_callback
+                break
+
         agent = SwarmAgent(
             agent_id=agent_id,
             role=role,
             description=description,
             capabilities=capabilities,
+            llm_callback=existing_callback,
         )
         self.register(agent)
         record = {
@@ -205,16 +214,37 @@ class GodSwarm(SwarmOrchestrator):
         """Wire this GodSwarm into the kernel boot sequence.
 
         Stores the kernel reference and emits a wired event.
-        The kernel is expected to expose an event bus via kernel.bus.
+        The kernel is expected to expose an event bus via ``kernel.bus``
+        and a chat-completion callable via ``kernel.provider.chat_completion``.
+        When a completion callable is found all registered agents are upgraded
+        to use real LLM calls instead of the offline stub.
         """
         self._kernel = kernel
         # Prefer kernel's bus if available and no bus already set
         if self._bus is None and hasattr(kernel, "bus"):
             self._bus = kernel.bus
+
+        # Bind real LLM callback to every agent when the provider is available
+        llm_callback = None
+        try:
+            provider = getattr(kernel, "provider", None)
+            if provider is not None and callable(getattr(provider, "chat_completion", None)):
+                llm_callback = provider.chat_completion
+        except Exception as exc:
+            log.warning("[GodSwarm] Could not resolve LLM callback from kernel: %s", exc)
+
+        if llm_callback is not None:
+            for agent in self._agents.values():
+                agent.llm_callback = llm_callback
+            log.info("[GodSwarm] Bound real LLM callback to %d agents", len(self._agents))
+        else:
+            log.info("[GodSwarm] No LLM callback found; agents will use offline stub")
+
         self._emit("god_swarm.kernel.wired", {
             "kernel_type": type(kernel).__name__,
             "agent_count": len(self.ALL_AGENT_IDS),
             "dynamic_agents": len(self._dynamic_agents),
+            "llm_bound": llm_callback is not None,
         })
         log.info("[GodSwarm] Wired to kernel: %s", type(kernel).__name__)
 

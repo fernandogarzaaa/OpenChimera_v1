@@ -142,32 +142,149 @@ def build_docs_html(*, spec: dict[str, Any], auth_header: str, auth_enabled: boo
             rows.append(
                 "<tr>"
                 f"<td>{html.escape(method.upper())}</td>"
-                f"<td>{html.escape(path)}</td>"
+                f"<td><code>{html.escape(path)}</code></td>"
                 f"<td>{html.escape(str(metadata.get('summary', '')))}</td>"
                 f"<td>{html.escape(security)}</td>"
                 "</tr>"
             )
 
+    server_url = html.escape(str(spec.get("servers", [{}])[0].get("url", "")))
+
+    # Build tag-grouped navigation links
+    tags: set[str] = set()
+    for ops in spec.get("paths", {}).values():
+        for meta in ops.values():
+            for t in meta.get("tags", []):
+                tags.add(t)
+    tag_links = " &bull; ".join(
+        f'<a href="#{html.escape(t)}">{html.escape(t)}</a>'
+        for t in sorted(tags)
+    )
+
+    # Inline query playground — no framework, plain fetch()
+    playground_html = (
+        '<section id="playground" style="background:#fffdf8;border:1px solid #d7cbb6;padding:20px;margin:28px 0;border-radius:4px;">'
+        '<h2 style="margin-top:0;">Query Playground</h2>'
+        '<p style="margin-bottom:12px;font-size:13px;">Send a query directly to the runtime from the browser. '
+        'The request is forwarded to <code>/v1/query/run</code> on this server.</p>'
+        '<div style="display:grid;gap:10px;">'
+        '<textarea id="qp-input" rows="4" placeholder="Enter your query here…" '
+        'style="width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;padding:8px;'
+        'border:1px solid #c0b49a;border-radius:3px;background:#fffff8;resize:vertical;"></textarea>'
+        '<div style="display:flex;gap:10px;align-items:center;">'
+        '<button id="qp-submit" onclick="runPlaygroundQuery()" '
+        'style="padding:8px 18px;background:#6f2e00;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:14px;">'
+        'Run Query</button>'
+        '<label style="font-size:13px;display:flex;align-items:center;gap:6px;">'
+        '<input type="checkbox" id="qp-admin"> Admin token</label>'
+        f'<span style="font-size:12px;color:#5d5449;">Auth header: <code>{html.escape(auth_header)}</code></span>'
+        '</div>'
+        '<pre id="qp-result" style="background:#1f1a14;color:#e8e4d8;padding:14px;border-radius:3px;'
+        'font-size:12px;min-height:80px;white-space:pre-wrap;word-break:break-word;display:none;"></pre>'
+        '</div>'
+        '<script>'
+        'async function runPlaygroundQuery() {'
+        '  const q = document.getElementById("qp-input").value.trim();'
+        '  if (!q) return;'
+        '  const btn = document.getElementById("qp-submit");'
+        '  const res = document.getElementById("qp-result");'
+        '  btn.disabled = true; btn.textContent = "Running…";'
+        '  res.style.display = "block"; res.textContent = "⏳ Waiting…";'
+        '  const useAdmin = document.getElementById("qp-admin").checked;'
+        f'  const headers = {{"Content-Type": "application/json"}};'
+        f'  if (useAdmin) {{ headers["{html.escape(auth_header)}"] = ""; }}'
+        '  try {'
+        '    const r = await fetch("/v1/query/run", {'
+        '      method: "POST",'
+        '      headers: headers,'
+        '      body: JSON.stringify({query: q, max_tokens: 512})'
+        '    });'
+        '    const data = await r.json();'
+        '    const content = data?.response?.choices?.[0]?.message?.content'
+        '      || data?.response?.content || JSON.stringify(data, null, 2);'
+        '    const scan = data?.hallucination_scan;'
+        '    let out = content;'
+        '    if (scan) {'
+        '      const rec = scan.recommendation || "review needed";'
+        '      const badge = scan.clean ? "✅ clean" : `⚠️ ${rec} (${scan.flags?.length || 0} flag(s))`;'
+        '      out += `\n\n── Hallucination scan: ${badge} ──`;'
+        '    }'
+        '    res.textContent = out;'
+        '  } catch(e) {'
+        '    res.textContent = "Error: " + e.message;'
+        '  } finally {'
+        '    btn.disabled = false; btn.textContent = "Run Query";'
+        '  }'
+        '}'
+        '</script>'
+        '</section>'
+    )
+
+    # System status panel — auto-refreshes via /health every 30s
+    status_panel_html = (
+        '<section id="status" style="background:#fffdf8;border:1px solid #d7cbb6;padding:20px;margin:28px 0;border-radius:4px;">'
+        '<h2 style="margin-top:0;display:flex;justify-content:space-between;align-items:center;">'
+        'System Status <span id="status-badge" style="font-size:13px;font-weight:normal;padding:3px 10px;'
+        'border-radius:12px;background:#ddd;">checking…</span></h2>'
+        '<pre id="status-body" style="font-size:12px;margin:0;white-space:pre-wrap;"></pre>'
+        '<script>'
+        'async function refreshStatus() {'
+        '  const badge = document.getElementById("status-badge");'
+        '  const body = document.getElementById("status-body");'
+        '  try {'
+        '    const r = await fetch("/health");'
+        '    const d = await r.json();'
+        '    const ok = d.ready === true || d.status === "ok";'
+        '    badge.textContent = ok ? "✅ healthy" : "⚠️ degraded";'
+        '    badge.style.background = ok ? "#c8f0c8" : "#f8e0a0";'
+        '    const keys = ["status","ready","local_runtime","providers","init_errors","partially_degraded"];'
+        '    const summary = {};'
+        '    keys.forEach(k => { if (d[k] !== undefined) summary[k] = d[k]; });'
+        '    body.textContent = JSON.stringify(summary, null, 2);'
+        '  } catch(e) {'
+        '    badge.textContent = "❌ unreachable";'
+        '    badge.style.background = "#f8c0c0";'
+        '    body.textContent = e.message;'
+        '  }'
+        '}'
+        'refreshStatus();'
+        'setInterval(refreshStatus, 30000);'
+        '</script>'
+        '</section>'
+    )
+
     return (
         "<!doctype html>"
         "<html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        "<title>OpenChimera API Docs</title>"
-        "<style>body{font-family:Consolas,Menlo,monospace;background:#f5f1e8;color:#1f1a14;margin:0;padding:32px;}"
-        "main{max-width:1120px;margin:0 auto;}h1,h2{margin:0 0 16px;}p{line-height:1.5;}table{width:100%;border-collapse:collapse;margin-top:20px;background:#fffdf8;}"
+        "<title>OpenChimera Operator Dashboard</title>"
+        "<style>"
+        "body{font-family:Consolas,Menlo,monospace;background:#f5f1e8;color:#1f1a14;margin:0;padding:32px;}"
+        "main{max-width:1120px;margin:0 auto;}h1,h2{margin:0 0 16px;}p{line-height:1.5;}"
+        "table{width:100%;border-collapse:collapse;margin-top:20px;background:#fffdf8;}"
         "th,td{padding:10px 12px;border:1px solid #d7cbb6;text-align:left;vertical-align:top;}th{background:#efe4d0;}"
         "code,a{color:#6f2e00;} .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0;}"
-        ".card{background:#fffdf8;border:1px solid #d7cbb6;padding:14px;} .small{font-size:12px;color:#5d5449;}</style></head><body><main>"
-        "<h1>OpenChimera API</h1>"
-        "<p>Operator-facing API documentation generated from the local runtime contract. Download the machine-readable specification at <a href=\"/openapi.json\">/openapi.json</a>.</p>"
-        f"<div class=\"meta\"><div class=\"card\"><strong>Server</strong><div class=\"small\">{html.escape(str(spec.get('servers', [{}])[0].get('url', '')))}</div></div>"
+        ".card{background:#fffdf8;border:1px solid #d7cbb6;padding:14px;} .small{font-size:12px;color:#5d5449;}"
+        "nav{font-size:12px;margin-bottom:24px;line-height:2;}"
+        "</style></head><body><main>"
+        "<h1>OpenChimera Operator Dashboard</h1>"
+        f"<nav>{tag_links}</nav>"
+        "<p>Operator-facing runtime API and dashboard. "
+        "Machine-readable spec: <a href=\"/openapi.json\">/openapi.json</a>. "
+        "Health: <a href=\"/health\">/health</a>.</p>"
+        f"<div class=\"meta\">"
+        f"<div class=\"card\"><strong>Server</strong><div class=\"small\">{server_url}</div></div>"
         f"<div class=\"card\"><strong>Auth header</strong><div class=\"small\">{html.escape(auth_header)}</div></div>"
-        f"<div class=\"card\"><strong>Auth enabled</strong><div class=\"small\">{html.escape(str(auth_enabled).lower())}</div></div></div>"
-        "<table><thead><tr><th>Method</th><th>Path</th><th>Summary</th><th>Access</th></tr></thead><tbody>"
+        f"<div class=\"card\"><strong>Auth enabled</strong><div class=\"small\">{html.escape(str(auth_enabled).lower())}</div></div>"
+        "</div>"
+        + playground_html
+        + status_panel_html
+        + "<table><thead><tr><th>Method</th><th>Path</th><th>Summary</th><th>Access</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
         "<h2 style=\"margin-top:24px;\">Notes</h2>"
-        "<p>Public routes are limited to health, readiness, and documentation surfaces. Mutating and operator-sensitive routes require bearer authentication when API auth is enabled.</p>"
+        "<p>Public routes are limited to health, readiness, and documentation surfaces. "
+        "Mutating and operator-sensitive routes require bearer authentication when API auth is enabled.</p>"
         f"<script type=\"application/json\" id=\"openapi-source\">{html.escape(json.dumps(spec))}</script>"
         "</main></body></html>"
     )
