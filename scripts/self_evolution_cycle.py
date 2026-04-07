@@ -10,13 +10,57 @@ This script:
   4. Writes the generated report/artifacts for the workflow run.
   5. Appends an unsigned entry to the evolution memory log so the next
      scheduled run knows not to repeat the cycle within 23 h.
+  6. Writes the evolution branch name and cycle ID to ``$GITHUB_OUTPUT``
+     so the caller workflow can create a pull request with the artefacts.
 
 Environment variables (injected by the workflow):
-  GITHUB_TOKEN   — personal/actions token with repo + models scope
-  GITHUB_REPOSITORY — e.g. "fernandogarzaaa/OpenChimera_v1"
-  GITHUB_SHA         — current HEAD commit SHA
-  GITHUB_RUN_ID      — workflow run identifier
+  GITHUB_TOKEN         — personal/actions token with repo + models scope
+  GITHUB_REPOSITORY    — e.g. "fernandogarzaaa/OpenChimera_v1"
+  GITHUB_SHA           — current HEAD commit SHA
+  GITHUB_RUN_ID        — workflow run identifier
   EVOLUTION_MEMORY_PATH — path to evolution-memory.json (optional)
+  GITHUB_OUTPUT        — path to the GitHub Actions output file (set
+                         automatically by Actions; omitted in local runs)
+
+Scope
+-----
+The evolution cycle inspects the **entire repository** in its current checked-
+out state.  Specifically it looks at:
+
+* **Python source & test files** — counts, module names, and the active
+  ``core/`` module surface area.
+* **EvolutionEngine internal state** — episodic memory (DPO pairs, preference
+  dataset size, model fitness scores, threshold adaptation history).
+* **Evolution memory log** — ```.github/evolution-memory.json``` — records
+  which cycles have already run, preventing double-execution within 23 h.
+* **GitHub Copilot / Models API** — receives the health snapshot above and
+  returns ranked, actionable self-improvement suggestions.
+
+Sources
+-------
+1. File-system walk of the repository (``pathlib.Path.rglob``).
+2. ``core.evolution.EvolutionEngine`` (DPO pairs from
+   ``core.memory.episodic.EpisodicMemory`` → SQLite via
+   ``core._database_fallback.DatabaseManager``).
+3. GitHub Models REST API (``https://models.inference.ai.azure.com``) using the
+   ``GITHUB_TOKEN`` Bearer credential.
+
+Limitations
+-----------
+* **No code generation / automatic patch application.** The cycle produces
+  *recommendations* and a human-readable report.  A pull request is opened so
+  that human reviewers can evaluate and merge suggested changes.
+* **DPO pairs require episodic memory entries.** On a fresh deployment with no
+  prior ``EpisodicMemory`` records the ``EvolutionEngine`` will produce zero
+  pairs and zero dataset entries; the LoRA adapter registration step is skipped.
+* **Copilot API requires a valid token.** Without ``GITHUB_TOKEN`` (or when the
+  token lacks the ``models: read`` scope) Copilot insights are skipped and
+  replaced with a placeholder message.
+* **23-hour loop guard.** If the last cycle ran fewer than 23 hours ago the
+  script exits cleanly without executing a second cycle.  This prevents
+  runaway evolution triggered by back-to-back workflow retries.
+* **Shallow clone awareness.** The health snapshot reflects only files visible
+  in the current checkout; it does not analyse git history.
 """
 
 from __future__ import annotations
@@ -282,6 +326,41 @@ def build_copilot_prompt(health: dict[str, Any], engine_result: dict[str, Any]) 
 # ---------------------------------------------------------------------------
 
 
+_SCOPE_AND_LIMITATIONS = """\
+## Scope & Limitations
+
+**Scope — what this cycle inspects:**
+- All Python source and test files visible in the current repository checkout.
+- `core/` module surface area (module count and names).
+- `EvolutionEngine` internal state: episodic memory DPO pairs, preference
+  dataset size, model fitness scores, and threshold adaptation history.
+- Evolution memory log (`.github/evolution-memory.json`) for trend analysis.
+- GitHub Copilot / Models API response with ranked improvement suggestions.
+
+**Sources:**
+1. File-system walk of the repository (`pathlib.Path.rglob`).
+2. `core.evolution.EvolutionEngine` → `core.memory.episodic.EpisodicMemory`
+   → SQLite via `core._database_fallback.DatabaseManager`.
+3. GitHub Models REST API (`https://models.inference.ai.azure.com`) using the
+   `GITHUB_TOKEN` Bearer credential.
+
+**Limitations:**
+- **No automatic code changes.** The cycle produces recommendations and a
+  human-readable report only.  The companion workflow opens a pull request so
+  human reviewers can evaluate and merge suggested changes.
+- **DPO pairs require prior episodic memory entries.** On a fresh deployment
+  with no `EpisodicMemory` records the engine produces zero pairs and skips
+  LoRA adapter registration.
+- **Copilot API requires a valid token.** Without `GITHUB_TOKEN` (or when the
+  token lacks `models: read` scope) Copilot insights are replaced with a
+  placeholder.
+- **23-hour loop guard.** A second cycle started within 23 hours of the
+  previous one exits immediately to prevent runaway evolution.
+- **Shallow clone awareness.** Health metrics reflect only files in the current
+  checkout; git history is not analysed.
+"""
+
+
 def write_insights_report(
     cycle_id: int,
     health: dict[str, Any],
@@ -320,6 +399,7 @@ def write_insights_report(
 
 {copilot_insights}
 
+{_SCOPE_AND_LIMITATIONS}
 ---
 *Generated automatically by the OpenChimera Self-Evolution workflow.*
 """
@@ -369,8 +449,37 @@ def _engine_section(engine_result: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Main entry point
+# GitHub Actions output helpers
 # ---------------------------------------------------------------------------
+
+
+def write_github_outputs(cycle_id: int, branch_name: str) -> None:
+    """Write cycle metadata to ``$GITHUB_OUTPUT`` for use by the caller workflow.
+
+    Sets the following step outputs:
+    * ``cycle_id``    — integer cycle number (e.g. ``5``)
+    * ``branch_name`` — git branch the workflow should push artefacts to
+                        (e.g. ``evo/cycle-0005``)
+
+    When ``$GITHUB_OUTPUT`` is not set (local / non-Actions run) this function
+    is a no-op so the script can be executed locally without side effects.
+    """
+    github_output = os.environ.get("GITHUB_OUTPUT", "")
+    if not github_output:
+        log.debug("GITHUB_OUTPUT not set — skipping Actions output.")
+        return
+    try:
+        with open(github_output, "a", encoding="utf-8") as fh:
+            fh.write(f"cycle_id={cycle_id}\n")
+            fh.write(f"branch_name={branch_name}\n")
+        log.info(
+            "GitHub Actions outputs written: cycle_id=%d, branch_name=%s",
+            cycle_id,
+            branch_name,
+        )
+    except OSError as exc:
+        log.warning("Could not write to GITHUB_OUTPUT (%s): %s", github_output, exc)
+
 
 
 def main() -> int:
@@ -433,7 +542,13 @@ def main() -> int:
     memory.setdefault("cycles", []).append(entry)
     save_memory(memory)
 
+    # 9. Expose cycle metadata to the GitHub Actions workflow so it can
+    #    create a pull request with the generated artefacts.
+    branch_name = f"evo/cycle-{cycle_id:04d}"
+    write_github_outputs(cycle_id, branch_name)
+
     log.info("=== Cycle %d complete. Report: %s ===", cycle_id, report_path)
+    log.info("Evolution branch: %s", branch_name)
 
     # Print a summary to stdout (captured by the workflow log)
     print("\n" + "=" * 60)
