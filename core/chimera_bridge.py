@@ -248,7 +248,7 @@ class ChimeraLangBridge:
             raw=response_text,
             confidence=Confidence(value=max(0.0, min(1.0, confidence)), source="openchimera"),
             memory_scope=MemoryScope.EPHEMERAL,
-            trace=list(trace) if trace is not None else ["openchimera_response"],
+            trace=trace if trace is not None else ["openchimera_response"],
         )
         detector = HallucinationDetector()
         report = DetectionReport()

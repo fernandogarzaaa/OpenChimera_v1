@@ -184,6 +184,17 @@ def test_scan_response_no_trace_flagged(bridge):
 
 
 # ---------------------------------------------------------------------------
+# 11a. scan_response() — default trace (None) gets auto-populated
+# ---------------------------------------------------------------------------
+
+def test_scan_response_default_trace_is_clean(bridge):
+    # Without specifying trace, the bridge uses ["openchimera_response"] so it is clean
+    result = bridge.scan_response("The sky is blue.", confidence=0.9)
+    assert result["clean"] is True
+    assert result["recommendation"] == "pass"
+
+
+# ---------------------------------------------------------------------------
 # 11. get_bridge() returns singleton
 # ---------------------------------------------------------------------------
 
