@@ -1,0 +1,33 @@
+// goal_driven.chimera
+// Intent-first execution with goals, exploration, and reasoning.
+
+reason about(epochs: Int, current_rate: Float) -> Confident<Float>
+  given:
+    "learning rate theory"
+    "adaptive methods literature"
+  commit: highest_confidence
+
+  val decay_factor: Float = 0.95
+  val adjusted: Float = current_rate * decay_factor
+  val is_stable: Bool = adjusted > 0.0001
+
+  if is_stable
+    return Confident(adjusted)
+  end
+
+  return Confident(0.0001)
+end
+
+goal "Determine the optimal learning rate for gradient descent"
+  constraints:
+    "must converge within 1000 epochs"
+    "must not cause gradient explosion"
+  quality:
+    "convergence_speed"
+    "stability"
+  explore_budget: 0.7
+
+  val initial_rate: Float = 0.01
+  val optimal_rate: Confident<Float> = about(1000, initial_rate)
+  emit optimal_rate
+end

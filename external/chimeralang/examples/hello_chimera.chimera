@@ -1,0 +1,7 @@
+// hello_chimera.chimera
+// The simplest ChimeraLang program — emit a confident greeting.
+
+val greeting: Text = "Hello from ChimeraLang!"
+val confidence_level: Float = 0.99
+
+emit greeting

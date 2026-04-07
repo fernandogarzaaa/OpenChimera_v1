@@ -1,0 +1,30 @@
+// quantum_reasoning.chimera
+// Demonstrates quantum consensus gates and probabilistic types.
+
+fn analyze(data: Text) -> Confident<Text>
+  must:
+    "analysis must be evidence-based"
+  allow:
+    "multiple interpretive frameworks"
+  val result: Text = "Analysis of: " + data
+  return Confident(result)
+end
+
+gate consensus_answer(question: Text) -> Converge<Text>
+  branches: 5
+  collapse: weighted_vote
+  threshold: 0.80
+  val answer: Text = "Reasoned answer to: " + question
+  return answer
+end
+
+// Top-level execution
+val question: Text = "What is the nature of consciousness?"
+val answer: Converge<Text> = consensus_answer(question)
+emit answer
+
+val analysis: Confident<Text> = analyze("neural correlates")
+emit analysis
+
+assert confident(analysis)
+assert consensus(answer)

@@ -460,6 +460,9 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     return
                 self._write_json(self.server.system_status_provider())
                 return
+            if path == "/v1/chimera/status":
+                self._write_json(self.server.provider.chimera_status())
+                return
             self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
         except ValidationError as exc:
             self._write_json(self._validation_error_payload(exc), status=HTTPStatus.UNPROCESSABLE_ENTITY)
@@ -857,6 +860,35 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 invoke_payload = payload.get("payload", {}) if isinstance(payload.get("payload", {}), dict) else {}
                 invoke_payload.setdefault("action", action)
                 self._write_json(self.server.provider.invoke_subsystem(subsystem_id, action, invoke_payload))
+                return
+
+            if self.path == "/v1/chimera/run":
+                self._write_json(self.server.provider.chimera_run(
+                    source=str(payload.get("source", "")),
+                    filename=str(payload.get("filename", "<chimera>")),
+                ))
+                return
+
+            if self.path == "/v1/chimera/check":
+                self._write_json(self.server.provider.chimera_check(
+                    source=str(payload.get("source", "")),
+                    filename=str(payload.get("filename", "<chimera>")),
+                ))
+                return
+
+            if self.path == "/v1/chimera/prove":
+                self._write_json(self.server.provider.chimera_prove(
+                    source=str(payload.get("source", "")),
+                    filename=str(payload.get("filename", "<chimera>")),
+                ))
+                return
+
+            if self.path == "/v1/chimera/scan":
+                self._write_json(self.server.provider.chimera_scan(
+                    response_text=str(payload.get("response_text", "")),
+                    confidence=float(payload.get("confidence", 0.8)),
+                    trace=payload.get("trace") or None,
+                ))
                 return
 
             self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)

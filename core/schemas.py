@@ -380,6 +380,35 @@ class SubsystemInvokeRequest(OpenChimeraSchema):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+# ---------------------------------------------------------------------------
+# ChimeraLang integration schemas
+# ---------------------------------------------------------------------------
+
+class ChimeraRunRequest(OpenChimeraSchema):
+    """Execute a ChimeraLang program and return structured results."""
+    source: str = Field(min_length=1, description="ChimeraLang source code to execute")
+    filename: str = Field(default="<chimera>", description="Filename used in error messages")
+
+
+class ChimeraCheckRequest(OpenChimeraSchema):
+    """Type-check a ChimeraLang program without executing it."""
+    source: str = Field(min_length=1, description="ChimeraLang source code to type-check")
+    filename: str = Field(default="<chimera>", description="Filename used in error messages")
+
+
+class ChimeraProveRequest(OpenChimeraSchema):
+    """Execute a ChimeraLang program and produce a full integrity proof."""
+    source: str = Field(min_length=1, description="ChimeraLang source code to prove")
+    filename: str = Field(default="<chimera>", description="Filename used in error messages")
+
+
+class ChimeraScanRequest(OpenChimeraSchema):
+    """Scan a plain-text LLM response through ChimeraLang's hallucination detector."""
+    response_text: str = Field(min_length=1, description="LLM response text to scan")
+    confidence: float = Field(default=0.8, ge=0.0, le=1.0, description="Confidence score for the response")
+    trace: list[str] | None = Field(default=None, description="Optional provenance trace entries")
+
+
 GET_QUERY_SCHEMAS: dict[str, type[BaseModel]] = {
     "/v1/channels/history": ChannelHistoryQuery,
     "/v1/jobs/status": JobsStatusQuery,
@@ -439,5 +468,9 @@ POST_BODY_SCHEMAS: dict[str, type[BaseModel]] = {
     "/v1/plugins/install": PluginMutationRequest,
     "/v1/plugins/uninstall": PluginMutationRequest,
     "/v1/subsystems/invoke": SubsystemInvokeRequest,
+    "/v1/chimera/run": ChimeraRunRequest,
+    "/v1/chimera/check": ChimeraCheckRequest,
+    "/v1/chimera/prove": ChimeraProveRequest,
+    "/v1/chimera/scan": ChimeraScanRequest,
     "/mcp": OpenChimeraFlexibleSchema,
 }
