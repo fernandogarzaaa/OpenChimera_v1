@@ -304,7 +304,7 @@ class Parser:
 
         self._expect(TokenKind.END, "Expected 'end' to close reason block")
         self._expect_line_end()
-        return ReasonDecl(name="reason", params=params, return_type=ret_type,
+        return ReasonDecl(name="about", params=params, return_type=ret_type,
                            given=given, commit_strategy=commit_strategy,
                            body=body, span=span)
 

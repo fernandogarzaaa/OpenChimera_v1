@@ -13,10 +13,19 @@ Covers:
   10. scan_response() response without trace is flagged for review
   11. ChimeraLangBridge singleton (get_bridge) returns consistent object
   12. run() with gate (quantum_reasoning) produces gate_logs
+  13. vm._enforce_constraints() — must-constraints are evaluated in fn bodies
+  14. vm._call_gate() — branch_index / branch_seed injected into branch scope
+  15. vm._call_gate() — branch result trace tagged with branch_N_output
+  16. vm._exec_reason() — reason block registered under its declared name (not "about")
 """
 from __future__ import annotations
 
+import sys
+import os
 import pytest
+
+# Make ChimeraLang importable for low-level VM tests
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "external", "chimeralang"))
 
 from core.chimera_bridge import ChimeraLangBridge, get_bridge
 
@@ -218,3 +227,150 @@ def test_run_gate_produces_gate_logs(bridge):
     assert "collapse" in gate_log
     assert "branch_confidences" in gate_log
     assert len(gate_log["branch_confidences"]) == gate_log["branches"]
+
+
+# ---------------------------------------------------------------------------
+# 13. _enforce_constraints() — must-constraints are evaluated in fn bodies
+# ---------------------------------------------------------------------------
+
+# Correct ChimeraLang constraint syntax: `must: <expr>` (colon required)
+MUST_CONSTRAINT_SOURCE = """\
+fn guarded(flag: Bool) -> Bool
+  must: flag
+  return flag
+end
+
+val ok: Bool = guarded(true)
+emit ok
+"""
+
+MUST_CONSTRAINT_VIOLATED_SOURCE = """\
+fn guarded(flag: Bool) -> Bool
+  must: flag
+  return flag
+end
+
+val bad: Bool = guarded(false)
+emit bad
+"""
+
+
+def test_enforce_constraints_must_passes(bridge):
+    """must-constraint that evaluates to true must not raise."""
+    result = bridge.run(MUST_CONSTRAINT_SOURCE)
+    assert result["ok"] is True, f"Unexpected errors: {result['errors']}"
+    assert result["emitted"][0]["raw"] is True
+
+
+def test_enforce_constraints_must_violated_returns_error(bridge):
+    """must-constraint that evaluates to false must produce an assertion error."""
+    result = bridge.run(MUST_CONSTRAINT_VIOLATED_SOURCE)
+    assert result["ok"] is False
+    assert any(
+        "must" in e.lower() or "constraint" in e.lower() or "assertion" in e.lower()
+        for e in result["errors"]
+    ), f"Expected constraint error message, got: {result['errors']}"
+
+
+# ---------------------------------------------------------------------------
+# 14. _call_gate() — branch_index / branch_seed injected per branch,
+#                    branch result trace tagged with branch_N_output
+# ---------------------------------------------------------------------------
+
+# Gate that returns its input (so the collapsed value carries branch trace tags)
+BRANCH_METADATA_SOURCE = """\
+gate meta_gate(x: Int) -> Int
+  branches: 3
+  collapse: highest_confidence
+  threshold: 0.50
+  return x
+end
+
+val inp: Int = 7
+val out: Int = meta_gate(inp)
+emit out
+"""
+
+# Gate that reads branch_index from scope — proves branch_index was injected
+BRANCH_INDEX_SOURCE = """\
+gate indexed_gate(x: Int) -> Int
+  branches: 3
+  collapse: highest_confidence
+  threshold: 0.50
+  val idx: Int = branch_index
+  return idx
+end
+
+val inp: Int = 0
+val out: Int = indexed_gate(inp)
+emit out
+"""
+
+
+def test_gate_branch_metadata_injected(bridge):
+    """Gate execution must inject branch_index/branch_seed into each branch scope,
+    tag branch ChimeraValue traces with branch_N_input / branch_N_output, and
+    expose those per-branch traces via branch_traces on the collapsed emitted value.
+    """
+    result = bridge.run(BRANCH_METADATA_SOURCE)
+    assert result["ok"] is True, f"Gate run failed: {result['errors']}"
+
+    emitted = result["emitted"][0]
+
+    # Gate collapse produces a ConvergeValue — bridge must expose branch_traces
+    assert "branch_traces" in emitted, (
+        f"bridge should expose branch_traces on gate output; keys: {list(emitted.keys())}"
+    )
+    branch_traces = emitted["branch_traces"]
+    assert len(branch_traces) == 3, f"Expected 3 branch traces, got {len(branch_traces)}"
+
+    # Each branch trace must carry both _input and _output tags
+    for i, bt in enumerate(branch_traces):
+        input_tags  = [e for e in bt if "_input"  in e and "branch_" in e]
+        output_tags = [e for e in bt if "_output" in e and "branch_" in e]
+        assert input_tags,  f"Branch {i} missing branch_N_input tag in trace: {bt}"
+        assert output_tags, f"Branch {i} missing branch_N_output tag in trace: {bt}"
+
+
+def test_gate_branch_index_injectable(bridge):
+    """branch_index variable must be accessible from within a gate body.
+
+    If branch_index injection is missing, the gate body will raise a NameError
+    (variable not found) and the run will fail.
+    """
+    result = bridge.run(BRANCH_INDEX_SOURCE)
+    assert result["ok"] is True, (
+        f"branch_index injection broken — gate body raised: {result['errors']}"
+    )
+    # Collapsed result must be an integer (one of the branch_index values: 0, 1, or 2)
+    assert isinstance(result["emitted"][0]["raw"], int), (
+        f"Expected int from indexed_gate, got: {result['emitted'][0]['raw']!r}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 15. _exec_reason() — reason block registered under its declared name (not "about")
+# ---------------------------------------------------------------------------
+
+# ChimeraLang syntax: `reason about(params)` — ABOUT is the required keyword.
+# The block is then callable as `about(args)`.
+REASON_NAMED_SOURCE = """\
+reason about()
+  given:
+    "grounding_fact"
+  commit: highest_confidence
+  val x: Int = 42
+  return x
+end
+
+val r: Int = about()
+emit r
+"""
+
+
+def test_reason_registered_under_declared_name(bridge):
+    """reason block must be callable via 'about' (its AST name after parser fix)."""
+    result = bridge.run(REASON_NAMED_SOURCE)
+    assert result["ok"] is True, f"Reason name or parse bug: {result['errors']}"
+    assert result["emitted"][0]["raw"] == 42
+
