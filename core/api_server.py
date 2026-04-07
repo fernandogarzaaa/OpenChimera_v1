@@ -463,6 +463,20 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/chimera/status":
                 self._write_json(self.server.provider.chimera_status())
                 return
+            if path == "/v1/inquiry/pending":
+                self._write_json({"questions": self.server.provider.inquiry_pending()})
+                return
+            if path == "/api/v1/health":
+                # Use HealthMonitor if available, otherwise fallback to standard health
+                if hasattr(self.server.provider, "_health_monitor") and self.server.provider._health_monitor:
+                    health_data = self.server.provider.health_monitor_status()
+                    self._write_json(health_data)
+                else:
+                    # Fallback to standard health endpoint
+                    payload = self.server.provider.health()
+                    payload["auth_required"] = self.server.authorizer.auth_enabled
+                    self._write_json(HealthResponse.model_validate(payload).model_dump())
+                return
             self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
         except ValidationError as exc:
             self._write_json(self._validation_error_payload(exc), status=HTTPStatus.UNPROCESSABLE_ENTITY)
@@ -899,6 +913,16 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     confidence=float(payload.get("confidence", 0.8)),
                     trace=payload.get("trace") or None,
                 ))
+                return
+
+            # Handle /v1/inquiry/{question_id}/resolve with path parsing
+            if self.path.startswith("/v1/inquiry/") and self.path.endswith("/resolve"):
+                question_id = self.path.split("/")[3]  # Extract ID from /v1/inquiry/{id}/resolve
+                answer = str(payload.get("answer", "")).strip()
+                if not answer:
+                    raise ValueError("Answer is required")
+                resolved = self.server.provider.inquiry_resolve(question_id, answer)
+                self._write_json({"resolved": resolved, "question_id": question_id})
                 return
 
             self._write_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)

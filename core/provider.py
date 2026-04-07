@@ -1116,3 +1116,49 @@ class OpenChimeraProvider:
         """Scan an LLM response through ChimeraLang's hallucination detector."""
         from core.chimera_bridge import get_bridge
         return get_bridge().scan_response(response_text, confidence=confidence, trace=trace)
+
+    def inquiry_pending(self) -> list[dict[str, Any]]:
+        """Return all pending inquiry questions."""
+        if not hasattr(self, "_active_inquiry") or self._active_inquiry is None:
+            return []
+        return self._active_inquiry.pending_questions()
+
+    def inquiry_resolve(self, question_id: str, answer: str) -> bool:
+        """Resolve an inquiry question with an answer."""
+        if not hasattr(self, "_active_inquiry") or self._active_inquiry is None:
+            raise RuntimeError("ActiveInquiry not initialized")
+        return self._active_inquiry.resolve_question(question_id, answer)
+
+    def health_monitor_status(self) -> dict[str, Any]:
+        """Return health status from HealthMonitor if available."""
+        if not hasattr(self, "_health_monitor") or self._health_monitor is None:
+            return {"status": "unavailable", "message": "HealthMonitor not initialized"}
+        
+        # Aggregate current health from all subsystems
+        from core.health_monitor import HealthMonitor
+        monitor: HealthMonitor = self._health_monitor
+        
+        # Collect health data for all known subsystems
+        subsystems = []
+        all_healthy = True
+        
+        # Check a few key subsystems
+        for subsystem_name in ["provider", "bus", "database", "memory", "router"]:
+            current = monitor.get_current_health(subsystem_name)
+            if current:
+                subsystems.append({
+                    "name": subsystem_name,
+                    "status": current.status,
+                    "timestamp": current.timestamp,
+                    "details": current.details,
+                })
+                if current.status not in ("healthy", "unknown"):
+                    all_healthy = False
+        
+        overall_status = "healthy" if all_healthy and subsystems else "degraded"
+        
+        return {
+            "status": overall_status,
+            "subsystems": subsystems,
+            "timestamp": __import__("time").time(),
+        }

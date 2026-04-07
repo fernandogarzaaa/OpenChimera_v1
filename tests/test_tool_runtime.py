@@ -209,10 +209,12 @@ class TestExecute(unittest.TestCase):
             reg.execute("typed2", {"name": 12345})  # int where str expected
 
     def test_execute_result_has_executed_at_timestamp(self):
+        """Verify execute result includes timing metadata (latency_ms)."""
         reg, _ = _make_registry([_make_spec("ts", executor=lambda a: None)])
         result = reg.execute("ts", {})
-        self.assertIn("executed_at", result)
-        self.assertIsInstance(result["executed_at"], int)
+        self.assertIn("latency_ms", result)
+        self.assertIsInstance(result["latency_ms"], float)
+        self.assertGreaterEqual(result["latency_ms"], 0.0)
 
 
 # ---------------------------------------------------------------------------

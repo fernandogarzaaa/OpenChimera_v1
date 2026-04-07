@@ -1,0 +1,25 @@
+# Bandit security scanner configuration for OpenChimera
+#
+# This file documents security findings that have been reviewed and are
+# considered acceptable for this codebase.
+
+[bandit]
+# Exclude test files from security scanning
+exclude_dirs = ["/tests", "/__pycache__"]
+
+# Skip certain tests that produce false positives or are intentionally used
+skips = []
+
+# B310: urllib usage is intentional for HTTP client operations
+# - We validate URLs before use
+# - We set appropriate timeouts
+# - We only use http:// and https:// schemes (no file:// or custom schemes)
+#
+# B608: SQL string formatting is intentional and safe
+# - All table names are validated/trusted (not user input)
+# - We use parameterized queries for all user-provided values
+# - SQLite identifiers (table names, column names) cannot use parameterization
+
+[bandit.assert_used]
+# Allow assert statements in non-test code when used for type narrowing
+skips = ["B101"]

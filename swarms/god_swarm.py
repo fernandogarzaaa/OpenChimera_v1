@@ -7,9 +7,11 @@ Supporting agents (4): Oracle, Alchemist, Reaper, Librarian
 """
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 from swarms.agent import SwarmAgent
@@ -19,10 +21,39 @@ from swarms.result import SwarmResult
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Agent definitions extracted from GOD_SWARM.md
+# Configuration loading
 # ---------------------------------------------------------------------------
 
-_CORE_AGENTS: list[dict] = [
+
+def _load_god_swarm_agent_specs(config_path: Path | None = None) -> dict[str, Any]:
+    """Load GodSwarm agent specifications from config/god_swarm_agents.json.
+    
+    Falls back to hardcoded defaults if the file is missing or invalid.
+    """
+    if config_path is None:
+        from core.config import ROOT
+        config_path = ROOT / "config" / "god_swarm_agents.json"
+    
+    if config_path.exists():
+        try:
+            payload = json.loads(config_path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                core = payload.get("core_agents", [])
+                supporting = payload.get("supporting_agents", [])
+                if isinstance(core, list) and isinstance(supporting, list):
+                    return {"core_agents": core, "supporting_agents": supporting}
+        except (json.JSONDecodeError, OSError):
+            pass
+    
+    # Fallback to hardcoded defaults
+    return {"core_agents": _DEFAULT_CORE_AGENTS, "supporting_agents": _DEFAULT_SUPPORTING_AGENTS}
+
+
+# ---------------------------------------------------------------------------
+# Fallback agent definitions (used when config file is missing)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_CORE_AGENTS: list[dict] = [
     {
         "agent_id": "omniscient",
         "role": "Requirement Analyzer",
@@ -61,7 +92,7 @@ _CORE_AGENTS: list[dict] = [
     },
 ]
 
-_SUPPORTING_AGENTS: list[dict] = [
+_DEFAULT_SUPPORTING_AGENTS: list[dict] = [
     {
         "agent_id": "oracle",
         "role": "Pattern Recognizer",
@@ -103,17 +134,23 @@ class GodSwarm(SwarmOrchestrator):
     - wire_to_kernel(kernel) — hook into kernel boot sequence
     """
 
-    CORE_AGENT_IDS = [a["agent_id"] for a in _CORE_AGENTS]
-    SUPPORTING_AGENT_IDS = [a["agent_id"] for a in _SUPPORTING_AGENTS]
-    ALL_AGENT_IDS = CORE_AGENT_IDS + SUPPORTING_AGENT_IDS
-
-    def __init__(self, bus: Any | None = None) -> None:
+    def __init__(self, bus: Any | None = None, config_path: Path | None = None) -> None:
         super().__init__()
         self._bus = bus
         self._kernel: Any | None = None
         self._dynamic_agents: dict[str, dict[str, Any]] = {}
 
-        for spec in _CORE_AGENTS + _SUPPORTING_AGENTS:
+        # Load agent specs from config
+        specs = _load_god_swarm_agent_specs(config_path)
+        core_agents = specs["core_agents"]
+        supporting_agents = specs["supporting_agents"]
+
+        # Build class-level agent ID lists
+        self.CORE_AGENT_IDS = [a["agent_id"] for a in core_agents]
+        self.SUPPORTING_AGENT_IDS = [a["agent_id"] for a in supporting_agents]
+        self.ALL_AGENT_IDS = self.CORE_AGENT_IDS + self.SUPPORTING_AGENT_IDS
+
+        for spec in core_agents + supporting_agents:
             self.register(SwarmAgent(**spec))
 
     # ------------------------------------------------------------------
@@ -138,8 +175,15 @@ class GodSwarm(SwarmOrchestrator):
         Emits a ``god_swarm.agent.spawned`` event on success.
         Config keys: agent_id (optional), role, description, capabilities (list).
         Newly spawned agents inherit the current LLM callback (if any).
+        
+        Raises ValueError if agent_id already exists.
         """
         agent_id = str(agent_config.get("agent_id") or f"dyn-{uuid.uuid4().hex[:8]}")
+        
+        # Uniqueness check
+        if agent_id in self._agents:
+            raise ValueError(f"Agent ID '{agent_id}' already exists")
+        
         role = str(agent_config.get("role", "Dynamic Agent"))
         description = str(agent_config.get("description", "Dynamically spawned agent."))
         capabilities = list(agent_config.get("capabilities", []))

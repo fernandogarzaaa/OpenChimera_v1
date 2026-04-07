@@ -9,13 +9,7 @@ from typing import Any, Callable, List
 
 from pydantic import BaseModel, ValidationError
 
-
-class ToolPermissionError(PermissionError):
-    pass
-
-
-class ToolExecutionError(RuntimeError):
-    pass
+from core.tool_executor import ToolExecutor, ToolPermissionError, ToolExecutionError
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +190,7 @@ class RuntimeToolRegistry:
         self.capability_registry = capability_registry
         self.bus = bus
         self._specs = {spec.tool_id: spec for spec in (specs or [])}
+        self._executor = ToolExecutor(bus=bus)
 
     def list_tools(self) -> list[dict[str, Any]]:
         metadata = {
@@ -229,10 +224,6 @@ class RuntimeToolRegistry:
         if spec is None:
             raise ValueError(f"Unknown tool: {tool_id}")
 
-        scope = str(permission_scope or "user").strip().lower() or "user"
-        if spec.requires_admin and scope != "admin":
-            raise ToolPermissionError(f"Tool '{normalized}' requires admin permission scope")
-
         payload = dict(arguments or {})
         try:
             if spec.schema is not None:
@@ -240,15 +231,12 @@ class RuntimeToolRegistry:
         except ValidationError as exc:
             raise ToolExecutionError(json.dumps(exc.errors(), default=str)) from exc
 
-        started_at = time.time()
-        result = spec.executor(payload)
-        envelope = {
-            "tool_id": normalized,
-            "status": "ok",
-            "permission_scope": scope,
-            "arguments": payload,
-            "result": result,
-            "executed_at": int(started_at),
-        }
-        self.bus.publish_nowait("system/tools", {"action": "execute", "tool": normalized, "result": envelope})
-        return envelope
+        # Use shared ToolExecutor for permission gating, timing, and event emission
+        return self._executor.execute_with_gating(
+            tool_id=normalized,
+            handler=spec.executor,
+            arguments=payload,
+            requires_admin=spec.requires_admin,
+            permission_scope=permission_scope,
+            tags=[spec.category],
+        )
