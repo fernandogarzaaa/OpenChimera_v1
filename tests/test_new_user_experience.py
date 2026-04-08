@@ -220,14 +220,14 @@ class TestPhase3_FirstQueryExperience(unittest.TestCase):
         }
         roles = ModelRoleManager(registry)
 
-        def _completion_callback(**kwargs):
+        def _mock_completion(**kwargs):
             return {"content": f"Mock response for: {kwargs.get('query', '')}", "model": "mock"}
 
         return QueryEngine(
             capability_registry=caps,
             model_roles=roles,
             tool_registry=None,
-            completion_callback=_completion_callback,
+            completion_callback=_mock_completion,
             sessions_path=Path(tmp_dir) / "sessions.json",
             tool_history_path=Path(tmp_dir) / "tool_history.json",
         )
