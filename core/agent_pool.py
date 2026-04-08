@@ -39,6 +39,7 @@ Example
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import logging
 import os
@@ -442,8 +443,12 @@ def make_agent_callable(
     Returns a sync callable: (task, context) -> dict
     """
     if external_fn is not None:
-        def _wrapper(task: Any, context: dict) -> Any:
-            return external_fn(task, context)
+        if inspect.iscoroutinefunction(external_fn):
+            async def _wrapper(task: Any, context: dict) -> Any:
+                return await external_fn(task, context)
+        else:
+            def _wrapper(task: Any, context: dict) -> Any:
+                return external_fn(task, context)
         _wrapper.__qualname__ = f"agent:{spec.agent_id}"
         return _wrapper
 

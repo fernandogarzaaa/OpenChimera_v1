@@ -325,6 +325,14 @@ class QuantumEngine:
 
         wall_ms = (time.perf_counter() - start) * 1000.0
 
+        # Ensure all cancelled / pending tasks are properly cleaned up
+        # to avoid "coroutine was never awaited" warnings.
+        pending = [ft for ft in futures.values() if not ft.done()]
+        for ft in pending:
+            ft.cancel()
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+
         if not responses:
             raise ConsensusFailure(
                 f"[QE round={round_id}] All {len(invited)} agents "
