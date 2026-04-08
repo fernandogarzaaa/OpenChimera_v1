@@ -35,6 +35,7 @@ from core.agent_pool import (
     AgentPool,
     AgentRole,
     AgentSpec,
+    create_llm_pool,
     create_pool,
 )
 from core.quantum_engine import (
@@ -100,6 +101,7 @@ class MultiAgentOrchestrator:
         quorum: Optional[int] = None,
         early_exit_conf: Optional[float] = None,
         hard_timeout_ms: Optional[int] = None,
+        llm_dispatch: Optional[bool] = None,
     ) -> None:
         # --- Resolve config ---
         self._profile = profile or {}
@@ -124,12 +126,37 @@ class MultiAgentOrchestrator:
             )
         )
 
+        # --- Resolve LLM dispatch mode ---
+        if llm_dispatch is not None:
+            use_llm = llm_dispatch
+        else:
+            env_llm = os.environ.get("OPENCHIMERA_LLM_CONSENSUS", "").lower()
+            cfg_llm = orch_cfg.get("llm_dispatch", None)
+            if env_llm in ("1", "true", "yes"):
+                use_llm = True
+            elif env_llm in ("0", "false", "no"):
+                use_llm = False
+            elif cfg_llm is not None:
+                use_llm = bool(cfg_llm)
+            else:
+                use_llm = False
+
         # --- Core components ---
         self._bus = bus if bus is not None else EventBus()
         self._db = db if db is not None else DatabaseManager(":memory:")
         self._db.initialize()
 
-        self._pool = pool if pool is not None else create_pool(profile)
+        if pool is not None:
+            self._pool = pool
+        elif use_llm:
+            # Bump timeout for real LLM calls (30s per agent minimum)
+            if self._timeout < 35_000:
+                self._timeout = 35_000
+            self._pool = create_llm_pool(profile)
+            log.info("[Orchestrator] LLM consensus mode ACTIVE")
+        else:
+            self._pool = create_pool(profile)
+
         self._reputation = AgentReputation()
         self._profiler = ConsensusProfiler()
         self._engine = QuantumEngine(
@@ -519,12 +546,19 @@ async def run_orchestrated_task(
     profile: Optional[Dict[str, Any]] = None,
     domain: Optional[str] = None,
     agents_config: Optional[List[Dict[str, Any]]] = None,
+    llm_dispatch: bool = False,
 ) -> OrchestratorResult:
     """One-shot: create an orchestrator, run a task, return result.
 
     Useful for scripts and testing. For production use,
     create a long-lived MultiAgentOrchestrator instance.
+
+    Set ``llm_dispatch=True`` to dispatch each agent through a real LLM model
+    for genuine multi-model consensus.
     """
-    pool = create_pool(profile, agents_config)
-    orch = MultiAgentOrchestrator(pool=pool, profile=profile)
+    if llm_dispatch:
+        pool = create_llm_pool(profile, agents_config)
+    else:
+        pool = create_pool(profile, agents_config)
+    orch = MultiAgentOrchestrator(pool=pool, profile=profile, llm_dispatch=False)
     return await orch.run(task, domain=domain)

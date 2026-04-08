@@ -523,6 +523,21 @@ class OpenChimeraProvider:
             aegis_preview=self._autonomy_aegis_preview,
         )
         self.bus.subscribe("system/autonomy/job", self._handle_autonomy_job_event)
+
+        # ------------------------------------------------------------------
+        # Multi-agent consensus orchestrator (LLM-backed when models available)
+        # ------------------------------------------------------------------
+        try:
+            from core.multi_agent_orchestrator import MultiAgentOrchestrator
+            self.orchestrator = MultiAgentOrchestrator(
+                profile=self.profile, llm_dispatch=True,
+            )
+            LOGGER.info("[Provider] Multi-agent orchestrator initialised (LLM dispatch=%s)", self.orchestrator._llm_dispatch)
+        except Exception as exc:
+            LOGGER.warning("[Provider] orchestrator init failed: %s", exc)
+            self._init_errors["orchestrator"] = str(exc)
+            self.orchestrator = None
+
         self._seed_knowledge()
 
     # ------------------------------------------------------------------
@@ -1079,6 +1094,26 @@ class OpenChimeraProvider:
             max_tokens=max_tokens,
             stream=stream,
         )
+
+    def consensus_query(self, task: str, context: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Run a task through multi-agent LLM consensus and return the merged answer."""
+        import asyncio
+        if self.orchestrator is None:
+            return {"ok": False, "error": "Multi-agent orchestrator not available"}
+        try:
+            result = asyncio.get_event_loop().run_until_complete(
+                self.orchestrator.orchestrate(task, context=context or {}),
+            )
+            return {"ok": True, **result}
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(
+                    self.orchestrator.orchestrate(task, context=context or {}),
+                )
+                return {"ok": True, **result}
+            finally:
+                loop.close()
 
     def status(self) -> dict[str, Any]:
         return self.runtime_plane.status()

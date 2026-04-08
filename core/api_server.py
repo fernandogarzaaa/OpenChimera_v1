@@ -520,6 +520,14 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     return
                 self._write_json(response)
                 return
+            if self.path == "/v1/consensus":
+                task = str(payload.get("task", ""))
+                if not task:
+                    self._write_json({"ok": False, "error": "task is required"}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+                self._write_json(self.server.provider.consensus_query(task, context))
+                return
             if self.path == "/v1/embeddings":
                 input_text = payload.get("input", "")
                 if isinstance(input_text, list):
