@@ -20,12 +20,16 @@ from chimera.ast_nodes import (
     FloatLiteral,
     FnDecl,
     ForbiddenConstraint,
+    ForStmt,
     GateDecl,
     GoalDecl,
     Identifier,
     IfExpr,
     IntLiteral,
     ListLiteral,
+    MapLiteral,
+    MatchArm,
+    MatchExpr,
     MemberExpr,
     MemoryType,
     MustConstraint,
@@ -339,9 +343,29 @@ class Parser:
             return self._parse_emit()
         if self._check(TokenKind.IF):
             return ExprStmt(expr=self._parse_if_expr())
+        if self._check(TokenKind.FOR):
+            return self._parse_for()
         expr = self._parse_expr()
         self._expect_line_end()
         return ExprStmt(expr=expr)
+
+    def _parse_for(self) -> ForStmt:
+        """Parse: for <ident> in <expr> ... end"""
+        self._expect(TokenKind.FOR)
+        iter_var = self._expect(TokenKind.IDENT, "Expected loop variable name after 'for'").value
+        self._expect(TokenKind.IN, "Expected 'in' after loop variable")
+        iterable = self._parse_expr()
+        self._expect_line_end()
+        body: list[Statement] = []
+        while not self._check(TokenKind.END) and not self._check(TokenKind.EOF):
+            self._skip_newlines()
+            if self._check(TokenKind.END):
+                break
+            body.append(self._parse_statement())
+            self._skip_newlines()
+        self._expect(TokenKind.END, "Expected 'end' to close 'for'")
+        self._expect_line_end()
+        return ForStmt(iter_var=iter_var, iterable=iterable, body=body)
 
     def _parse_return(self) -> ReturnStmt:
         self._expect(TokenKind.RETURN)
@@ -354,8 +378,11 @@ class Parser:
     def _parse_assert(self) -> AssertStmt:
         self._expect(TokenKind.ASSERT)
         cond = self._parse_expr()
+        message: str | None = None
+        if self._match(TokenKind.COMMA):
+            message = self._expect(TokenKind.STRING_LIT, "Expected string message after ','").value
         self._expect_line_end()
-        return AssertStmt(condition=cond)
+        return AssertStmt(condition=cond, message=message)
 
     def _parse_emit(self) -> EmitStmt:
         self._expect(TokenKind.EMIT)
@@ -518,6 +545,9 @@ class Parser:
         if tok.kind == TokenKind.LBRACKET:
             return self._parse_list_literal()
 
+        if tok.kind == TokenKind.LBRACE:
+            return self._parse_map_literal()
+
         if tok.kind == TokenKind.LPAREN:
             self._advance()
             expr = self._parse_expr()
@@ -526,6 +556,9 @@ class Parser:
 
         if tok.kind == TokenKind.IF:
             return self._parse_if_expr()
+
+        if tok.kind == TokenKind.MATCH:
+            return self._parse_match_expr()
 
         # Allow type-constructor-like calls: Confident(...), Explore(...)
         if tok.kind in (TokenKind.CONFIDENT, TokenKind.EXPLORE_TYPE, TokenKind.CONVERGE,
@@ -568,6 +601,59 @@ class Parser:
                 elements.append(self._parse_expr())
         self._expect(TokenKind.RBRACKET, "Expected ']'")
         return ListLiteral(elements=elements)
+
+    def _parse_map_literal(self) -> MapLiteral:
+        """Parse: { key: value, key: value, ... }"""
+        self._expect(TokenKind.LBRACE)
+        self._skip_newlines()
+        pairs: list[tuple[Expr, Expr]] = []
+        while not self._check(TokenKind.RBRACE) and not self._check(TokenKind.EOF):
+            key = self._parse_expr()
+            self._expect(TokenKind.COLON, "Expected ':' after map key")
+            value = self._parse_expr()
+            pairs.append((key, value))
+            self._skip_newlines()
+            if not self._match(TokenKind.COMMA):
+                break
+            self._skip_newlines()
+        self._expect(TokenKind.RBRACE, "Expected '}' to close map literal")
+        return MapLiteral(pairs=pairs)
+
+    def _parse_match_expr(self) -> MatchExpr:
+        """Parse: match <expr> ... end
+
+        Each arm has the form:
+            <pattern> => <single-statement>
+        or for a wildcard arm:
+            _ => <single-statement>
+
+        Arms are separated by newlines; the block closes with 'end'.
+        """
+        self._expect(TokenKind.MATCH)
+        subject = self._parse_expr()
+        self._expect_line_end()
+        arms: list[MatchArm] = []
+        while not self._check(TokenKind.END) and not self._check(TokenKind.EOF):
+            self._skip_newlines()
+            if self._check(TokenKind.END):
+                break
+            # Parse pattern: either '_' (wildcard) or an expression
+            pattern: Expr | None
+            if self._check(TokenKind.IDENT) and self._current().value == "_":
+                self._advance()
+                pattern = None
+            else:
+                pattern = self._parse_expr()
+            self._expect(TokenKind.FAT_ARROW, "Expected '=>' after match pattern")
+            self._skip_newlines()
+            # Each arm body is exactly one statement (the statement handles its
+            # own trailing newline consumption via _expect_line_end).
+            arm_body: list[Statement] = [self._parse_statement()]
+            self._skip_newlines()
+            arms.append(MatchArm(pattern=pattern, body=arm_body))
+        self._expect(TokenKind.END, "Expected 'end' to close 'match'")
+        self._expect_line_end()
+        return MatchExpr(subject=subject, arms=arms)
 
     # ------------------------------------------------------------------
     # Types

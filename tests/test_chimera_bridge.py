@@ -374,3 +374,249 @@ def test_reason_registered_under_declared_name(bridge):
     assert result["ok"] is True, f"Reason name or parse bug: {result['errors']}"
     assert result["emitted"][0]["raw"] == 42
 
+
+# ---------------------------------------------------------------------------
+# 16. for loop — iteration over a list
+# ---------------------------------------------------------------------------
+
+FOR_LOOP_SOURCE = """\
+val items: List<Int> = [10, 20, 30]
+for n in items
+  emit n
+end
+"""
+
+
+def test_for_loop_emits_each_element(bridge):
+    """for loop must iterate over list elements and emit each one."""
+    result = bridge.run(FOR_LOOP_SOURCE)
+    assert result["ok"] is True, f"for-loop run failed: {result['errors']}"
+    assert len(result["emitted"]) == 3
+    raws = [e["raw"] for e in result["emitted"]]
+    assert raws == [10, 20, 30]
+
+
+FOR_LOOP_ACCUMULATE_SOURCE = """\
+val nums: List<Int> = [1, 2, 3, 4, 5]
+val total: Int = 0
+for n in nums
+  val total: Int = n
+end
+emit total
+"""
+
+
+def test_for_loop_runs_without_error(bridge):
+    """for loop over valid list must not produce errors."""
+    result = bridge.run(FOR_LOOP_ACCUMULATE_SOURCE)
+    assert result["ok"] is True, f"for-loop failed: {result['errors']}"
+
+
+FOR_LOOP_NON_LIST_SOURCE = """\
+val not_a_list: Int = 42
+for x in not_a_list
+  emit x
+end
+emit not_a_list
+"""
+
+
+def test_for_loop_non_list_is_skipped(bridge):
+    """for loop over a non-list value must be silently skipped (trace warning)."""
+    result = bridge.run(FOR_LOOP_NON_LIST_SOURCE)
+    assert result["ok"] is True, f"Expected graceful skip: {result['errors']}"
+    # Only the final 'emit not_a_list' should fire since the loop is skipped
+    assert len(result["emitted"]) == 1
+    assert result["emitted"][0]["raw"] == 42
+    warning_found = any("not a list" in t.lower() or "skipping" in t.lower() for t in result["trace"])
+    assert warning_found, f"Expected skip warning in trace: {result['trace']}"
+
+
+# ---------------------------------------------------------------------------
+# 17. match expression — pattern dispatch
+# ---------------------------------------------------------------------------
+
+MATCH_SOURCE = """\
+val x: Int = 2
+val label: Text = match x
+  1 => return "one"
+  2 => return "two"
+  _ => return "other"
+end
+emit label
+"""
+
+
+def test_match_dispatches_to_correct_arm(bridge):
+    """match expression must evaluate to the body of the first matching arm."""
+    result = bridge.run(MATCH_SOURCE)
+    assert result["ok"] is True, f"match run failed: {result['errors']}"
+    assert len(result["emitted"]) == 1
+    assert result["emitted"][0]["raw"] == "two"
+
+
+MATCH_WILDCARD_SOURCE = """\
+val x: Int = 99
+val label: Text = match x
+  1 => return "one"
+  _ => return "wildcard"
+end
+emit label
+"""
+
+
+def test_match_wildcard_arm_catches_unmatched(bridge):
+    """wildcard arm (_) must match when no other arm matches."""
+    result = bridge.run(MATCH_WILDCARD_SOURCE)
+    assert result["ok"] is True, f"match wildcard failed: {result['errors']}"
+    assert result["emitted"][0]["raw"] == "wildcard"
+
+
+MATCH_NO_MATCH_SOURCE = """\
+val x: Int = 5
+val r: Int = match x
+  1 => return "one"
+  2 => return "two"
+end
+emit r
+"""
+
+
+def test_match_no_matching_arm_returns_none(bridge):
+    """match with no matching arm and no wildcard must return None gracefully."""
+    result = bridge.run(MATCH_NO_MATCH_SOURCE)
+    assert result["ok"] is True, f"match no-match failed: {result['errors']}"
+    assert result["emitted"][0]["raw"] is None
+
+
+# ---------------------------------------------------------------------------
+# 18. map literal — {key: value, ...}
+# ---------------------------------------------------------------------------
+
+MAP_LITERAL_SOURCE = """\
+val m: Map<Text, Int> = {"alpha": 1, "beta": 2}
+emit m
+"""
+
+
+def test_map_literal_emits_dict(bridge):
+    """map literal {k: v, ...} must produce a dict as the emitted raw value."""
+    result = bridge.run(MAP_LITERAL_SOURCE)
+    assert result["ok"] is True, f"map literal failed: {result['errors']}"
+    assert len(result["emitted"]) == 1
+    raw = result["emitted"][0]["raw"]
+    assert isinstance(raw, dict), f"Expected dict, got: {type(raw).__name__}"
+    assert raw == {"alpha": 1, "beta": 2}
+
+
+MAP_LITERAL_EMPTY_SOURCE = """\
+val m: Map<Text, Int> = {}
+emit m
+"""
+
+
+def test_map_literal_empty(bridge):
+    """empty map literal {} must produce an empty dict."""
+    result = bridge.run(MAP_LITERAL_EMPTY_SOURCE)
+    assert result["ok"] is True, f"empty map failed: {result['errors']}"
+    assert result["emitted"][0]["raw"] == {}
+
+
+# ---------------------------------------------------------------------------
+# 19. assert with message
+# ---------------------------------------------------------------------------
+
+ASSERT_MESSAGE_SOURCE = """\
+val ok: Bool = true
+assert ok, "value must be true"
+emit ok
+"""
+
+ASSERT_MESSAGE_FAIL_SOURCE = """\
+val bad: Bool = false
+assert bad, "custom failure message"
+emit bad
+"""
+
+
+def test_assert_with_message_passes(bridge):
+    """assert with a message string must pass when condition is true."""
+    result = bridge.run(ASSERT_MESSAGE_SOURCE)
+    assert result["ok"] is True, f"assert with message failed: {result['errors']}"
+    assert result["assertions_passed"] == 1
+
+
+def test_assert_with_message_surfaces_message_on_failure(bridge):
+    """assert with a message string must surface the custom message in errors."""
+    result = bridge.run(ASSERT_MESSAGE_FAIL_SOURCE)
+    assert result["ok"] is False
+    assert any("custom failure message" in e for e in result["errors"]), (
+        f"Custom message not found in errors: {result['errors']}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 20. gate fallback — ProvisionalValue when below threshold
+# ---------------------------------------------------------------------------
+
+# Gate with a threshold of 1.0 (impossible to meet with noisy branches) to
+# reliably trigger the fallback path.
+FALLBACK_GATE_SOURCE = """\
+gate strict_gate(x: Int) -> Int
+  branches: 3
+  collapse: majority
+  threshold: 1.0
+  fallback: escalate
+  return x
+end
+
+val r: Int = strict_gate(5)
+emit r
+"""
+
+
+def test_gate_fallback_returns_provisional_when_below_threshold(bridge):
+    """When gate consensus is below threshold, the result must be a ProvisionalValue
+    (memory_scope == PROVISIONAL) and its trace must contain the fallback label."""
+    result = bridge.run(FALLBACK_GATE_SOURCE)
+    assert result["ok"] is True, f"gate fallback failed: {result['errors']}"
+    assert len(result["emitted"]) == 1
+    emitted = result["emitted"][0]
+    assert emitted["memory_scope"] == "PROVISIONAL", (
+        f"Expected PROVISIONAL scope on below-threshold gate result, got: {emitted['memory_scope']}"
+    )
+    assert any("fallback" in t for t in emitted["trace"]), (
+        f"Expected 'fallback:...' entry in trace, got: {emitted['trace']}"
+    )
+
+
+def test_gate_logs_include_threshold_met_flag(bridge):
+    """Gate logs must include threshold_met boolean to indicate whether consensus passed."""
+    result = bridge.run(FALLBACK_GATE_SOURCE)
+    assert result["ok"] is True
+    assert len(result["gate_logs"]) >= 1
+    log = result["gate_logs"][0]
+    assert "threshold_met" in log, f"threshold_met missing from gate_log: {log}"
+    assert log["threshold_met"] is False  # threshold=1.0 is impossible to meet
+
+
+# ---------------------------------------------------------------------------
+# 21. version bump — ChimeraLang 0.2.0
+# ---------------------------------------------------------------------------
+
+def test_chimera_version_is_0_2_0(bridge):
+    """ChimeraLang version must be 0.2.0 after the upgrade."""
+    status = bridge.status()
+    assert status["version"] == "0.2.0", (
+        f"Expected ChimeraLang v0.2.0, got: {status['version']!r}"
+    )
+
+
+def test_status_capabilities_include_new_features(bridge):
+    """status() capabilities must include the new v0.2.0 language features."""
+    status = bridge.status()
+    caps = status["capabilities"]
+    assert "for_loops" in caps, f"for_loops missing from capabilities: {caps}"
+    assert "match_expressions" in caps, f"match_expressions missing: {caps}"
+    assert "map_literals" in caps, f"map_literals missing: {caps}"
+
