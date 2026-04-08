@@ -463,6 +463,15 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/chimera/status":
                 self._write_json(self.server.provider.chimera_status())
                 return
+            if path == "/v1/embodied/status":
+                self._write_json(self.server.provider.embodied_interaction_status())
+                return
+            if path == "/v1/social/status":
+                self._write_json(self.server.provider.social_cognition_status())
+                return
+            if path == "/v1/agi/status":
+                self._write_json(self.server.provider.agi_completeness())
+                return
             if path == "/v1/inquiry/pending":
                 self._write_json({"questions": self.server.provider.inquiry_pending()})
                 return

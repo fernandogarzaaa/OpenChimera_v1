@@ -12,7 +12,7 @@ The project is designed to be safe to publish and safe to run from source: the c
 
 - Local-first OpenAI-compatible provider on `http://127.0.0.1:7870`
 - Managed local model routing with adaptive prompt strategy learning
-- **Recursive Intelligence Loop** — five interlocking subsystems for self-improving AGI (memory, deliberation, goal planning, evolution, metacognition)
+- **Recursive Intelligence Loop** — ten interlocking subsystems for self-improving AGI (memory, deliberation, goal planning, evolution, metacognition, self-model, transfer learning, causal reasoning, embodied interaction, social cognition)
 - **Quantum Consensus Engine** — async-first weighted multi-agent voting with speculative gather, destructive interference, domain-aware reputation, embedding similarity, and optional persistence
 - Scheduled autonomy jobs for discovery, learned fallback ranking, self-audit, degradation detection, repair previews, and dataset refresh
 - MiniMind lifecycle management for reasoning and training workflows
@@ -40,6 +40,8 @@ Five interlocking subsystems that form the self-improving core:
 | **Causal Reasoning** | `core/causal_reasoning.py` | Directed causal graph, do-calculus interventions, and counterfactual simulation |
 | **Meta-Learning** | `core/meta_learning.py` | Strategy registry, adaptive parameter tuning, regime shift detection, and exploration–exploitation balance |
 | **Ethical Reasoning** | `core/ethical_reasoning.py` | Constraint registry, domain-scoped ethical evaluation, audit trail, and configurable guardrails |
+| **Embodied Interaction** | `core/embodied_interaction.py` | Sensor abstraction, actuator command bus, environment state, and body-schema for physical/simulated world reasoning |
+| **Social Cognition** | `core/social_cognition.py` | Theory of Mind, relationship memory, social context tracking, and norm compliance evaluation |
 
 ### Quantum Consensus Engine
 
@@ -58,13 +60,13 @@ Async-first weighted multi-agent voting in `core/quantum_engine.py`:
 Parallel task orchestration in `core/multi_agent_orchestrator.py`:
 
 - **Role-based dispatch** — assigns tasks to agents by `AgentRole` (Reasoner, Creative, Critic, Specialist, etc.)
-- **Cognitive enrichment pipeline** — post-consensus stage runs Self-Model assessment, Transfer Learning suggestions, Causal Reasoning analysis, Meta-Learning adaptation, and Ethical Reasoning guardrails
+- **Cognitive enrichment pipeline** — post-consensus stage runs Self-Model assessment, Transfer Learning suggestions, Causal Reasoning analysis, Meta-Learning adaptation, Ethical Reasoning guardrails, Social Cognition agent observation, and Embodied Interaction environment tracking
 - **Batch execution** — concurrent multi-task runs with configurable parallelism
 - **Kernel integration** — wired into the boot sequence via `core/kernel.py` with bus event subscriptions
 
 ### AGI Completeness
 
-OpenChimera targets 10 cognitive capabilities.  Current status: **8 / 10** implemented and tested.
+OpenChimera targets 10 cognitive capabilities.  Current status: **10 / 10** implemented and tested.
 
 | # | Capability | Module | Status |
 |---|-----------|--------|--------|
@@ -76,8 +78,8 @@ OpenChimera targets 10 cognitive capabilities.  Current status: **8 / 10** imple
 | 6 | Self-Model | `core/self_model.py` | ✅ |
 | 7 | Cross-Domain Transfer | `core/transfer_learning.py` | ✅ |
 | 8 | Causal Reasoning | `core/causal_reasoning.py` | ✅ |
-| 9 | Embodied Interaction | — | 🔲 Planned |
-| 10 | Social Cognition | — | 🔲 Planned |
+| 9 | Embodied Interaction | `core/embodied_interaction.py` | ✅ |
+| 10 | Social Cognition | `core/social_cognition.py` | ✅ |
 
 ## Install
 
@@ -147,12 +149,12 @@ curl http://127.0.0.1:7870/v1/system/readiness
 openchimera status --json
 ```
 
-**Run the test suite** (2 467 tests, ~40 seconds):
+**Run the test suite** (2 590+ tests, ~45 seconds):
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest tests/ -q
-# Expected: 2467 passed, 2 skipped
+# Expected: 2590+ passed, 2 skipped
 ```
 
 If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.

@@ -175,6 +175,8 @@ class MultiAgentOrchestrator:
         self._causal_reasoning = None
         self._meta_learning = None
         self._ethical_reasoning = None
+        self._social_cognition = None
+        self._embodied_interaction = None
 
         try:
             from core.memory_system import MemorySystem
@@ -221,6 +223,18 @@ class MultiAgentOrchestrator:
             self._ethical_reasoning = EthicalReasoning(bus=self._bus)
         except Exception as exc:
             log.warning("[Orchestrator] EthicalReasoning unavailable: %s", exc)
+
+        try:
+            from core.social_cognition import SocialCognition
+            self._social_cognition = SocialCognition(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] SocialCognition unavailable: %s", exc)
+
+        try:
+            from core.embodied_interaction import EmbodiedInteraction
+            self._embodied_interaction = EmbodiedInteraction(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] EmbodiedInteraction unavailable: %s", exc)
 
         log.info(
             "[Orchestrator] Initialised: %d agents, quorum=%d, timeout=%dms",
@@ -471,6 +485,8 @@ class MultiAgentOrchestrator:
             "causal_reasoning_available": self._causal_reasoning is not None,
             "meta_learning_available": self._meta_learning is not None,
             "ethical_reasoning_available": self._ethical_reasoning is not None,
+            "social_cognition_available": self._social_cognition is not None,
+            "embodied_interaction_available": self._embodied_interaction is not None,
         }
 
     # ------------------------------------------------------------------
@@ -534,6 +550,33 @@ class MultiAgentOrchestrator:
                 )
             except Exception as exc:
                 log.debug("[Orchestrator] EthicalReasoning eval failed: %s", exc)
+
+        # Social cognition: observe participating agents
+        if self._social_cognition is not None:
+            try:
+                for aid in agent_ids[:5]:  # limit to avoid overhead
+                    self._social_cognition.observe_agent(
+                        agent_id=aid,
+                        confidence=confidence,
+                        note=f"Participated in consensus on '{domain}' task",
+                    )
+            except Exception as exc:
+                log.debug("[Orchestrator] SocialCognition observation failed: %s", exc)
+
+        # Embodied interaction: record environment context
+        if self._embodied_interaction is not None:
+            try:
+                self._embodied_interaction.environment.update_object(
+                    object_id=f"task_{domain}",
+                    label=f"consensus_task:{domain}",
+                    properties={
+                        "confidence": confidence,
+                        "agents": len(agent_ids),
+                        "task_preview": task[:100],
+                    },
+                )
+            except Exception as exc:
+                log.debug("[Orchestrator] EmbodiedInteraction update failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

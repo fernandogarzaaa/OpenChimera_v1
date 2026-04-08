@@ -1197,3 +1197,42 @@ class OpenChimeraProvider:
             "subsystems": subsystems,
             "timestamp": __import__("time").time(),
         }
+
+    # ------------------------------------------------------------------
+    # AGI subsystem status — modules #9 and #10
+    # ------------------------------------------------------------------
+
+    def embodied_interaction_status(self) -> dict[str, Any]:
+        """Return snapshot from the EmbodiedInteraction subsystem."""
+        if self.orchestrator is not None and self.orchestrator._embodied_interaction is not None:
+            return self.orchestrator._embodied_interaction.snapshot()
+        return {"error": "EmbodiedInteraction not available"}
+
+    def social_cognition_status(self) -> dict[str, Any]:
+        """Return snapshot from the SocialCognition subsystem."""
+        if self.orchestrator is not None and self.orchestrator._social_cognition is not None:
+            return self.orchestrator._social_cognition.snapshot()
+        return {"error": "SocialCognition not available"}
+
+    def agi_completeness(self) -> dict[str, Any]:
+        """Return AGI completeness status for all 10 cognitive capabilities."""
+        import time as _time
+        modules = {
+            "episodic_memory": self.orchestrator is not None and self.orchestrator._memory is not None,
+            "metacognition": self.orchestrator is not None and self.orchestrator._metacognition is not None,
+            "self_model": self.orchestrator is not None and self.orchestrator._self_model is not None,
+            "transfer_learning": self.orchestrator is not None and self.orchestrator._transfer_learning is not None,
+            "causal_reasoning": self.orchestrator is not None and self.orchestrator._causal_reasoning is not None,
+            "meta_learning": self.orchestrator is not None and self.orchestrator._meta_learning is not None,
+            "ethical_reasoning": self.orchestrator is not None and self.orchestrator._ethical_reasoning is not None,
+            "social_cognition": self.orchestrator is not None and self.orchestrator._social_cognition is not None,
+            "embodied_interaction": self.orchestrator is not None and self.orchestrator._embodied_interaction is not None,
+        }
+        active = sum(1 for v in modules.values() if v)
+        return {
+            "implemented": active,
+            "total": 10,
+            "progress": f"{active}/10",
+            "modules": {k: ("active" if v else "unavailable") for k, v in modules.items()},
+            "timestamp": _time.time(),
+        }

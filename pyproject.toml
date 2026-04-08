@@ -9,6 +9,8 @@ description = "Local-first LLM orchestration runtime with multi-model routing, a
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+	"networkx>=3.0,<4",
+	"numpy>=1.24,<3",
 	"psutil>=5.9,<8",
 	"pydantic>=2.12,<3",
 ]
@@ -19,6 +21,7 @@ redis = [
 ]
 dev = [
 	"build>=1.2,<2",
+	"pytest-asyncio>=0.21,<1",
 	"wheel>=0.45,<1",
 	"pip-tools>=7.5,<8",
 ]
