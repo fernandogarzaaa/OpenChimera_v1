@@ -1,15 +1,15 @@
 ---
 name: "swe-agent"
-description: Bridge skill for SWE-agent, an autonomous software engineering agent that resolves GitHub issues and performs code editing tasks using LLM-driven patch generation.
+description: Bridge skill for the local SWE-agent workspace mirrored under D:\openclaw\skills\SWE-agent. Use when the task benefits from SWE-agent style repo navigation, benchmark tasks, or autonomous software engineering workflows.
 ---
 
-# swe-agent
+# SWE-agent
 
 ## Description
-Bridge skill for SWE-agent, an autonomous AI agent for software engineering tasks including issue resolution, code editing, and patch generation.
+Bridge skill for the local SWE-agent workspace preserved under `D:\openclaw\skills\SWE-agent`.
 
 ## Source
-Upstream: `https://github.com/princeton-nlp/SWE-agent`
+Local mirror: `D:\openclaw\skills\SWE-agent`
 
 ## Usage
-Use when the task requires autonomous code repair, GitHub issue resolution, repository-level code editing, or SWE-bench-style problem solving.
+Use when the task benefits from SWE-agent style repo navigation, benchmark tasks, or autonomous software engineering workflows.

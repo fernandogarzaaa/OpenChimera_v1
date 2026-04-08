@@ -1,46 +1,54 @@
 # OpenChimera — Quick Start
 
-This guide shows what actually works when you clone the repo and install from source.
-Every command below runs without API keys, paid accounts, or external services.
+Get running in **three steps**. No Docker, no cloud accounts, no GPU required.
 
 ---
 
-## Requirements
+## Prerequisites
 
-- **Python 3.11 or later** (3.12+ recommended)
-- A terminal with internet access for initial `pip install`
-- That's it — no Docker, no cloud accounts, no GPU required for the basic runtime
+- **Python 3.11+** — [download here](https://www.python.org/downloads/) (check "Add Python to PATH" on Windows)
+- A terminal with internet access for the initial install
 
 ---
 
-## Five-minute setup
+## Setup (one command)
 
-```bash
-# 1. Clone and enter the repo
+### Windows (PowerShell)
+
+```powershell
 git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
 cd openchimera
+.\setup.ps1
+```
 
-# 2. Create a virtual environment and install
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+### macOS / Linux
 
-# 3. Install all production dependencies
-pip install -r requirements-prod.lock
+```bash
+git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
+cd openchimera
+bash setup.sh
+```
 
-# 4. Install OpenChimera in editable mode
-pip install -e .
+The setup script automatically creates a virtual environment, installs all
+dependencies, bootstraps workspace state, and runs diagnostics.
 
-# 5. Bootstrap missing local state (creates data/ dirs, seed JSON)
-openchimera bootstrap
+---
 
-# 6. Run the diagnostics check
-openchimera doctor
+## Start the server
 
-# 7. Start the runtime (Ctrl+C to stop)
+```bash
+# Activate the virtual environment (once per terminal session)
+# Windows:
+.venv\Scripts\Activate.ps1
+
+# macOS / Linux:
+source .venv/bin/activate
+
+# Start OpenChimera
 openchimera serve
 ```
 
-The server starts on `http://127.0.0.1:7870` by default (loopback only).
+Open **http://127.0.0.1:7870/docs** in your browser — you're done!
 
 ---
 
@@ -49,82 +57,78 @@ The server starts on `http://127.0.0.1:7870` by default (loopback only).
 From a second terminal (keep the server running):
 
 ```bash
-# Activate the same virtual environment
-source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
-
-# Health ping
 curl http://127.0.0.1:7870/health
-
-# Readiness breakdown
-curl http://127.0.0.1:7870/v1/system/readiness
-
-# OpenAPI contract
-curl http://127.0.0.1:7870/openapi.json | python -m json.tool | head -40
 ```
 
 Or via the CLI:
 
 ```bash
-openchimera status --json
+openchimera status
 ```
 
 ---
 
-## What runs out of the box
+## Optional: connect a local AI model
 
-| Feature | Works without config |
-|---|---|
-| `openchimera doctor` | Yes — checks config, not services |
-| `openchimera status` | Yes — local snapshot, no server needed |
-| `openchimera bootstrap` | Yes — creates missing dirs and state |
-| `openchimera capabilities` | Yes — shows locally detected tools/skills |
-| `openchimera serve` | Yes — API starts in degraded-but-alive mode |
-| `/health` + `/v1/system/readiness` | Yes |
-| `/openapi.json` + `/docs` | Yes |
-| Local query routing | Requires Ollama or a llama-server binary |
-| Cloud model routing | Requires provider API key in runtime profile |
-| MiniMind reasoning | Requires MiniMind weights |
-
----
-
-## Add a local model with Ollama
-
-If you have [Ollama](https://ollama.ai) installed:
+Install [Ollama](https://ollama.ai), then:
 
 ```bash
-ollama pull gemma3:4b        # or any model you prefer
-# Ollama runs at http://127.0.0.1:11434 automatically
-
-openchimera serve            # OpenChimera detects Ollama and routes to it
+ollama pull gemma3:4b
+# Restart openchimera serve — it auto-detects Ollama
 openchimera query --text "hello world"
 ```
 
 ---
 
+## Manual setup (advanced)
+
+If you prefer to run each step yourself instead of using the setup script:
+
+```bash
+git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
+cd openchimera
+
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+
+pip install -e .
+openchimera setup                  # bootstrap + diagnostics in one step
+openchimera serve
+```
+
+---
+
+## What works out of the box
+
+| Feature | Works without config |
+|---|---|
+| `openchimera serve` | Yes — API starts in degraded-but-alive mode |
+| `openchimera status` | Yes — local snapshot |
+| `openchimera doctor` | Yes — checks config health |
+| `openchimera capabilities` | Yes — shows detected tools/skills |
+| `/health` + `/docs` | Yes |
+| Local query routing | Requires Ollama or llama-server |
+| Cloud model routing | Requires provider API key |
+
+---
+
 ## Add a local override config
 
-Machine-specific settings go in a local-only file that is gitignored:
+Machine-specific settings go in a gitignored file:
 
 ```bash
 cp config/runtime_profile.local.example.json config/runtime_profile.local.json
 # Edit the copy — set llama_server_path, API keys, etc.
 ```
 
-The runtime merges this file on top of the committed defaults at startup.
-
 ---
 
 ## Running the tests
 
 ```bash
-# Install dev dependencies (includes pytest, coverage, pre-commit)
 pip install -r requirements-dev.txt
-
-# Run the full test suite (2467 tests, ~40 seconds)
 python -m pytest tests/ -q
 ```
-
-Expected output: **2467 passed, 2 skipped** in under one minute on any modern machine.
 
 ---
 

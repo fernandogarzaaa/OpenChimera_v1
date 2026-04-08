@@ -1,15 +1,16 @@
 ---
 name: "llamafactory"
-description: Bridge skill for LLaMA Factory, a unified fine-tuning framework supporting LoRA, QLoRA, full fine-tuning, and RLHF for large language models.
+description: Bridge skill for the local LlamaFactory workspace mirrored under D:\openclaw\skills\LlamaFactory. Use when the task involves local fine-tuning, data preparation, or training workflow design for GGUF or transformer models.
 ---
 
-# llamafactory
+# LlamaFactory
 
 ## Description
-Bridge skill for LLaMA Factory, a unified efficient fine-tuning framework for large language models.
+Bridge skill for the local LlamaFactory workspace preserved under `D:\openclaw\skills\LlamaFactory`.
 
 ## Source
-Upstream: `https://github.com/hiyouga/LLaMA-Factory`
+Local mirror: `D:\openclaw\skills\LlamaFactory`
+Upstream: `https://github.com/hiyouga/LlamaFactory`
 
 ## Usage
-Use when the task requires supervised fine-tuning, preference alignment (DPO/RLHF), LoRA/QLoRA adaptation, or training job management for local LLMs.
+Use when the task involves local fine-tuning, data preparation, or training workflow design for GGUF or transformer models.

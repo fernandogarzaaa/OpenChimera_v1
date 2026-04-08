@@ -1,15 +1,15 @@
 ---
 name: "astrbot"
-description: Bridge skill for AstrBot, a multi-platform AI chatbot framework supporting LLM integration, plugin extensibility, and conversational automation.
+description: Bridge skill for the local AstrBot workspace mirrored under skills/AstrBot. Use when OpenChimera needs to inspect or integrate the local AstrBot stack without copying the full external repository into this workspace.
 ---
 
-# astrbot
+# AstrBot
 
 ## Description
-Bridge skill for the AstrBot multi-platform AI chatbot framework.
+Bridge skill for the local AstrBot workspace preserved under `skills/AstrBot`.
 
 ## Source
-Upstream: `https://github.com/Soulter/AstrBot`
+Local mirror: `skills/AstrBot`
 
 ## Usage
-Use when the task requires multi-platform chatbot integration, LLM-backed conversational automation, or AstrBot plugin orchestration.
+Use when you want OpenChimera to inspect or integrate the local AstrBot stack without copying the full upstream repository into this workspace.

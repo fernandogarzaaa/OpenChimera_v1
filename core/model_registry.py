@@ -140,6 +140,35 @@ class ModelRegistry:
         return self.status().get("onboarding", {})
 
     def _detect_hardware(self) -> dict[str, Any]:
+        # Try real detection first; fall back to profile values
+        try:
+            from core.hardware_detector import detect_hardware
+            hw = detect_hardware()
+            # Persist detected values back to profile if they look valid
+            if hw.get("cpu_count", 0) > 0:
+                hardware_section = self.profile.setdefault("hardware", {})
+                hardware_section["cpu_count"] = hw["cpu_count"]
+                hardware_section["ram_gb"] = hw.get("ram_gb", 0.0)
+                gpu_detected = hw.get("gpu", {})
+                hardware_section["gpu"] = {
+                    "available": gpu_detected.get("available", False),
+                    "name": gpu_detected.get("name", ""),
+                    "vram_gb": gpu_detected.get("vram_gb", 0.0),
+                    "device_count": gpu_detected.get("device_count", 0),
+                }
+            return {
+                "cpu_count": hw.get("cpu_count", os.cpu_count() or 4),
+                "ram_gb": hw.get("ram_gb", 0.0),
+                "gpu": {
+                    "available": hw.get("gpu", {}).get("available", False),
+                    "name": hw.get("gpu", {}).get("name", "cpu-only"),
+                    "vram_gb": hw.get("gpu", {}).get("vram_gb", 0.0),
+                    "device_count": hw.get("gpu", {}).get("device_count", 0),
+                },
+            }
+        except Exception:
+            pass
+        # Fallback: read from profile
         hardware = self.profile.get("hardware", {})
         gpu = hardware.get("gpu", {}) if isinstance(hardware.get("gpu", {}), dict) else {}
         cpu_count = int(hardware.get("cpu_count") or (os.cpu_count() or 4))

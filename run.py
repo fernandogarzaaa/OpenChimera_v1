@@ -359,6 +359,9 @@ def _build_parser() -> argparse.ArgumentParser:
     skills_parser.add_argument("--discover", action="store_true", help="Discover available skills.")
     skills_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
+    setup_parser = subparsers.add_parser("setup", help="One-step first-time setup: bootstrap workspace, run diagnostics, and show next steps.")
+    setup_parser.add_argument("--skip-wizard", action="store_true", help="Skip the interactive wizard and just run bootstrap + doctor.")
+
     return parser
 
 
@@ -373,6 +376,54 @@ def _bootstrap_command(as_json: bool) -> int:
     print(f"Created directories: {len(payload['created_directories'])}")
     print(f"Created files: {len(payload['created_files'])}")
     print(f"Normalized files: {len(payload['normalized_files'])}")
+    return 0
+
+
+def _setup_command(skip_wizard: bool = False) -> int:
+    """One-step first-time setup: bootstrap + interactive wizard."""
+    print()
+    print("  OpenChimera Setup")
+    print("  " + "=" * 40)
+    print()
+
+    # Step 1: Bootstrap workspace
+    print("  Bootstrapping workspace...")
+    payload = bootstrap_workspace()
+    dirs_created = len(payload.get("created_directories", []))
+    files_created = len(payload.get("created_files", []))
+    if dirs_created or files_created:
+        print(f"  Created {dirs_created} directories and {files_created} files")
+    else:
+        print("  Workspace already configured")
+
+    # Step 2: Run doctor diagnostics
+    print("  Running diagnostics...")
+    try:
+        doctor_result = _doctor_payload()
+        checks = doctor_result.get("checks", {})
+        passed = sum(1 for v in checks.values() if v)
+        total = len(checks)
+        print(f"  {passed}/{total} checks passed")
+    except Exception:
+        print("  Diagnostics skipped (run 'openchimera doctor' manually)")
+
+    if skip_wizard:
+        print()
+        print("  Bootstrap complete. Run 'openchimera setup' without --skip-wizard")
+        print("  to configure hardware, models, and cloud providers interactively.")
+        print()
+        return 0
+
+    # Step 3: Interactive wizard
+    from core.setup_wizard import run_wizard
+
+    try:
+        run_wizard()
+    except KeyboardInterrupt:
+        print()
+        print("  Wizard cancelled. Run 'openchimera setup' to restart it.")
+        print()
+
     return 0
 
 
@@ -1979,6 +2030,8 @@ def main(argv: list[str] | None = None) -> int:
         return _serve_command(verbose=bool(getattr(args, "verbose", False)))
     if command == "bootstrap":
         return _bootstrap_command(as_json=bool(args.json))
+    if command == "setup":
+        return _setup_command(skip_wizard=bool(getattr(args, "skip_wizard", False)))
     if command == "status":
         return _status_command(as_json=bool(args.json))
     if command == "briefing":
