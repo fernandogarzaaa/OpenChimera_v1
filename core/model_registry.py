@@ -140,7 +140,28 @@ class ModelRegistry:
         return self.status().get("onboarding", {})
 
     def _detect_hardware(self) -> dict[str, Any]:
-        # Try real detection first; fall back to profile values
+        # If profile already has explicit hardware data, use it directly
+        # (this allows tests and manual config to override real detection)
+        profile_hw = self.profile.get("hardware", {})
+        if isinstance(profile_hw, dict) and profile_hw.get("cpu_count"):
+            gpu = profile_hw.get("gpu", {}) if isinstance(profile_hw.get("gpu", {}), dict) else {}
+            cpu_count = int(profile_hw.get("cpu_count") or (os.cpu_count() or 4))
+            ram_gb = float(profile_hw.get("ram_gb") or 0.0)
+            vram_gb = float(gpu.get("vram_gb") or 0.0)
+            gpu_name = str(gpu.get("name") or "unknown")
+            if vram_gb <= 0.0 and not gpu.get("available", False):
+                gpu_name = gpu_name if gpu_name != "unknown" else "cpu-only"
+            return {
+                "cpu_count": cpu_count,
+                "ram_gb": ram_gb,
+                "gpu": {
+                    "available": bool(gpu.get("available", vram_gb > 0.0)),
+                    "name": gpu_name,
+                    "vram_gb": vram_gb,
+                    "device_count": int(gpu.get("device_count", 0 if vram_gb <= 0.0 else 1)),
+                },
+            }
+        # Try real detection; fall back to defaults
         try:
             from core.hardware_detector import detect_hardware
             hw = detect_hardware()
@@ -168,23 +189,15 @@ class ModelRegistry:
             }
         except Exception:
             pass
-        # Fallback: read from profile
-        hardware = self.profile.get("hardware", {})
-        gpu = hardware.get("gpu", {}) if isinstance(hardware.get("gpu", {}), dict) else {}
-        cpu_count = int(hardware.get("cpu_count") or (os.cpu_count() or 4))
-        ram_gb = float(hardware.get("ram_gb") or 0.0)
-        vram_gb = float(gpu.get("vram_gb") or 0.0)
-        gpu_name = str(gpu.get("name") or "unknown")
-        if vram_gb <= 0.0:
-            gpu_name = "cpu-only"
+        # Final fallback: minimal defaults
         return {
-            "cpu_count": cpu_count,
-            "ram_gb": ram_gb,
+            "cpu_count": os.cpu_count() or 4,
+            "ram_gb": 0.0,
             "gpu": {
-                "available": bool(gpu.get("available", vram_gb > 0.0)),
-                "name": gpu_name,
-                "vram_gb": vram_gb,
-                "device_count": int(gpu.get("device_count", 0 if vram_gb <= 0.0 else 1)),
+                "available": False,
+                "name": "cpu-only",
+                "vram_gb": 0.0,
+                "device_count": 0,
             },
         }
 
