@@ -248,7 +248,7 @@ class ChimeraVM:
         iterable_val = self._eval(stmt.iterable)
         items = iterable_val.raw
         if not isinstance(items, list):
-            self._trace(f"[for] Warning: iterable '{stmt.iter_var}' is not a list, skipping loop")
+            self._trace(f"[for] Warning: iterable value is not a list (got {type(items).__name__!r}), skipping loop")
             return
         self._trace(f"[for] Iterating over {len(items)} items")
         for item in items:

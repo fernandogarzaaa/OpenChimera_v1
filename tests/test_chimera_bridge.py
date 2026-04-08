@@ -396,20 +396,19 @@ def test_for_loop_emits_each_element(bridge):
     assert raws == [10, 20, 30]
 
 
-FOR_LOOP_ACCUMULATE_SOURCE = """\
-val nums: List<Int> = [1, 2, 3, 4, 5]
-val total: Int = 0
-for n in nums
-  val total: Int = n
+FOR_LOOP_MULTI_SOURCE = """\
+val labels: List<Text> = ["a", "b", "c"]
+for item in labels
+  emit item
 end
-emit total
 """
 
 
 def test_for_loop_runs_without_error(bridge):
-    """for loop over valid list must not produce errors."""
-    result = bridge.run(FOR_LOOP_ACCUMULATE_SOURCE)
+    """for loop over a valid non-empty list must not produce errors."""
+    result = bridge.run(FOR_LOOP_MULTI_SOURCE)
     assert result["ok"] is True, f"for-loop failed: {result['errors']}"
+    assert len(result["emitted"]) == 3
 
 
 FOR_LOOP_NON_LIST_SOURCE = """\

@@ -646,8 +646,11 @@ class Parser:
                 pattern = self._parse_expr()
             self._expect(TokenKind.FAT_ARROW, "Expected '=>' after match pattern")
             self._skip_newlines()
-            # Each arm body is exactly one statement (the statement handles its
-            # own trailing newline consumption via _expect_line_end).
+            # Each arm body is exactly one statement. The statement handles its
+            # own trailing newline consumption via _expect_line_end, so the outer
+            # loop's skip_newlines correctly positions the parser at the next arm
+            # pattern or the closing 'end'. Multi-statement arms can be expressed
+            # by nesting an if/for/match block within a single arm.
             arm_body: list[Statement] = [self._parse_statement()]
             self._skip_newlines()
             arms.append(MatchArm(pattern=pattern, body=arm_body))
