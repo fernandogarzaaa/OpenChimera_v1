@@ -3,7 +3,7 @@
 Usage::
 
     from openchimera import cli
-    raise SystemExit(cli.main())
+    sys.exit(cli.main())
 """
 from __future__ import annotations
 
