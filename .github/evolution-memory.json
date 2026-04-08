@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "last_cycle_timestamp": 1775531596.8986673,
+  "last_cycle_timestamp": 1775618018.548842,
   "cycles": [
     {
       "cycle_id": 1,
@@ -10,6 +10,18 @@
       "sha": "bde17741",
       "engine_status": "ok",
       "report": "data/evolution_reports/cycle_0001.md",
+      "copilot_available": true,
+      "dpo_pairs": 0,
+      "adapter_id": null
+    },
+    {
+      "cycle_id": 2,
+      "timestamp": 1775618018.548842,
+      "iso_timestamp": "2026-04-08T03:13:38Z",
+      "run_id": "24115672117",
+      "sha": "bda091da",
+      "engine_status": "ok",
+      "report": "data/evolution_reports/cycle_0002.md",
       "copilot_available": true,
       "dpo_pairs": 0,
       "adapter_id": null
