@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine, List, Literal, Optional
@@ -12,8 +13,9 @@ AgentStatus = Literal["idle", "active", "done", "failed"]
 log = logging.getLogger(__name__)
 
 # Type alias for the optional real-LLM callback injected at runtime.
-# Signature: (messages, model, max_tokens, temperature) -> dict
-LLMCallback = Optional[Callable[..., dict[str, Any]]]
+# Supports both synchronous callbacks and async callbacks that return dicts.
+LLMResponse = dict[str, Any] | Coroutine[Any, Any, dict[str, Any]]
+LLMCallback = Optional[Callable[..., LLMResponse]]
 
 
 def _build_agent_prompt(role: str, description: str, capabilities: List[str], task: str, context: dict) -> list[dict[str, str]]:
@@ -91,18 +93,26 @@ class SwarmAgent:
             task=task,
             context=context,
         )
-        loop = asyncio.get_event_loop()
-        # The callback is synchronous; run it in the executor to stay non-blocking
-        completion = await loop.run_in_executor(
-            None,
-            lambda: self.llm_callback(  # type: ignore[misc]
-                messages=messages,
-                model="openchimera-local",
-                max_tokens=512,
-                temperature=0.7,
-                stream=False,
-            ),
-        )
+        callback = self.llm_callback
+        assert callback is not None
+        kwargs = {
+            "messages": messages,
+            "model": "openchimera-local",
+            "max_tokens": 512,
+            "temperature": 0.7,
+            "stream": False,
+        }
+
+        if inspect.iscoroutinefunction(callback):
+            completion = await callback(**kwargs)  # type: ignore[misc]
+        else:
+            loop = asyncio.get_event_loop()
+            # Synchronous callback — keep execute() non-blocking.
+            maybe_completion = await loop.run_in_executor(
+                None,
+                lambda: callback(**kwargs),  # type: ignore[misc]
+            )
+            completion = await maybe_completion if inspect.isawaitable(maybe_completion) else maybe_completion
         content = str(
             completion.get("choices", [{}])[0]
             .get("message", {})

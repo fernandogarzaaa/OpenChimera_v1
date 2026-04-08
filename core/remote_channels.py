@@ -163,7 +163,6 @@ class TelegramChannel(RemoteChannel):
             return
 
         try:
-            import telegram
             from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
         except ImportError:
             self._info.status = ChannelStatus.ERROR

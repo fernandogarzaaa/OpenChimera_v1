@@ -30,43 +30,43 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from core.quantum_engine import AgentReputation, ConsensusResult, QuantumEngine
+from core.quantum_engine import AgentReputation, QuantumEngine
 
 
 # ---------------------------------------------------------------------------
 # Simulated agent pool
 # ---------------------------------------------------------------------------
 
-async def _agent_consensus(task: str, context: dict) -> str:
+async def _agent_consensus(task: str, _context: dict) -> str:
     """Agent that always agrees with the expected answer."""
     await asyncio.sleep(0.01)
     return f"answer:{task}"
 
 
-async def _agent_fast(task: str, context: dict) -> str:
+async def _agent_fast(task: str, _context: dict) -> str:
     """Fast responding agent — low latency, same answer."""
     return f"answer:{task}"
 
 
-async def _agent_slow(task: str, context: dict) -> str:
+async def _agent_slow(task: str, _context: dict) -> str:
     """Slow agent — arrives after quorum may already be met."""
     await asyncio.sleep(0.15)
     return f"answer:{task}"
 
 
-async def _agent_wrong(task: str, context: dict) -> str:
+async def _agent_wrong(task: str, _context: dict) -> str:
     """Dissenting agent — returns a different answer."""
     await asyncio.sleep(0.02)
     return "WRONG_ANSWER"
 
 
-async def _agent_error(task: str, context: dict) -> str:
+async def _agent_error(task: str, _context: dict) -> str:
     """Unreliable agent — always raises an exception."""
     await asyncio.sleep(0.01)
     raise RuntimeError("Simulated agent failure")
 
 
-async def _agent_late_correct(task: str, context: dict) -> str:
+async def _agent_late_correct(task: str, _context: dict) -> str:
     """Late-arrival correct agent — should be included in final vote."""
     await asyncio.sleep(0.2)
     return f"answer:{task}"
@@ -243,6 +243,29 @@ async def scenario_partial_result_on_timeout() -> ScenarioResult:
         }
 
 
+async def scenario_late_arrival_consensus() -> ScenarioResult:
+    """Late correct vote should still produce the expected consensus answer."""
+    engine = QuantumEngine(quorum=3, early_exit_conf=0.99, hard_timeout_ms=1000)
+    task = "query_late_arrival"
+    result = await engine.gather(
+        task,
+        agents={
+            "agent-fast-1": _agent_fast,
+            "agent-fast-2": _agent_fast,
+            "agent-late-correct": _agent_late_correct,
+        },
+    )
+    success = result.answer == f"answer:{task}" and result.participating >= 3 and not result.partial
+    return {
+        "name": "late_arrival_consensus",
+        "passed": success,
+        "answer": result.answer,
+        "participating": result.participating,
+        "partial": result.partial,
+        "latency_ms": round(result.latency_ms, 1),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -254,6 +277,7 @@ SCENARIOS = [
     scenario_reputation_updates,
     scenario_early_exit,
     scenario_partial_result_on_timeout,
+    scenario_late_arrival_consensus,
 ]
 
 

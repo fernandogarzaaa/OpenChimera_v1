@@ -157,6 +157,15 @@ class TestConfounders:
         # No common parent
         assert len(confounders) == 0
 
+    def test_minimal_adjustment_sets(self, graph: CausalGraph):
+        graph.add_edge(_make_edge("Z1", "A"))
+        graph.add_edge(_make_edge("Z1", "B"))
+        graph.add_edge(_make_edge("Z2", "A"))
+        graph.add_edge(_make_edge("Z2", "B"))
+        sets = graph.minimal_adjustment_sets("A", "B")
+        assert ("Z1",) in sets
+        assert ("Z2",) in sets
+
 
 # ---------------------------------------------------------------------------
 # CausalReasoning — variable state
@@ -239,6 +248,20 @@ class TestInterventions:
         result = engine.intervene("vaccine", 1.0)
         # With PREVENTS, infection should decrease
         assert result is not None
+        assert result.affected_variables["infection"] < 0
+
+    def test_enables_edge_type_has_gated_effect(self, engine: CausalReasoning):
+        engine.add_cause("key", "door_open", EdgeType.ENABLES, strength=1.0)
+        engine.set_variable("key", 0.0)
+        result = engine.intervene("key", 1.0)
+        # ENABLES uses a smaller propagation multiplier than direct CAUSES.
+        assert result.affected_variables["door_open"] == pytest.approx(0.6, abs=1e-9)
+
+    def test_modulates_edge_type_scales_effect(self, engine: CausalReasoning):
+        engine.add_cause("dimmer", "brightness", EdgeType.MODULATES, strength=1.0)
+        engine.set_variable("dimmer", 0.0)
+        result = engine.intervene("dimmer", 1.0)
+        assert result.affected_variables["brightness"] == pytest.approx(0.8, abs=1e-9)
 
 
 # ---------------------------------------------------------------------------
@@ -332,6 +355,12 @@ class TestConfoundersViaEngine:
         engine.add_cause("Z", "Y", EdgeType.CAUSES, strength=0.5)
         confounders = engine.confounders_between("X", "Y")
         assert "Z" in confounders
+
+    def test_adjustment_sets_between(self, engine: CausalReasoning):
+        engine.add_cause("Z", "X", EdgeType.CAUSES, strength=0.5)
+        engine.add_cause("Z", "Y", EdgeType.CAUSES, strength=0.5)
+        adjustment_sets = engine.adjustment_sets_between("X", "Y")
+        assert ("Z",) in adjustment_sets
 
 
 # ---------------------------------------------------------------------------

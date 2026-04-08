@@ -6,12 +6,22 @@ consensus building, and integration with AscensionService output.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from core._bus_fallback import EventBus
 from core.deliberation import Contradiction, DeliberationGraph, Hypothesis
 
 logger = logging.getLogger(__name__)
+
+_DOMAIN_KEYWORD_GROUPS: tuple[set[str], ...] = (
+    {"monitoring", "telemetry", "signal", "signals", "metric", "metrics"},
+    {"risk", "failure", "incident", "anomaly", "degrade", "degradation"},
+    {"latency", "throughput", "capacity", "bottleneck", "hotspot"},
+    {"diagnosis", "triage", "mitigation", "containment", "recovery"},
+    {"tradeoff", "trade-offs", "constraint", "constraints", "optimize", "optimization"},
+)
+_TOKEN_RE = re.compile(r"[a-z0-9-]+")
 
 
 class DeliberationEngine:
@@ -79,19 +89,27 @@ class DeliberationEngine:
                     continue
 
                 jaccard = _jaccard_similarity(hyp_meta[i]["content"], hyp_meta[j]["content"])
+                coupling = _cross_domain_coupling_score(
+                    hyp_meta[i]["content"],
+                    hyp_meta[j]["content"],
+                    hyp_meta[i]["perspective"],
+                    hyp_meta[j]["perspective"],
+                )
+                effective_similarity = max(jaccard, coupling)
 
-                if jaccard < 0.15:
-                    severity = 1.0 - jaccard
+                if effective_similarity < 0.15:
+                    severity = 1.0 - effective_similarity
                     self._graph.add_contradiction(
                         hyp_meta[i]["id"],
                         hyp_meta[j]["id"],
-                        reason=f"Low overlap (jaccard={jaccard:.3f}) between "
+                        reason=f"Low overlap (jaccard={jaccard:.3f}, coupling={coupling:.3f}) between "
                         f"'{hyp_meta[i]['perspective']}' and '{hyp_meta[j]['perspective']}'",
                         severity=severity,
                     )
-                elif jaccard > 0.5:
-                    self._graph.add_support(hyp_meta[i]["id"], hyp_meta[j]["id"], weight=jaccard)
-                    self._graph.add_support(hyp_meta[j]["id"], hyp_meta[i]["id"], weight=jaccard)
+                elif jaccard > 0.5 or coupling >= 0.35:
+                    support_weight = max(jaccard, min(0.8, coupling + 0.2))
+                    self._graph.add_support(hyp_meta[i]["id"], hyp_meta[j]["id"], weight=support_weight)
+                    self._graph.add_support(hyp_meta[j]["id"], hyp_meta[i]["id"], weight=support_weight)
 
         # --- Phase 3: consensus ---
         consensus_result = self._graph.max_flow_consensus()
@@ -177,8 +195,8 @@ def _jaccard_similarity(text_a: str, text_b: str) -> float:
 
     Returns a float in [0.0, 1.0].  Returns 0.0 when both texts are empty.
     """
-    words_a = set(text_a.lower().split())
-    words_b = set(text_b.lower().split())
+    words_a = _tokenize_text(text_a)
+    words_b = _tokenize_text(text_b)
     if not words_a and not words_b:
         return 1.0
     if not words_a or not words_b:
@@ -186,6 +204,61 @@ def _jaccard_similarity(text_a: str, text_b: str) -> float:
     intersection = words_a & words_b
     union = words_a | words_b
     return len(intersection) / len(union)
+
+
+def _cross_domain_coupling_score(
+    text_a: str,
+    text_b: str,
+    perspective_a: str,
+    perspective_b: str,
+) -> float:
+    """Estimate conceptual coupling when lexical overlap is low.
+
+    This intentionally stays lightweight and deterministic: it uses
+    pre-defined conceptual keyword groups and perspective token overlap.
+    Returns a score in [0.0, 1.0].
+    """
+    words_a = _tokenize_text(text_a)
+    words_b = _tokenize_text(text_b)
+    if not words_a or not words_b:
+        return 0.0
+
+    shared_groups = 0
+    for group in _DOMAIN_KEYWORD_GROUPS:
+        if words_a.intersection(group) and words_b.intersection(group):
+            shared_groups += 1
+
+    perspective_tokens_a = set(perspective_a.lower().replace("-", " ").split())
+    perspective_tokens_b = set(perspective_b.lower().replace("-", " ").split())
+    perspective_overlap = len(perspective_tokens_a & perspective_tokens_b) / max(
+        1, len(perspective_tokens_a | perspective_tokens_b)
+    )
+
+    # Blend conceptual-group matches with weak perspective similarity.
+    group_score = min(1.0, shared_groups / max(1, len(_DOMAIN_KEYWORD_GROUPS) // 2))
+    return min(1.0, (0.85 * group_score) + (0.15 * perspective_overlap))
+
+
+def _tokenize_text(text: str) -> set[str]:
+    """Tokenize text conservatively for stable similarity comparisons."""
+    tokens: set[str] = set()
+    for raw in _TOKEN_RE.findall(text.lower()):
+        token = raw.strip("-")
+        if not token:
+            continue
+        # Lightweight normalization to reduce brittle lexical mismatches.
+        if len(token) > 4 and token.endswith("ing"):
+            token = token[:-3]
+        elif len(token) > 3 and token.endswith("ed"):
+            token = token[:-2]
+            if token.endswith("at"):
+                token = f"{token}e"
+        elif len(token) > 4 and token.endswith("ly"):
+            token = token[:-2]
+        elif len(token) > 3 and token.endswith("s"):
+            token = token[:-1]
+        tokens.add(token)
+    return tokens
 
 
 def enhance_ascension_deliberation(

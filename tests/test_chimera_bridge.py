@@ -166,6 +166,9 @@ def test_prove_integrity_structure(bridge):
     assert "assertions" in proof
     assert "hallucination" in proof
     assert proof["chain"]["valid"] is True
+    assert "proof_chain" in result
+    assert result["proof_chain"]["verified"] is True
+    assert "preview" in result["proof_chain"]
 
 
 # ---------------------------------------------------------------------------

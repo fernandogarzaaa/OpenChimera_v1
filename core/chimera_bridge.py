@@ -215,6 +215,17 @@ class ChimeraLangBridge:
 
         engine = IntegrityEngine()
         report = engine.certify(exec_result, detection, source)
+        chain_links = report.reasoning_chain.links
+        chain_preview = [
+            {
+                "index": link.index,
+                "entry": link.entry,
+                "hash": link.hash,
+                "prev_hash": link.prev_hash,
+            }
+            for link in chain_links[:5]
+        ]
+        chain_verified = ChainBuilder.verify(report.reasoning_chain)
 
         run_summary = {
             "ok": len(exec_result.errors) == 0,
@@ -230,6 +241,12 @@ class ChimeraLangBridge:
             "verdict": report.verdict,
             "run": run_summary,
             "proof": report.to_dict(),
+            "proof_chain": {
+                "verified": chain_verified,
+                "length": report.reasoning_chain.length,
+                "root_hash": report.reasoning_chain.root_hash,
+                "preview": chain_preview,
+            },
             "hallucination": _detection_report_to_dict(detection),
         }
 

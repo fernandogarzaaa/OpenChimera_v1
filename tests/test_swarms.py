@@ -295,6 +295,18 @@ class TestSwarmAgentLLMCallback:
         assert result == "Real LLM response here"
         assert agent.status == "done"
 
+    def test_async_llm_callback_invoked_when_bound(self):
+        async def async_callback(messages, model="openchimera-local", max_tokens=512, temperature=0.7, stream=False):
+            return {
+                "choices": [{"message": {"content": "Async LLM response"}}],
+                "model": model,
+            }
+
+        agent = SwarmAgent(agent_id="b-async", role="Expert", description="test", llm_callback=async_callback)
+        result = asyncio.run(agent.execute("answer this question", {}))
+        assert result == "Async LLM response"
+        assert agent.status == "done"
+
     def test_llm_callback_failure_sets_failed_status_returns_error_string(self):
         def bad_callback(**kwargs):
             raise RuntimeError("model offline")

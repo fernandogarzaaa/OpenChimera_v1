@@ -1119,10 +1119,6 @@ def _backup_command(action: str, file: str, as_json: bool) -> int:
     return 0
 
 
-def _validate_payload(test_pattern: str | None = None) -> dict[str, Any]:
-    return _validate_payload_with_options(test_pattern=test_pattern, stream_output=False)
-
-
 def _parse_unittest_summary_counts(fragment: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for item in str(fragment or "").split(","):
@@ -1799,7 +1795,6 @@ def _plugins_command(install_id: str, uninstall_id: str, as_json: bool, load_pat
         # Load a plugin from a manifest path via the capability plane
         from core.capability_plane import CapabilityPlane
         from core.bus import EventBus
-        from core.capabilities import CapabilityRegistry
         bus = EventBus()
         # Minimal stub for plugin loading — capability plane is self-contained
         class _StubPlugins:

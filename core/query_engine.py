@@ -501,6 +501,8 @@ class QueryEngine:
         # Load the SKILL.md content from the skill's registered path
         try:
             skill_path = Path(str(best_skill.get("path", "")))
+            if not skill_path.is_absolute():
+                skill_path = self._skills_root / skill_path
             if skill_path.exists():
                 content = skill_path.read_text(encoding="utf-8", errors="ignore")
                 # Strip YAML frontmatter (--- ... ---) if present

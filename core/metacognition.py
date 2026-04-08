@@ -68,7 +68,13 @@ class MetacognitionEngine:
             outcome = ep.get("outcome")
             if conf is None or outcome is None:
                 continue
-            conf = float(conf)
+            try:
+                conf = float(conf)
+            except (TypeError, ValueError):
+                # Fault-injected/non-numeric confidence payloads are ignored.
+                continue
+            if not math.isfinite(conf):
+                continue
             conf = max(0.0, min(1.0, conf))
             actual = 1.0 if outcome == "success" else 0.0
             pairs.append((conf, actual))
@@ -378,7 +384,14 @@ class MetacognitionEngine:
         Publishes a ``metacognition.threshold.adapted`` event and returns the
         updated thresholds dict.
         """
-        ece = float(ece_result.get("ece", 0.0))
+        try:
+            ece = float(ece_result.get("ece", 0.0))
+        except (TypeError, ValueError):
+            log.warning("Invalid ECE payload for threshold adaptation: %r", ece_result.get("ece"))
+            ece = 0.1
+        if not math.isfinite(ece):
+            log.warning("Non-finite ECE payload for threshold adaptation: %r", ece_result.get("ece"))
+            ece = 0.1
         with self._lock:
             current = self._thresholds.get("confidence_threshold", 0.7)
             if ece > 0.2:

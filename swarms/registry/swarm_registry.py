@@ -52,10 +52,8 @@ class SwarmRegistry:
         Return the swarm_name whose pattern first matches *objective*.
         Falls back to ``"god_swarm"`` when no pattern matches.
         """
-        for pattern, swarm_name, _ in self._patterns:
-            if pattern.search(objective):
-                return swarm_name
-        return _DEFAULT_SWARM
+        # Keep resolve_all as the single matching path to avoid divergence.
+        return self.resolve_all(objective)[0]
 
     def resolve_all(self, objective: str) -> List[str]:
         """Return all matching swarm names (may be empty → caller uses default)."""

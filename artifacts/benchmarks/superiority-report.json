@@ -1,0 +1,70 @@
+{
+  "generated_at": "2026-04-09T04:06:39",
+  "results": {
+    "capability": [
+      {
+        "test": "tests/benchmarks/test_capability_regression.py",
+        "ok": true,
+        "returncode": 0,
+        "duration_seconds": 5.6205,
+        "stdout": ".                                                                        [100%]\n1 passed in 1.08s\n",
+        "stderr": ""
+      }
+    ],
+    "reliability": [
+      {
+        "test": "tests/benchmarks/test_reliability_regression.py",
+        "ok": true,
+        "returncode": 0,
+        "duration_seconds": 6.2317,
+        "stdout": ".....                                                                    [100%]\n5 passed in 0.84s\n",
+        "stderr": ""
+      }
+    ],
+    "autonomy": [
+      {
+        "test": "tests/benchmarks/test_autonomy_regression.py",
+        "ok": true,
+        "returncode": 0,
+        "duration_seconds": 9.5618,
+        "stdout": "...                                                                      [100%]\n3 passed in 2.71s\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "scorecard": {
+    "overall_ok": true,
+    "axes": {
+      "capability": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "thresholds": {
+          "pass_rate_min": 0.95
+        },
+        "meets_threshold": true
+      },
+      "reliability": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "thresholds": {
+          "pass_rate_min": 0.98
+        },
+        "meets_threshold": true
+      },
+      "autonomy": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "thresholds": {
+          "pass_rate_min": 0.95
+        },
+        "meets_threshold": true
+      }
+    }
+  }
+}

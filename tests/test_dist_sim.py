@@ -10,8 +10,14 @@ import unittest
 from typing import Any
 
 from core.quantum_engine import ConsensusResult, QuantumEngine
-from dist_sim import SimCluster, SimNode, run_sim_scenario
-from dist_sim.harness import run_concurrent_scenario
+from dist_sim import (
+    SimCluster,
+    SimNode,
+    run_all_cognitive,
+    run_all_extended,
+    run_concurrent_scenario,
+    run_sim_scenario,
+)
 from dist_sim.scenarios import (
     scenario_cascading_failure,
     scenario_consensus_recovery,
@@ -249,6 +255,17 @@ class TestHarness(unittest.TestCase):
         result_entry = summary["results"][0]
         self.assertEqual(result_entry["answer"], "answer:query_alpha")
         self.assertGreater(result_entry["confidence"], 0.6)
+
+
+# ---------------------------------------------------------------------------
+# dist_sim package wiring tests
+# ---------------------------------------------------------------------------
+
+class TestDistSimPackageWiring(unittest.TestCase):
+    def test_top_level_exports_include_extended_runners(self):
+        self.assertTrue(callable(run_all_extended))
+        self.assertTrue(callable(run_all_cognitive))
+        self.assertTrue(callable(run_concurrent_scenario))
 
 
 # ---------------------------------------------------------------------------

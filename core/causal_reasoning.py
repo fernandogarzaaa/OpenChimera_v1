@@ -254,6 +254,33 @@ class CausalGraph:
             common.discard(var_b)
             return sorted(common)
 
+    def minimal_adjustment_sets(
+        self,
+        var_a: str,
+        var_b: str,
+        *,
+        max_set_size: int = 3,
+    ) -> List[Tuple[str, ...]]:
+        """Return candidate minimal back-door adjustment sets for var_a/var_b."""
+        with self._lock:
+            confounders = self.find_confounders(var_a, var_b)
+            if not confounders:
+                return []
+
+            unique_confounders: FrozenSet[str] = frozenset(confounders)
+            if max_set_size < 1:
+                max_set_size = 1
+            capped_size = min(max_set_size, len(unique_confounders))
+
+            adjustment_sets: List[Tuple[str, ...]] = []
+            for size in range(1, capped_size + 1):
+                for combo in itertools.combinations(sorted(unique_confounders), size):
+                    adjustment_sets.append(combo)
+                if adjustment_sets:
+                    # Smallest-sized valid sets are considered minimal.
+                    break
+            return adjustment_sets
+
     def _find_ancestors(self, var: str) -> Set[str]:
         """Find all ancestors (upstream causes) of a variable."""
         ancestors: Set[str] = set()
@@ -436,7 +463,7 @@ class CausalReasoning:
 
         # Start with direct effects of the intervened variable
         for edge in self._graph.get_effects(variable):
-            queue.append((edge.effect, intervention_delta * edge.strength, 1))
+            queue.append((edge.effect, self._edge_effect(edge, intervention_delta), 1))
 
         total_effect = 0.0
         paths_used = 0
@@ -462,7 +489,7 @@ class CausalReasoning:
                 if downstream_edge.effect not in visited or depth + 1 <= max_depth:
                     queue.append((
                         downstream_edge.effect,
-                        effect_size * downstream_edge.strength,
+                        self._edge_effect(downstream_edge, effect_size),
                         depth + 1,
                     ))
 
@@ -623,6 +650,16 @@ class CausalReasoning:
         """Find potential confounders between two variables."""
         return self._graph.find_confounders(var_a, var_b)
 
+    def adjustment_sets_between(
+        self,
+        var_a: str,
+        var_b: str,
+        *,
+        max_set_size: int = 3,
+    ) -> List[Tuple[str, ...]]:
+        """Return minimal adjustment-set candidates between two variables."""
+        return self._graph.minimal_adjustment_sets(var_a, var_b, max_set_size=max_set_size)
+
     # ------------------------------------------------------------------
     # Phase 5 — symbolic counterfactual delegation
     # ------------------------------------------------------------------
@@ -774,6 +811,24 @@ class CausalReasoning:
         if std_x == 0.0 or std_y == 0.0:
             return 0.0
         return cov / (std_x * std_y)
+
+    @staticmethod
+    def _edge_effect(edge: CausalEdge, incoming_delta: float) -> float:
+        """Translate edge semantics into propagated effect size.
+
+        Edge types are intentionally interpreted with conservative multipliers so
+        symbolic edge labels influence behavior without destabilizing propagation.
+        """
+        base = incoming_delta * edge.strength
+        if edge.edge_type == EdgeType.PREVENTS:
+            return -abs(base)
+        if edge.edge_type == EdgeType.ENABLES:
+            # Enabling relationships tend to gate outcomes rather than fully cause them.
+            return base * 0.6
+        if edge.edge_type == EdgeType.MODULATES:
+            # Modulation adjusts downstream effect strength without flipping direction.
+            return base * 0.8
+        return base
 
 
 # ---------------------------------------------------------------------------

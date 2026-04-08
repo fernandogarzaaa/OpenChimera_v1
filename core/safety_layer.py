@@ -59,6 +59,9 @@ class SafetyLayer:
             if not self._enabled:
                 self._allowed_count += 1
                 return True, None
+            if not isinstance(content, str):
+                self._blocked_count += 1
+                return False, "Content must be a string"
             
             content_lower = content.lower()
             
@@ -96,12 +99,25 @@ class SafetyLayer:
             if not self._enabled:
                 self._allowed_count += 1
                 return True, None
+            if not isinstance(parameters, dict):
+                self._blocked_count += 1
+                return False, "Action parameters must be a mapping"
             
             # Check if action is dangerous
             if action in self._DANGEROUS_ACTIONS:
                 # Require admin context for dangerous actions
                 ctx = context or {}
                 user_role = ctx.get("user_role", "user")
+                auth_verified = ctx.get("auth_verified")
+                if user_role == "admin" and auth_verified is False:
+                    self._blocked_count += 1
+                    if self._bus:
+                        self._bus.publish_nowait("safety/action_blocked", {
+                            "action": action,
+                            "user_role": user_role,
+                            "reason": "contradictory_context",
+                        })
+                    return False, "Contradictory admin context: unverified admin state"
                 if user_role != "admin":
                     self._blocked_count += 1
                     if self._bus:

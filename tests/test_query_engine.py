@@ -495,3 +495,37 @@ class TestSkillPromptSelection(unittest.TestCase):
             self.assertIn("response", result)
         finally:
             os.unlink(skill_path)
+
+    def test_matching_skill_uses_relative_path_from_skills_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            skill_file = root / "skills" / "security" / "SKILL.md"
+            skill_file.parent.mkdir(parents=True, exist_ok=True)
+            skill_file.write_text("You are a security specialist.", encoding="utf-8")
+
+            db = _mock_db()
+            roles = _mock_roles()
+            registry = MagicMock()
+            registry.list_kind.return_value = [
+                {
+                    "id": "security-auditor",
+                    "name": "Security Auditor",
+                    "description": "ISO 27001 information security auditor",
+                    "category": "test",
+                    "path": "skills/security/SKILL.md",
+                }
+            ]
+            completion = MagicMock(return_value={"choices": [{"message": {"content": "ok"}}]})
+            engine = QueryEngine(
+                capability_registry=registry,
+                model_roles=roles,
+                tool_registry=None,
+                completion_callback=completion,
+                database=db,
+                skills_root=root,
+            )
+
+            result = engine._select_skill_prompt("iso 27001 security audit information")
+            self.assertIsInstance(result, str)
+            assert result is not None
+            self.assertIn("security specialist", result.lower())

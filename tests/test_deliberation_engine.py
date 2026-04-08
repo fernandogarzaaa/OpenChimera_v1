@@ -6,6 +6,7 @@ from core._bus_fallback import EventBus
 from core.deliberation import Contradiction, DeliberationGraph, Hypothesis
 from core.deliberation_engine import (
     DeliberationEngine,
+    _cross_domain_coupling_score,
     _jaccard_similarity,
     enhance_ascension_deliberation,
 )
@@ -265,6 +266,24 @@ class TestJaccardSimilarity(unittest.TestCase):
         # "a b c" vs "a b c d" → 3/4
         self.assertAlmostEqual(_jaccard_similarity("a b c", "a b c d"), 0.75)
 
+    def test_handles_punctuation_and_inflection(self) -> None:
+        left = "monitoring, controls mitigated incidents quickly"
+        right = "monitor control mitigate incident quick response"
+        self.assertGreater(_jaccard_similarity(left, right), 0.5)
+
+
+class TestCrossDomainCoupling(unittest.TestCase):
+    """Conceptual coupling helper used for cross-domain support."""
+
+    def test_returns_zero_for_empty_inputs(self) -> None:
+        self.assertEqual(_cross_domain_coupling_score("", "triage signal", "a", "b"), 0.0)
+
+    def test_detects_shared_concept_groups(self) -> None:
+        text_a = "triage anomaly using telemetry signal and mitigation plan"
+        text_b = "diagnosis of incident from monitoring metrics for recovery"
+        score = _cross_domain_coupling_score(text_a, text_b, "ops", "security")
+        self.assertGreaterEqual(score, 0.35)
+
 
 # ===================================================================
 # DeliberationEngine tests
@@ -339,6 +358,23 @@ class TestDeliberationEngineDeliberate(unittest.TestCase):
         short_conf = r_short["hypotheses"][0]["hypothesis"].confidence
         long_conf = r_long["hypotheses"][0]["hypothesis"].confidence
         self.assertGreater(long_conf, short_conf)
+
+    def test_deliberate_cross_domain_coupling_creates_support(self) -> None:
+        perspectives = _make_perspectives([
+            (
+                "clinical-ops",
+                "triage anomaly from telemetry signal and apply mitigation",
+            ),
+            (
+                "site-reliability",
+                "diagnosis of incident via monitoring metrics then recovery",
+            ),
+        ])
+        result = self.engine.deliberate("handle unknown outage pattern", perspectives)
+        self.assertEqual(len(result["hypotheses"]), 2)
+        self.assertEqual(len(result["contradictions"]), 0)
+        # Coupling should create at least one support edge and non-zero graph density.
+        self.assertGreater(result["graph_summary"]["graph_density"], 0.0)
 
 
 class TestDeliberationEngineResolve(unittest.TestCase):

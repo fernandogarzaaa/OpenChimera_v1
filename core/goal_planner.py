@@ -156,6 +156,10 @@ class GoalPlanner:
         self._db = db
         self._bus = bus
         self._strategy_learner = DecompositionStrategyLearner()
+        self._intervention_events: list[dict[str, Any]] = []
+        self._intervention_lock = threading.Lock()
+        self._intervention_events: list[dict[str, Any]] = []
+        self._intervention_lock = threading.Lock()
 
     # ========== CRUD Operations ==========
 
@@ -893,6 +897,249 @@ class GoalPlanner:
                 log.warning("auto_decompose: failed to create subgoal '%s': %s", part, exc)
 
         return created_ids
+
+    def plan_long_horizon(
+        self,
+        goal_id: str,
+        horizon: int = 2,
+        max_subgoals_per_level: int = 4,
+    ) -> dict[str, Any]:
+        """Expand a goal tree for multiple levels with bounded breadth.
+
+        Prefers learned strategies for the root domain, then falls back to
+        lightweight description splitting for deeper levels.
+        """
+        root = self.get_goal(goal_id)
+        if root is None:
+            return {
+                "status": "error",
+                "goal_id": goal_id,
+                "error": "Goal not found",
+                "created_goal_ids": [],
+                "created_count": 0,
+                "levels_expanded": 0,
+            }
+
+        queue: list[tuple[str, int]] = [(goal_id, 0)]
+        created_goal_ids: list[str] = []
+        expanded_levels: set[int] = set()
+
+        while queue:
+            current_id, level = queue.pop(0)
+            if level >= max(horizon, 0):
+                continue
+            current = self.get_goal(current_id)
+            if current is None:
+                continue
+
+            suggested = self.suggest_decomposition(current.domain) or []
+            if suggested:
+                subtask_descriptions = suggested[: max(1, max_subgoals_per_level)]
+                children = self.decompose(current_id, subtask_descriptions)
+                child_ids = [child.id for child in children]
+            else:
+                child_ids = self.auto_decompose(
+                    current_id,
+                    max_subgoals=max(1, max_subgoals_per_level),
+                )
+
+            if not child_ids:
+                continue
+
+            expanded_levels.add(level + 1)
+            created_goal_ids.extend(child_ids)
+            for child_id in child_ids:
+                queue.append((child_id, level + 1))
+
+        return {
+            "status": "ok",
+            "goal_id": goal_id,
+            "created_goal_ids": created_goal_ids,
+            "created_count": len(created_goal_ids),
+            "levels_expanded": len(expanded_levels),
+        }
+
+    def replan_goal(self, goal_id: str, failure_reason: str = "") -> dict[str, Any]:
+        """Create a lightweight autonomous replan for failed or blocked goals."""
+        goal = self.get_goal(goal_id)
+        if goal is None:
+            return {"status": "error", "goal_id": goal_id, "error": "Goal not found"}
+
+        if goal.status in (GoalStatus.FAILED, GoalStatus.BLOCKED):
+            self.update_goal(goal_id, status=GoalStatus.PENDING)
+
+        planned_steps = self.suggest_decomposition(goal.domain) or [
+            "analyze failure",
+            "retry execution",
+            "validate output",
+        ]
+        planned_steps = planned_steps[:3]
+        subgoals = self.decompose(goal_id, planned_steps)
+        subgoal_ids = [g.id for g in subgoals]
+
+        if not subgoal_ids:
+            subgoal_ids = self.auto_decompose(goal_id, max_subgoals=3)
+
+        autonomous = bool(subgoal_ids)
+        self.record_intervention(
+            goal_id,
+            required=not autonomous,
+            reason=failure_reason or ("auto-replan" if autonomous else "manual-replan-required"),
+        )
+
+        return {
+            "status": "replanned" if autonomous else "needs_intervention",
+            "goal_id": goal_id,
+            "subgoal_ids": subgoal_ids,
+            "failure_reason": failure_reason,
+        }
+
+    def record_intervention(self, goal_id: str, *, required: bool, reason: str = "") -> None:
+        """Record whether a step required human intervention."""
+        event = {
+            "goal_id": goal_id,
+            "required": bool(required),
+            "reason": reason,
+            "recorded_at": time.time(),
+        }
+        with self._intervention_lock:
+            self._intervention_events.append(event)
+
+    def intervention_minimization_metrics(self, limit: int | None = None) -> dict[str, Any]:
+        """Return intervention minimization metrics for recent events."""
+        with self._intervention_lock:
+            events = list(self._intervention_events)
+        if limit is not None and limit > 0:
+            events = events[-limit:]
+
+        total_events = len(events)
+        required_interventions = sum(1 for event in events if bool(event.get("required")))
+        avoided_interventions = total_events - required_interventions
+        avoidance_rate = (
+            avoided_interventions / total_events if total_events > 0 else 0.0
+        )
+        return {
+            "total_events": total_events,
+            "required_interventions": required_interventions,
+            "avoided_interventions": avoided_interventions,
+            "intervention_avoidance_rate": avoidance_rate,
+        }
+
+    def plan_long_horizon(
+        self,
+        goal_id: str,
+        horizon: int = 2,
+        max_subgoals_per_level: int = 5,
+    ) -> dict[str, Any]:
+        """Expand a goal tree level-by-level using lightweight auto decomposition.
+
+        The planner only expands leaf goals at each horizon step and respects each
+        goal's ``max_depth`` via ``auto_decompose``/``create_goal`` safeguards.
+        """
+        root = self.get_goal(goal_id)
+        if root is None:
+            return {
+                "status": "error",
+                "goal_id": goal_id,
+                "error": "Goal not found",
+                "created_count": 0,
+                "levels_expanded": 0,
+                "created_goal_ids": [],
+            }
+
+        levels = max(0, int(horizon))
+        max_subgoals = max(1, int(max_subgoals_per_level))
+        frontier = [goal_id]
+        created_goal_ids: list[str] = []
+        levels_expanded = 0
+
+        for _ in range(levels):
+            next_frontier: list[str] = []
+            level_created = 0
+            for current_goal_id in frontier:
+                child_ids = self.auto_decompose(current_goal_id, max_subgoals=max_subgoals)
+                if not child_ids:
+                    continue
+                created_goal_ids.extend(child_ids)
+                next_frontier.extend(child_ids)
+                level_created += len(child_ids)
+            if level_created == 0:
+                break
+            levels_expanded += 1
+            frontier = next_frontier
+
+        return {
+            "status": "ok",
+            "goal_id": goal_id,
+            "created_count": len(created_goal_ids),
+            "levels_expanded": levels_expanded,
+            "created_goal_ids": created_goal_ids,
+        }
+
+    def replan_goal(self, goal_id: str, failure_reason: str = "") -> dict[str, Any]:
+        """Replan a failed/stalled goal by generating fallback subgoals.
+
+        Replanning prefers learned decomposition strategies for the goal domain.
+        If no learned strategy exists, it falls back to a compact, deterministic
+        heuristic sequence that keeps manual intervention low.
+        """
+        goal = self.get_goal(goal_id)
+        if goal is None:
+            return {"status": "error", "goal_id": goal_id, "error": "Goal not found", "subgoal_ids": []}
+
+        learned_steps = self.suggest_decomposition(goal.domain or "general")
+        if learned_steps:
+            subtask_descriptions = learned_steps
+        else:
+            reason = (failure_reason or "").strip()
+            subtask_descriptions = [
+                f"triage failure signals for: {goal.description}",
+                "retry execution with conservative fallback settings",
+                "validate output and close remaining gaps",
+            ]
+            if reason:
+                subtask_descriptions[0] = f"triage failure ({reason}) for: {goal.description}"
+
+        subtasks = self.decompose(goal_id, subtask_descriptions, domain=goal.domain)
+        subgoal_ids = [item.id for item in subtasks]
+
+        # Mark as active to reflect autonomous recovery attempt.
+        self.update_goal(goal_id, status=GoalStatus.ACTIVE, result=None)
+        self.record_intervention(goal_id, required=False, reason="auto-replan")
+
+        return {
+            "status": "replanned",
+            "goal_id": goal_id,
+            "subgoal_ids": subgoal_ids,
+            "strategy_source": "learned" if learned_steps else "heuristic",
+        }
+
+    def record_intervention(self, goal_id: str, required: bool, reason: str = "") -> dict[str, Any]:
+        """Record whether a goal step needed operator intervention."""
+        event = {
+            "goal_id": goal_id,
+            "required": bool(required),
+            "reason": str(reason or ""),
+            "recorded_at": time.time(),
+        }
+        with self._intervention_lock:
+            self._intervention_events.append(event)
+        return event
+
+    def intervention_minimization_metrics(self) -> dict[str, Any]:
+        """Return aggregate intervention and avoidance metrics."""
+        with self._intervention_lock:
+            events = list(self._intervention_events)
+        total = len(events)
+        required = sum(1 for item in events if bool(item.get("required")))
+        avoided = total - required
+        avoidance_rate = (avoided / total) if total else 1.0
+        return {
+            "total_events": total,
+            "required_interventions": required,
+            "avoided_interventions": avoided,
+            "intervention_avoidance_rate": avoidance_rate,
+        }
 
     # ========== Introspection ==========
 
