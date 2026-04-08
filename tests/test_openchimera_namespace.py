@@ -95,9 +95,11 @@ class TestOpenChimeraNamespace(unittest.TestCase):
         self.assertIs(ChimeraLangBridge, CoreCLB)
 
     def test_api_server_reexport(self):
-        from openchimera.api_server import OpenChimeraAPIServer
+        from openchimera.api_server import OpenChimeraAPIServer, RequestValidationFailure
         from core.api_server import OpenChimeraAPIServer as CoreAPI
+        from core.api_server import RequestValidationFailure as CoreRVF
         self.assertIs(OpenChimeraAPIServer, CoreAPI)
+        self.assertIs(RequestValidationFailure, CoreRVF)
 
     def test_cli_reexport(self):
         from openchimera.cli import main
