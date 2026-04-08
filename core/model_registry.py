@@ -143,7 +143,7 @@ class ModelRegistry:
         # If profile already has explicit hardware data, use it directly
         # (this allows tests and manual config to override real detection)
         profile_hw = self.profile.get("hardware", {})
-        if isinstance(profile_hw, dict) and profile_hw.get("cpu_count"):
+        if isinstance(profile_hw, dict) and profile_hw.get("cpu_count") is not None:
             gpu = profile_hw.get("gpu", {}) if isinstance(profile_hw.get("gpu", {}), dict) else {}
             cpu_count = int(profile_hw.get("cpu_count") or (os.cpu_count() or 4))
             ram_gb = float(profile_hw.get("ram_gb") or 0.0)
