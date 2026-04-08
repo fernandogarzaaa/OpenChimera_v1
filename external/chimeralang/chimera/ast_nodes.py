@@ -172,6 +172,34 @@ class EmitStmt(Statement):
     value: Expr
 
 
+@dataclass
+class ForStmt(Statement):
+    """for x in <iterable> ... end"""
+    iter_var: str
+    iterable: Expr
+    body: list[Statement] = field(default_factory=list)
+
+
+@dataclass
+class MatchArm(ASTNode):
+    """Single arm of a match expression: pattern => body"""
+    pattern: Expr | None  # None means wildcard (_)
+    body: list[Statement] = field(default_factory=list)
+
+
+@dataclass
+class MatchExpr(Expr):
+    """match <subject> ... end"""
+    subject: Expr
+    arms: list[MatchArm] = field(default_factory=list)
+
+
+@dataclass
+class MapLiteral(Expr):
+    """{ key: value, ... }"""
+    pairs: list[tuple[Expr, Expr]] = field(default_factory=list)
+
+
 # ---------------------------------------------------------------------------
 # Constraint Blocks (inside fn / gate / goal / reason)
 # ---------------------------------------------------------------------------

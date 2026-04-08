@@ -123,7 +123,10 @@ class ChimeraLangBridge:
         return {
             "available": True,
             "version": version,
-            "capabilities": ["run", "check", "prove", "scan_response"],
+            "capabilities": [
+                "run", "check", "prove", "scan_response",
+                "for_loops", "match_expressions", "map_literals",
+            ],
             "source": "external/chimeralang",
         }
 

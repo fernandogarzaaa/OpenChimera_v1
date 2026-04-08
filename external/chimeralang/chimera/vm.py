@@ -29,12 +29,15 @@ from chimera.ast_nodes import (
     FloatLiteral,
     FnDecl,
     ForbiddenConstraint,
+    ForStmt,
     GateDecl,
     GoalDecl,
     Identifier,
     IfExpr,
     IntLiteral,
     ListLiteral,
+    MapLiteral,
+    MatchExpr,
     MemberExpr,
     MustConstraint,
     Program,
@@ -229,6 +232,8 @@ class ChimeraVM:
             self._trace(f"[emit] {val.raw} (confidence={val.confidence.value:.2f})")
         elif isinstance(stmt, ExprStmt):
             self._eval(stmt.expr)
+        elif isinstance(stmt, ForStmt):
+            self._exec_for(stmt)
 
     def _exec_val(self, val: ValDecl) -> None:
         if val.value is not None:
@@ -238,6 +243,28 @@ class ChimeraVM:
         value.trace.append(f"bound to '{val.name}'")
         self._env.set(val.name, value)
 
+    def _exec_for(self, stmt: ForStmt) -> None:
+        """Execute a for-loop: iterate over a list value."""
+        iterable_val = self._eval(stmt.iterable)
+        items = iterable_val.raw
+        if not isinstance(items, list):
+            self._trace(f"[for] Warning: iterable value is not a list (got {type(items).__name__!r}), skipping loop")
+            return
+        self._trace(f"[for] Iterating over {len(items)} items")
+        for item in items:
+            scope = self._env.child()
+            scope.set(stmt.iter_var, self._wrap(item, confidence=iterable_val.confidence.value))
+            old_env = self._env
+            self._env = scope
+            try:
+                for s in stmt.body:
+                    self._exec_stmt(s)
+            except ReturnSignal:
+                self._env = old_env
+                raise
+            finally:
+                self._env = old_env
+
     def _exec_assert(self, assrt: AssertStmt) -> None:
         val = self._eval(assrt.condition)
         if val.raw:
@@ -245,10 +272,8 @@ class ChimeraVM:
             self._trace(f"[assert] PASSED (confidence={val.confidence.value:.2f})")
         else:
             self._result.assertions_failed += 1
-            raise AssertionFailed(
-                f"Assertion failed (confidence={val.confidence.value:.2f})",
-                trace=val.trace,
-            )
+            msg = assrt.message or f"Assertion failed (confidence={val.confidence.value:.2f})"
+            raise AssertionFailed(msg, trace=val.trace)
 
     # ------------------------------------------------------------------
     # Expression evaluation
@@ -289,6 +314,12 @@ class ChimeraVM:
 
         if isinstance(expr, IfExpr):
             return self._eval_if(expr)
+
+        if isinstance(expr, MatchExpr):
+            return self._eval_match(expr)
+
+        if isinstance(expr, MapLiteral):
+            return self._eval_map(expr)
 
         return self._wrap(None)
 
@@ -434,6 +465,49 @@ class ChimeraVM:
             self._env = old_env
         return self._wrap(None)
 
+    def _eval_match(self, expr: MatchExpr) -> ChimeraValue:
+        """Evaluate a match expression: dispatch to the first matching arm."""
+        subject = self._eval(expr.subject)
+        self._trace(f"[match] Matching on value: {subject.raw!r}")
+        for arm in expr.arms:
+            if arm.pattern is None:
+                # Wildcard arm — always matches
+                self._trace("[match] Wildcard arm matched")
+                matched = True
+            else:
+                pattern_val = self._eval(arm.pattern)
+                matched = subject.raw == pattern_val.raw
+                if matched:
+                    self._trace(f"[match] Arm matched: {pattern_val.raw!r}")
+            if matched:
+                scope = self._env.child()
+                old_env = self._env
+                self._env = scope
+                result: ChimeraValue = self._wrap(None)
+                try:
+                    for s in arm.body:
+                        self._exec_stmt(s)
+                except ReturnSignal as ret:
+                    result = ret.value
+                finally:
+                    self._env = old_env
+                return result
+        self._trace("[match] No arm matched — returning None")
+        return self._wrap(None)
+
+    def _eval_map(self, expr: MapLiteral) -> ChimeraValue:
+        """Evaluate a map literal to a dict."""
+        result: dict[Any, Any] = {}
+        conf_sum = 0.0
+        for key_expr, val_expr in expr.pairs:
+            k = self._eval(key_expr)
+            v = self._eval(val_expr)
+            result[k.raw] = v.raw
+            conf_sum += k.confidence.value + v.confidence.value
+        n = len(expr.pairs)
+        avg_conf = (conf_sum / (2 * n)) if n > 0 else 1.0
+        return self._wrap(result, confidence=avg_conf)
+
     # ------------------------------------------------------------------
     # Constraint enforcement
     # ------------------------------------------------------------------
@@ -532,7 +606,7 @@ class ChimeraVM:
             branches.append(result)
 
         # Collapse
-        collapsed = self._collapse(branches, gate.collapse, gate.threshold)
+        collapsed = self._collapse(branches, gate.collapse, gate.threshold, gate.fallback)
 
         self._result.gate_logs.append({
             "gate": gate.name,
@@ -541,6 +615,7 @@ class ChimeraVM:
             "branch_confidences": [b.confidence.value for b in branches],
             "result_confidence": collapsed.confidence.value,
             "result_value": collapsed.raw,
+            "threshold_met": collapsed.confidence.value >= gate.threshold,
         })
 
         self._trace(
@@ -555,18 +630,22 @@ class ChimeraVM:
         branches: list[ChimeraValue],
         strategy: str,
         threshold: float,
+        fallback: str = "escalate",
     ) -> ChimeraValue:
         if not branches:
             return self._wrap(None, confidence=0.0)
 
         if strategy == "highest_confidence":
             best = max(branches, key=lambda b: b.confidence.value)
-            return ConvergeValue(
+            collapsed = ConvergeValue(
                 raw=best.raw,
                 confidence=best.confidence,
                 branch_values=branches,
                 trace=[f"collapsed:highest_confidence"],
             )
+            if collapsed.confidence.value < threshold:
+                return self._apply_fallback(collapsed, fallback, threshold)
+            return collapsed
 
         if strategy == "weighted_vote":
             # Weight each branch's vote by confidence
@@ -579,12 +658,15 @@ class ChimeraVM:
             total_weight = sum(vote_weights.values())
             winner_weight = vote_weights[winner_key]
             consensus_conf = winner_weight / total_weight if total_weight > 0 else 0.0
-            return ConvergeValue(
+            collapsed = ConvergeValue(
                 raw=winner.raw,
                 confidence=Confidence(consensus_conf, "weighted_vote"),
                 branch_values=branches,
                 trace=[f"collapsed:weighted_vote({consensus_conf:.3f})"],
             )
+            if collapsed.confidence.value < threshold:
+                return self._apply_fallback(collapsed, fallback, threshold)
+            return collapsed
 
         # Default: majority
         votes: dict[str, list[ChimeraValue]] = {}
@@ -595,14 +677,39 @@ class ChimeraVM:
         majority_group = votes[majority_key]
         avg_conf = sum(b.confidence.value for b in majority_group) / len(majority_group)
 
-        if avg_conf < threshold:
-            self._trace(f"[gate] Consensus below threshold ({avg_conf:.3f} < {threshold})")
-
-        return ConvergeValue(
+        collapsed = ConvergeValue(
             raw=majority_group[0].raw,
             confidence=Confidence(avg_conf, "majority"),
             branch_values=branches,
             trace=[f"collapsed:majority({len(majority_group)}/{len(branches)})"],
+        )
+        if avg_conf < threshold:
+            return self._apply_fallback(collapsed, fallback, threshold)
+        return collapsed
+
+    def _apply_fallback(
+        self,
+        collapsed: ChimeraValue,
+        fallback: str,
+        threshold: float,
+    ) -> ChimeraValue:
+        """Apply gate fallback when consensus confidence is below threshold.
+
+        If fallback == "escalate" (the default), the result is wrapped in a
+        ProvisionalValue so downstream callers can detect that consensus failed.
+        Any other fallback string is treated as a descriptive label and also
+        returns a ProvisionalValue with that label in the trace.
+        """
+        self._trace(
+            f"[gate] Consensus below threshold "
+            f"({collapsed.confidence.value:.3f} < {threshold}) — "
+            f"applying fallback: {fallback!r}"
+        )
+        return ProvisionalValue(
+            raw=collapsed.raw,
+            confidence=collapsed.confidence,
+            memory_scope=MemoryScope.PROVISIONAL,
+            trace=[*collapsed.trace, f"fallback:{fallback}"],
         )
 
     # ------------------------------------------------------------------
