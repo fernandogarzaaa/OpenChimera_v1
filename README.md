@@ -149,19 +149,48 @@ curl http://127.0.0.1:7870/v1/system/readiness
 openchimera status --json
 ```
 
-**Run the test suite** (2 590+ tests, ~45 seconds):
+**Run the test suite** (2 600+ tests, ~45 seconds):
 
 ```bash
 pip install -r requirements-dev.txt
 python -m pytest tests/ -q
-# Expected: 2590+ passed, 2 skipped
+# Expected: 2600+ passed, 2 skipped (Windows-only tests)
 ```
+
+> **Note on skipped tests:** Two tests are expected to be skipped on
+> non-Windows platforms. `test_minimind_runtime_config_is_resolved` validates
+> Windows-specific `python.exe` path resolution, and
+> `test_returns_true_when_powershell_succeeds` exercises PowerShell speech
+> synthesis. Both are guarded with `@unittest.skipUnless(os.name == "nt", ...)`
+> and will run automatically on Windows.
 
 If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
 
 Runtime logs are emitted to the console and, by default, to `logs/openchimera-runtime.jsonl` as structured JSON lines. Use `OPENCHIMERA_LOG_LEVEL`, `OPENCHIMERA_STRUCTURED_LOG_ENABLED`, or `OPENCHIMERA_STRUCTURED_LOG_PATH` to override the log level or file destination for a deployment.
 
 Exposed deployments should not bind beyond localhost without auth. If you set `OPENCHIMERA_HOST=0.0.0.0` or any non-loopback host, also set `OPENCHIMERA_API_TOKEN` and `OPENCHIMERA_ADMIN_TOKEN`.
+
+## Python Namespace
+
+After installation (`pip install -e .`), the public API is available under the `openchimera` namespace. Both import paths are equivalent:
+
+```python
+# Using the openchimera namespace (recommended for library consumers)
+from openchimera.kernel import Kernel
+from openchimera.provider import OpenChimeraProvider
+from openchimera.query_engine import QueryEngine
+from openchimera.quantum_engine import QuantumEngine
+from openchimera.orchestrator import MultiAgentOrchestrator
+from openchimera.agent_pool import AgentPool, AgentSpec, AgentRole
+from openchimera.memory import MemorySystem
+from openchimera.session_memory import SessionMemory
+from openchimera.config import ROOT, load_runtime_profile
+from openchimera.chimera_bridge import ChimeraLangBridge
+from openchimera.api_server import OpenChimeraAPIServer
+
+# Using the core namespace directly (identical objects)
+from core.kernel import Kernel
+```
 
 ## Containers
 

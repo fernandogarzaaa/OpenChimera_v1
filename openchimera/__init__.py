@@ -1,12 +1,25 @@
 """OpenChimera — local-first LLM orchestration runtime.
 
-This package re-exports the public surface of the ``core`` package and
-provides convenience shims so that callers can use either::
+This package re-exports the public surface of the ``core`` package so
+that callers can use either namespace interchangeably::
 
-    import core
-    import openchimera
+    from core.kernel import Kernel
+    from openchimera.kernel import Kernel       # identical
 
-interchangeably.
+Available sub-modules
+─────────────────────
+    openchimera.api_server      — HTTP API server
+    openchimera.agent_pool      — Agent pool and spec types
+    openchimera.chimera_bridge  — ChimeraLang bridge
+    openchimera.cli             — CLI entry-point
+    openchimera.config          — Runtime configuration
+    openchimera.kernel          — Bootstrap kernel
+    openchimera.memory          — Unified memory facade
+    openchimera.orchestrator    — Multi-agent orchestrator
+    openchimera.provider        — LLM provider
+    openchimera.quantum_engine  — Quantum consensus engine
+    openchimera.query_engine    — Query engine
+    openchimera.session_memory  — Session memory persistence
 """
 from __future__ import annotations
 
