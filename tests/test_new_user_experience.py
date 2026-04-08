@@ -575,6 +575,8 @@ class TestPhase8_ObservabilityHealth(unittest.TestCase):
             obs_path = Path(tmp) / "obs.db"
             obs = ObservabilityStore(persist_path=str(obs_path))
             self.assertIsNotNone(obs)
+            if obs._connection is not None:
+                obs._connection.close()
 
     def test_kernel_boot(self):
         """Kernel should instantiate without crashing."""

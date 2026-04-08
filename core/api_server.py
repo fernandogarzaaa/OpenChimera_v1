@@ -360,6 +360,19 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if self.path == "/v1/capabilities/mcp":
                 self._write_json({"data": self.server.provider.list_capabilities("mcp")})
                 return
+            if self.path == "/v1/quantum/status":
+                from core.quantum_capabilities import get_registry
+                self._write_json(get_registry().status())
+                return
+            if self.path == "/v1/quantum/channels":
+                from core.remote_channels import CHANNEL_CLASSES
+                from core.quantum_capabilities import get_registry
+                registry = get_registry()
+                channels = {}
+                for cap_id in CHANNEL_CLASSES:
+                    channels[cap_id] = {"enabled": registry.is_enabled(cap_id)}
+                self._write_json({"channels": channels})
+                return
             if self.path == "/v1/mcp/status":
                 self._write_json(self.server.provider.mcp_status())
                 return
@@ -597,6 +610,29 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 preferred = str(preferred_cloud_provider).strip() if preferred_cloud_provider is not None else None
                 prefer_free_models = payload.get("prefer_free_models") if "prefer_free_models" in payload else None
                 self._write_json(self.server.provider.configure_provider_activation(enabled, preferred, prefer_free_models))
+                return
+
+            if self.path == "/v1/quantum/configure":
+                from core.quantum_capabilities import get_registry
+                registry = get_registry()
+                enable_id = str(payload.get("enable", "")).strip()
+                disable_id = str(payload.get("disable", "")).strip()
+                result: dict[str, object] = {"ok": True}
+                if enable_id:
+                    ok = registry.enable(enable_id)
+                    result["enabled"] = enable_id
+                    result["ok"] = ok
+                    if not ok:
+                        result["error"] = f"Unknown capability: {enable_id}"
+                elif disable_id:
+                    ok = registry.disable(disable_id)
+                    result["disabled"] = disable_id
+                    result["ok"] = ok
+                    if not ok:
+                        result["error"] = f"Unknown capability: {disable_id}"
+                else:
+                    result = registry.status()
+                self._write_json(result)
                 return
 
             if self.path == "/v1/model-roles/configure":

@@ -362,6 +362,12 @@ def _build_parser() -> argparse.ArgumentParser:
     setup_parser = subparsers.add_parser("setup", help="One-step first-time setup: bootstrap workspace, run diagnostics, and show next steps.")
     setup_parser.add_argument("--skip-wizard", action="store_true", help="Skip the interactive wizard and just run bootstrap + doctor.")
 
+    configure_parser = subparsers.add_parser("configure", help="Configure Quantum Engine capabilities, cloud API keys, and remote channels.")
+    configure_parser.add_argument("--list", action="store_true", dest="list_caps", help="List all quantum capabilities and their status.")
+    configure_parser.add_argument("--enable", type=str, default="", metavar="ID", help="Enable a capability by ID (e.g. quantum_engine_100, remote_telegram).")
+    configure_parser.add_argument("--disable", type=str, default="", metavar="ID", help="Disable a capability by ID.")
+    configure_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+
     return parser
 
 
@@ -425,6 +431,24 @@ def _setup_command(skip_wizard: bool = False) -> int:
         print()
 
     return 0
+
+
+def _configure_quantum_command(
+    *,
+    list_caps: bool,
+    enable_id: str,
+    disable_id: str,
+    as_json: bool,
+) -> int:
+    """Dispatch to the Quantum Engine configure wizard / capability manager."""
+    from core.configure_wizard import configure_command
+
+    return configure_command(
+        list_caps=list_caps,
+        enable_id=enable_id,
+        disable_id=disable_id,
+        as_json=as_json,
+    )
 
 
 def _status_command(as_json: bool) -> int:
@@ -2032,6 +2056,13 @@ def main(argv: list[str] | None = None) -> int:
         return _bootstrap_command(as_json=bool(args.json))
     if command == "setup":
         return _setup_command(skip_wizard=bool(getattr(args, "skip_wizard", False)))
+    if command == "configure":
+        return _configure_quantum_command(
+            list_caps=bool(getattr(args, "list_caps", False)),
+            enable_id=str(getattr(args, "enable", "")).strip(),
+            disable_id=str(getattr(args, "disable", "")).strip(),
+            as_json=bool(args.json),
+        )
     if command == "status":
         return _status_command(as_json=bool(args.json))
     if command == "briefing":

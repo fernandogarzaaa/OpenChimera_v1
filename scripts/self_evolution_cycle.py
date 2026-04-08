@@ -163,8 +163,18 @@ def build_health_summary() -> dict[str, Any]:
         "timestamp": time.time(),
     }
 
-    # Count Python source files and test files
-    py_files = list(REPO_ROOT.rglob("*.py"))
+    # Count Python source files and test files (skip heavy/recursive dirs)
+    _SKIP_DIRS = {"target", "build", "dist", ".git", ".venv", "venv",
+                  "node_modules", "__pycache__", ".pytest_cache",
+                  "openchimera.egg-info", ".mypy_cache", ".sixth",
+                  "tmp_sandbox_debug", "tmp_sandbox_helper",
+                  "tmp_sandbox_timing", "tmp_session_test"}
+    py_files: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(REPO_ROOT):
+        dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
+        py_files.extend(
+            Path(dirpath) / f for f in filenames if f.endswith(".py")
+        )
     test_files = [f for f in py_files if f.name.startswith("test_")]
     summary["source_file_count"] = len(py_files)
     summary["test_file_count"] = len(test_files)
