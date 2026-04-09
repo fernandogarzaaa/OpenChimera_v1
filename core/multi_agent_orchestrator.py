@@ -179,6 +179,7 @@ class MultiAgentOrchestrator:
         self._embodied_interaction = None
         self._goal_planner = None
         self._evolution_engine = None
+        self._safety_layer = None
 
         try:
             from core.memory_system import MemorySystem
@@ -255,6 +256,12 @@ class MultiAgentOrchestrator:
             self._evolution_engine = EvolutionEngine(db=self._db, bus=self._bus)
         except Exception as exc:
             log.warning("[Orchestrator] EvolutionEngine unavailable: %s", exc)
+
+        try:
+            from core.safety_layer import SafetyLayer
+            self._safety_layer = SafetyLayer(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] SafetyLayer unavailable: %s", exc)
 
         log.info(
             "[Orchestrator] Initialised: %d agents, quorum=%d, timeout=%dms",
@@ -507,6 +514,7 @@ class MultiAgentOrchestrator:
             "ethical_reasoning_available": self._ethical_reasoning is not None,
             "social_cognition_available": self._social_cognition is not None,
             "embodied_interaction_available": self._embodied_interaction is not None,
+            "safety_layer_available": self._safety_layer is not None,
         }
 
     # ------------------------------------------------------------------
@@ -619,6 +627,18 @@ class MultiAgentOrchestrator:
                 )
             except Exception as exc:
                 log.debug("[Orchestrator] EvolutionEngine cycle event failed: %s", exc)
+
+        # Safety layer: validate task content before finalising result
+        if self._safety_layer is not None:
+            try:
+                is_safe, reason = self._safety_layer.validate_content(task)
+                if not is_safe:
+                    log.warning(
+                        "[Orchestrator] SafetyLayer blocked task in domain '%s': %s",
+                        domain, reason,
+                    )
+            except Exception as exc:
+                log.debug("[Orchestrator] SafetyLayer check failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

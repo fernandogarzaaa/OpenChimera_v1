@@ -485,6 +485,39 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/agi/status":
                 self._write_json(self.server.provider.agi_completeness())
                 return
+            if path == "/v1/agi/goal-planner/status":
+                self._write_json(self.server.provider.goal_planner_status())
+                return
+            if path == "/v1/agi/deliberation/status":
+                self._write_json(self.server.provider.deliberation_status())
+                return
+            if path == "/v1/agi/world-model/status":
+                self._write_json(self.server.provider.world_model_status())
+                return
+            if path == "/v1/agi/evolution/status":
+                self._write_json(self.server.provider.evolution_status())
+                return
+            if path == "/v1/agi/meta-learning/status":
+                self._write_json(self.server.provider.meta_learning_status())
+                return
+            if path == "/v1/agi/causal-reasoning/status":
+                self._write_json(self.server.provider.causal_reasoning_status())
+                return
+            if path == "/v1/agi/self-model/status":
+                self._write_json(self.server.provider.self_model_status())
+                return
+            if path == "/v1/agi/transfer-learning/status":
+                self._write_json(self.server.provider.transfer_learning_status())
+                return
+            if path == "/v1/agi/ethical-reasoning/status":
+                self._write_json(self.server.provider.ethical_reasoning_status())
+                return
+            if path == "/v1/agi/metacognition/status":
+                self._write_json(self.server.provider.metacognition_status())
+                return
+            if path == "/v1/agi/plan-mode/status":
+                self._write_json(self.server.provider.plan_mode_status())
+                return
             if path == "/v1/inquiry/pending":
                 self._write_json({"questions": self.server.provider.inquiry_pending()})
                 return
