@@ -177,6 +177,8 @@ class MultiAgentOrchestrator:
         self._ethical_reasoning = None
         self._social_cognition = None
         self._embodied_interaction = None
+        self._goal_planner = None
+        self._evolution_engine = None
 
         try:
             from core.memory_system import MemorySystem
@@ -235,6 +237,24 @@ class MultiAgentOrchestrator:
             self._embodied_interaction = EmbodiedInteraction(bus=self._bus)
         except Exception as exc:
             log.warning("[Orchestrator] EmbodiedInteraction unavailable: %s", exc)
+
+        try:
+            from core.deliberation_engine import DeliberationEngine
+            self._deliberation = DeliberationEngine(bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] DeliberationEngine unavailable: %s", exc)
+
+        try:
+            from core.goal_planner import GoalPlanner
+            self._goal_planner = GoalPlanner(db=self._db, bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] GoalPlanner unavailable: %s", exc)
+
+        try:
+            from core.evolution import EvolutionEngine
+            self._evolution_engine = EvolutionEngine(db=self._db, bus=self._bus)
+        except Exception as exc:
+            log.warning("[Orchestrator] EvolutionEngine unavailable: %s", exc)
 
         log.info(
             "[Orchestrator] Initialised: %d agents, quorum=%d, timeout=%dms",
@@ -577,6 +597,28 @@ class MultiAgentOrchestrator:
                 )
             except Exception as exc:
                 log.debug("[Orchestrator] EmbodiedInteraction update failed: %s", exc)
+
+        # Goal planner: suggest decomposition for this domain
+        if self._goal_planner is not None:
+            try:
+                self._goal_planner.suggest_decomposition(domain)
+            except Exception as exc:
+                log.debug("[Orchestrator] GoalPlanner suggest failed: %s", exc)
+
+        # Evolution engine: publish bus event for DPO pair generation
+        if self._evolution_engine is not None:
+            try:
+                self._bus.publish_nowait(
+                    "evolution/cycle",
+                    {
+                        "domain": domain,
+                        "success": confidence >= self._early_exit_conf,
+                        "confidence": confidence,
+                        "agents": len(agent_ids),
+                    },
+                )
+            except Exception as exc:
+                log.debug("[Orchestrator] EvolutionEngine cycle event failed: %s", exc)
 
 
 # ---------------------------------------------------------------------------

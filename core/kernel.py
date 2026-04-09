@@ -12,16 +12,20 @@ from core.bus import EventBus
 from core.causal_reasoning import CausalReasoning
 from core.config import build_identity_snapshot, get_watch_files
 from core.consensus_plane import ConsensusPlane
+from core.database import DatabaseManager
 from core.embodied_interaction import EmbodiedInteraction
 from core.ethical_reasoning import EthicalReasoning
 from core.evo_service import EvoService
 from core.fim_daemon import FIMDaemon
+from core.goal_planner import GoalPlanner
+from core.knowledge_base import KnowledgeBase
 from core.meta_learning import MetaLearning
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
 from core.self_model import SelfModel
 from core.social_cognition import SocialCognition
 from core.transfer_learning import TransferLearning
+from core.world_model import SystemWorldModel
 from core.wraith_service import WraithService
 
 
@@ -58,6 +62,28 @@ class OpenChimeraKernel:
         # Capabilities #9 & #10 — Embodied Interaction and Social Cognition
         self.embodied_interaction = EmbodiedInteraction(bus=self.bus)
         self.social_cognition = SocialCognition(bus=self.bus)
+        # GoalPlanner — goal decomposition and planning
+        self._db = DatabaseManager()
+        self._db.initialize()
+        try:
+            self.goal_planner: GoalPlanner | None = GoalPlanner(db=self._db, bus=self.bus)
+        except Exception as exc:
+            LOGGER.warning("GoalPlanner unavailable: %s", exc)
+            self.goal_planner = None
+        # WorldModel — causal system-dynamics world model
+        try:
+            self.world_model: SystemWorldModel | None = SystemWorldModel(
+                causal=self.causal_reasoning
+            )
+        except Exception as exc:
+            LOGGER.warning("SystemWorldModel unavailable: %s", exc)
+            self.world_model = None
+        # KnowledgeBase — structured knowledge storage
+        try:
+            self.knowledge_base: KnowledgeBase | None = KnowledgeBase(bus=self.bus)
+        except Exception as exc:
+            LOGGER.warning("KnowledgeBase unavailable: %s", exc)
+            self.knowledge_base = None
         # GodSwarm — multi-agent orchestration (lazy init so boot doesn't block)
         self._god_swarm: "Any | None" = None
 
