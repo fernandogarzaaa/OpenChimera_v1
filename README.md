@@ -4,6 +4,40 @@
 
 **Local-first orchestration for models, operator jobs, browser tasks, and optional external runtimes.**
 
+## Quick Start (One-Liner Install)
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.ps1 | iex
+```
+
+**Linux/macOS (bash):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.sh | bash
+```
+
+This will install Python dependencies, set up a virtual environment, and print next steps. To run OpenChimera after install:
+
+```bash
+# Activate your environment (Linux/macOS)
+source .venv/bin/activate
+# or (Windows)
+.\.venv\Scripts\Activate.ps1
+
+# Start OpenChimera
+python run.py
+```
+
+For onboarding:
+
+```bash
+python run.py onboard
+```
+
+---
+
 OpenChimera is an open-source orchestration runtime that keeps the control plane local. It gives you one Python-native gateway for local models, reasoning services, retrieval, browser interaction, operator channels, onboarding, and supervised background jobs.
 
 The project is designed to be safe to publish and safe to run from source: the committed runtime profile is sanitized, secrets stay out of the repository, and machine-specific overrides belong in local-only files.
@@ -29,7 +63,7 @@ The project is designed to be safe to publish and safe to run from source: the c
 Five interlocking subsystems that form the self-improving core:
 
 | Subsystem | Module | Purpose |
-|-----------|--------|---------|
+| ----------- | -------- | --------- |
 | **Memory System** | `core/memory/` | Episodic (SQL + embeddings), semantic (NetworkX graph), and working (LRU) memory with a unified facade |
 | **Deliberation Engine** | `core/deliberation.py` | Hypothesis/contradiction graph with max-flow consensus and Jaccard cross-check |
 | **HTN Goal Planner** | `core/goal_planner.py` | CRUD goals with decomposition, dependencies, and Kahn topological sort for execution ordering |
@@ -69,7 +103,7 @@ Parallel task orchestration in `core/multi_agent_orchestrator.py`:
 OpenChimera targets 10 cognitive capabilities.  Current status: **10 / 10** implemented and tested.
 
 | # | Capability | Module | Status |
-|---|-----------|--------|--------|
+| --- | ----------- | -------- | -------- |
 | 1 | Episodic Memory | `core/memory_system.py` | ✅ |
 | 2 | Multi-Perspective Deliberation | `core/deliberation.py` | ✅ |
 | 3 | Hierarchical Planning | `core/goal_planner.py` | ✅ |

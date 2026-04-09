@@ -1,5 +1,39 @@
 # OpenChimera — Quick Start
 
+## 🚀 One-Liner Install (Recommended)
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.ps1 | iex
+```
+
+**Linux/macOS (bash):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.sh | bash
+```
+
+This will set up a virtual environment, install dependencies, and print next steps. To run OpenChimera after install:
+
+```bash
+# Activate your environment (Linux/macOS)
+source .venv/bin/activate
+# or (Windows)
+.\.venv\Scripts\Activate.ps1
+
+# Start OpenChimera
+python run.py
+```
+
+For onboarding:
+
+```bash
+python run.py onboard
+```
+
+---
+
 Get running in **three steps**. No Docker, no cloud accounts, no GPU required.
 
 ---
@@ -48,7 +82,7 @@ source .venv/bin/activate
 openchimera serve
 ```
 
-Open **http://127.0.0.1:7870/docs** in your browser — you're done!
+Open [http://127.0.0.1:7870/docs](http://127.0.0.1:7870/docs) in your browser — you're done!
 
 ---
 
@@ -101,7 +135,7 @@ openchimera serve
 ## What works out of the box
 
 | Feature | Works without config |
-|---|---|
+| --- | --- |
 | `openchimera serve` | Yes — API starts in degraded-but-alive mode |
 | `openchimera status` | Yes — local snapshot |
 | `openchimera doctor` | Yes — checks config health |
