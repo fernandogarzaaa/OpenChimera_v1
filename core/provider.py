@@ -1214,6 +1214,81 @@ class OpenChimeraProvider:
             return self.orchestrator._social_cognition.snapshot()
         return {"error": "SocialCognition not available"}
 
+    # ------------------------------------------------------------------
+    # AGI subsystem status — modules #1-#8 (goal planner, deliberation,
+    # world model, evolution, meta-learning, causal reasoning, self-model,
+    # transfer learning, ethical reasoning, metacognition)
+    # ------------------------------------------------------------------
+
+    def goal_planner_status(self) -> dict[str, Any]:
+        """Return summary from the GoalPlanner subsystem."""
+        if self.orchestrator is not None and self.orchestrator._goal_planner is not None:
+            return self.orchestrator._goal_planner.summary()
+        return {"active": False, "error": "GoalPlanner not available"}
+
+    def deliberation_status(self) -> dict[str, Any]:
+        """Return summary from the DeliberationEngine subsystem."""
+        if self.orchestrator is not None and self.orchestrator._deliberation is not None:
+            return self.orchestrator._deliberation.summary()
+        return {"active": False, "error": "DeliberationEngine not available"}
+
+    def world_model_status(self) -> dict[str, Any]:
+        """Return snapshot from the SystemWorldModel (kernel-resident)."""
+        kernel = getattr(self, "_kernel", None)
+        if kernel is not None and getattr(kernel, "world_model", None) is not None:
+            wm = kernel.world_model
+            return {"active": True, "variables": list(getattr(wm, "_variables", {}).keys())}
+        return {"active": False, "error": "WorldModel not wired into provider"}
+
+    def evolution_status(self) -> dict[str, Any]:
+        """Return summary from the EvolutionEngine subsystem."""
+        if self.orchestrator is not None and self.orchestrator._evolution_engine is not None:
+            return self.orchestrator._evolution_engine.summary()
+        return {"active": False, "error": "EvolutionEngine not available"}
+
+    def meta_learning_status(self) -> dict[str, Any]:
+        """Return status from the MetaLearning subsystem."""
+        if self.orchestrator is not None and self.orchestrator._meta_learning is not None:
+            return self.orchestrator._meta_learning.status()
+        return {"active": False, "error": "MetaLearning not available"}
+
+    def causal_reasoning_status(self) -> dict[str, Any]:
+        """Return summary from the CausalReasoning subsystem."""
+        if self.orchestrator is not None and self.orchestrator._causal_reasoning is not None:
+            return self.orchestrator._causal_reasoning.summary()
+        return {"active": False, "error": "CausalReasoning not available"}
+
+    def self_model_status(self) -> dict[str, Any]:
+        """Return self-assessment from the SelfModel subsystem."""
+        if self.orchestrator is not None and self.orchestrator._self_model is not None:
+            return self.orchestrator._self_model.self_assessment()
+        return {"active": False, "error": "SelfModel not available"}
+
+    def transfer_learning_status(self) -> dict[str, Any]:
+        """Return active status from the TransferLearning subsystem."""
+        if self.orchestrator is not None and self.orchestrator._transfer_learning is not None:
+            return {"active": True, "domains": self.orchestrator._transfer_learning.list_domains()}
+        return {"active": False, "error": "TransferLearning not available"}
+
+    def ethical_reasoning_status(self) -> dict[str, Any]:
+        """Return status from the EthicalReasoning subsystem."""
+        if self.orchestrator is not None and self.orchestrator._ethical_reasoning is not None:
+            return self.orchestrator._ethical_reasoning.status()
+        return {"active": False, "error": "EthicalReasoning not available"}
+
+    def metacognition_status(self) -> dict[str, Any]:
+        """Return summary from the MetacognitionEngine subsystem."""
+        if self.orchestrator is not None and self.orchestrator._metacognition is not None:
+            return self.orchestrator._metacognition.summary()
+        return {"active": False, "error": "MetacognitionEngine not available"}
+
+    def plan_mode_status(self) -> dict[str, Any]:
+        """Return status from the PlanMode subsystem."""
+        kernel = getattr(self, "_kernel", None)
+        if kernel is not None and getattr(kernel, "plan_mode", None) is not None:
+            return kernel.plan_mode.status()
+        return {"active": False, "error": "PlanMode not available"}
+
     def agi_completeness(self) -> dict[str, Any]:
         """Return AGI completeness status for all 10 cognitive capabilities."""
         import time as _time

@@ -8,18 +8,33 @@ that callers can use either namespace interchangeably::
 
 Available sub-modules
 ─────────────────────
-    openchimera.api_server      — HTTP API server
-    openchimera.agent_pool      — Agent pool and spec types
-    openchimera.chimera_bridge  — ChimeraLang bridge
-    openchimera.cli             — CLI entry-point
-    openchimera.config          — Runtime configuration
-    openchimera.kernel          — Bootstrap kernel
-    openchimera.memory          — Unified memory facade
-    openchimera.orchestrator    — Multi-agent orchestrator
-    openchimera.provider        — LLM provider
-    openchimera.quantum_engine  — Quantum consensus engine
-    openchimera.query_engine    — Query engine
-    openchimera.session_memory  — Session memory persistence
+    openchimera.api_server          — HTTP API server
+    openchimera.agent_pool          — Agent pool and spec types
+    openchimera.causal_reasoning    — Causal reasoning engine
+    openchimera.chimera_bridge      — ChimeraLang bridge
+    openchimera.cli                 — CLI entry-point
+    openchimera.config              — Runtime configuration
+    openchimera.deliberation        — Deliberation graph and engine
+    openchimera.embodied_interaction — Embodied interaction subsystem
+    openchimera.ethical_reasoning   — Ethical reasoning engine
+    openchimera.evolution           — Evolution engine
+    openchimera.goal_planner        — Goal planner
+    openchimera.kernel              — Bootstrap kernel
+    openchimera.knowledge_base      — Knowledge base
+    openchimera.memory              — Unified memory facade
+    openchimera.meta_learning       — Meta-learning subsystem
+    openchimera.metacognition       — Metacognition engine
+    openchimera.orchestrator        — Multi-agent orchestrator
+    openchimera.plan_mode           — Plan mode subsystem
+    openchimera.provider            — LLM provider
+    openchimera.quantum_engine      — Quantum consensus engine
+    openchimera.query_engine        — Query engine
+    openchimera.safety_layer        — Safety layer
+    openchimera.self_model          — Self-model subsystem
+    openchimera.session_memory      — Session memory persistence
+    openchimera.social_cognition    — Social cognition subsystem
+    openchimera.transfer_learning   — Transfer learning subsystem
+    openchimera.world_model         — World model
 """
 from __future__ import annotations
 

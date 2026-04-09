@@ -24,6 +24,8 @@ from core.provider import OpenChimeraProvider
 from core.self_model import SelfModel
 from core.social_cognition import SocialCognition
 from core.transfer_learning import TransferLearning
+from core.safety_layer import SafetyLayer
+from core.plan_mode import PlanMode
 from core.world_model import SystemWorldModel
 from core.wraith_service import WraithService
 
@@ -83,8 +85,23 @@ class OpenChimeraKernel:
         except Exception as exc:
             LOGGER.warning("KnowledgeBase unavailable: %s", exc)
             self.knowledge_base = None
+        # SafetyLayer — content filtering and action validation
+        try:
+            self.safety_layer: SafetyLayer | None = SafetyLayer(bus=self.bus)
+        except Exception as exc:
+            LOGGER.warning("SafetyLayer unavailable: %s", exc)
+            self.safety_layer = None
+        # PlanMode — structured planning and execution state machine
+        try:
+            self.plan_mode: PlanMode | None = PlanMode(bus=self.bus)
+        except Exception as exc:
+            LOGGER.warning("PlanMode unavailable: %s", exc)
+            self.plan_mode = None
         # GodSwarm — multi-agent orchestration (lazy init so boot doesn't block)
         self._god_swarm: "Any | None" = None
+
+        # Back-reference so provider can access kernel-level AGI modules
+        self.provider._kernel = self
 
         self.api_server = OpenChimeraAPIServer(self.provider, system_status_provider=self.status_snapshot)
         self._fim_thread: threading.Thread | None = None
