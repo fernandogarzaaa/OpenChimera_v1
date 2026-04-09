@@ -46,26 +46,24 @@
     "selected_cloud_provider": ""
   },
   "hardware": {
-    "cpu_count": 0,
-    "ram_gb": 0.0,
+    "cpu_count": 8,
+    "ram_gb": 19.8,
     "gpu": {
-      "available": false,
-      "name": "",
-      "vram_gb": 0.0,
-      "device_count": 0,
-      "vulkan": false,
-      "intel_igpu": ""
+      "available": true,
+      "name": "NVIDIA GeForce RTX 2060",
+      "vram_gb": 6.0,
+      "device_count": 1
     }
   },
   "local_runtime": {
-    "mode": "bootstrap-safe",
+    "mode": "performance",
     "preferred_local_models": [
-      "llama-3.2-3b",
-      "phi-3.5-mini"
+      "llama3.1",
+      "qwen3"
     ],
-    "local_max_tokens": 128,
+    "local_max_tokens": 256,
     "local_timeout_s": 35.0,
-    "cpu_threads": 4,
+    "cpu_threads": 6,
     "reasoning_engine": "minimind",
     "worker_runtime": "llama.cpp",
     "context_length": 4096,
@@ -182,5 +180,14 @@
     "name": "minimind",
     "training_output_dir": "data/minimind",
     "api_base_url": "http://127.0.0.1:8998"
+  },
+  "features": {
+    "autonomy": true,
+    "channels": true,
+    "causal_reasoning": true,
+    "evolution": true,
+    "browser_service": true,
+    "embodied_interaction": true,
+    "ethical_reasoning": false
   }
 }

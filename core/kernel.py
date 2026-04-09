@@ -251,7 +251,7 @@ class OpenChimeraKernel:
             from swarms.god_swarm import GodSwarm
             self._god_swarm = GodSwarm(bus=self.bus)
             self._god_swarm.wire_to_kernel(self)
-            LOGGER.info("GodSwarm wired to kernel (%d agents).", len(GodSwarm.ALL_AGENT_IDS))
+            LOGGER.info("GodSwarm wired to kernel (%d agents).", len(self._god_swarm.ALL_AGENT_IDS))
         except Exception as exc:
             LOGGER.warning("GodSwarm wiring skipped: %s", exc)
 
@@ -462,10 +462,11 @@ class OpenChimeraKernel:
         """Return lightweight swarm surface info."""
         try:
             from swarms.god_swarm import GodSwarm
+            gs = self._god_swarm or GodSwarm(bus=self.bus)
             base = {
-                "core_agents": GodSwarm.CORE_AGENT_IDS,
-                "supporting_agents": GodSwarm.SUPPORTING_AGENT_IDS,
-                "total_agents": len(GodSwarm.ALL_AGENT_IDS),
+                "core_agents": gs.CORE_AGENT_IDS,
+                "supporting_agents": gs.SUPPORTING_AGENT_IDS,
+                "total_agents": len(gs.ALL_AGENT_IDS),
                 "ready": True,
             }
             if self._god_swarm is not None:

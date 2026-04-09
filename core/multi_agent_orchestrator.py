@@ -141,6 +141,8 @@ class MultiAgentOrchestrator:
             else:
                 use_llm = False
 
+        self._llm_dispatch = use_llm
+
         # --- Core components ---
         self._bus = bus if bus is not None else EventBus()
         self._db = db if db is not None else DatabaseManager(":memory:")
