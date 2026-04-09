@@ -1227,6 +1227,7 @@ class OpenChimeraProvider:
             "ethical_reasoning": self.orchestrator is not None and self.orchestrator._ethical_reasoning is not None,
             "social_cognition": self.orchestrator is not None and self.orchestrator._social_cognition is not None,
             "embodied_interaction": self.orchestrator is not None and self.orchestrator._embodied_interaction is not None,
+            "goal_planner": self.orchestrator is not None and self.orchestrator._goal_planner is not None,
         }
         active = sum(1 for v in modules.values() if v)
         return {
