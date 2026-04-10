@@ -37,4 +37,4 @@ py-modules = ["run"]
 core = ["migrations/*.sql"]
 
 [tool.setuptools.packages.find]
-include = ["core*", "openchimera*", "sandbox*"]
+include = ["core*", "openchimera*", "sandbox*", "services*"]

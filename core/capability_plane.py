@@ -13,19 +13,29 @@ from core.mcp_registry import (
     upsert_mcp_registry_entry,
 )
 from core.tool_runtime import ToolMetadata, ToolRegistry, ToolResult
+from services.hook_pipeline import HookPipeline
 
 log = logging.getLogger(__name__)
 
 
 class CapabilityPlane:
-    def __init__(self, *, capabilities: Any, plugins: Any, bus: Any, tool_runtime: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        capabilities: Any,
+        plugins: Any,
+        bus: Any,
+        tool_runtime: Any | None = None,
+        hook_pipeline: HookPipeline | None = None,
+    ) -> None:
         self.capabilities = capabilities
         self.plugins = plugins
         self.bus = bus
         self.tool_runtime = tool_runtime  # RuntimeToolRegistry, wired from kernel
+        self.hook_pipeline = hook_pipeline if hook_pipeline is not None else HookPipeline()
 
         # Internal ToolRegistry for ToolMetadata-based tools (Phase 1)
-        self._tool_registry = ToolRegistry(bus=bus)
+        self._tool_registry = ToolRegistry(bus=bus, hook_pipeline=self.hook_pipeline)
 
         # Skill registry: name → dict metadata
         self._skills: dict[str, dict[str, Any]] = {}

@@ -10,6 +10,7 @@ from typing import Any, Callable, List
 from pydantic import BaseModel, ValidationError
 
 from core.tool_executor import ToolExecutor, ToolPermissionError, ToolExecutionError
+from services.hook_pipeline import HookPipeline
 
 
 # ---------------------------------------------------------------------------
@@ -67,9 +68,10 @@ class ToolRegistry:
     event bus integration.  Designed to be wired into the CapabilityPlane.
     """
 
-    def __init__(self, bus: Any | None = None) -> None:
+    def __init__(self, bus: Any | None = None, hook_pipeline: HookPipeline | None = None) -> None:
         self._tools: dict[str, ToolMetadata] = {}
         self._bus = bus
+        self.hook_pipeline = hook_pipeline if hook_pipeline is not None else HookPipeline()
 
     # --- CRUD ---
 
@@ -135,6 +137,17 @@ class ToolRegistry:
             )
 
         args = dict(arguments or {})
+        pre_hook = self.hook_pipeline.execute_pre(name, args)
+        if pre_hook.action == "block":
+            return ToolResult(
+                tool_name=name,
+                success=False,
+                output=None,
+                error=pre_hook.reason or f"Tool {name!r} was blocked by a pre-tool hook",
+                metadata={"tags": tool.tags},
+            )
+        if pre_hook.action == "mutate" and pre_hook.mutated_input is not None:
+            args = dict(pre_hook.mutated_input)
         started = time.perf_counter()
         try:
             output = tool.handler(args)
@@ -157,6 +170,8 @@ class ToolRegistry:
                 metadata={"tags": tool.tags},
             )
 
+        result = self._apply_post_hooks(name, args, result)
+
         if self._bus is not None:
             try:
                 self._bus.publish_nowait(
@@ -173,6 +188,31 @@ class ToolRegistry:
 
         return result
 
+    def _apply_post_hooks(self, name: str, arguments: dict[str, Any], result: ToolResult) -> ToolResult:
+        payload = {
+            "tool_name": result.tool_name,
+            "success": result.success,
+            "output": result.output,
+            "error": result.error,
+            "latency_ms": result.latency_ms,
+            "metadata": dict(result.metadata),
+        }
+        post_hook = self.hook_pipeline.execute_post(name, arguments, payload)
+        if post_hook.action != "mutate" or post_hook.mutated_input is None:
+            return result
+
+        mutated_payload = dict(payload)
+        mutated_payload.update(post_hook.mutated_input)
+        metadata = mutated_payload.get("metadata", result.metadata)
+        return ToolResult(
+            tool_name=str(mutated_payload.get("tool_name") or result.tool_name),
+            success=bool(mutated_payload.get("success", result.success)),
+            output=mutated_payload.get("output", result.output),
+            error=None if mutated_payload.get("error", result.error) is None else str(mutated_payload.get("error", result.error)),
+            latency_ms=float(mutated_payload.get("latency_ms", result.latency_ms)),
+            metadata=dict(metadata) if isinstance(metadata, dict) else dict(result.metadata),
+        )
+
 
 @dataclass(frozen=True)
 class RuntimeToolSpec:
@@ -186,10 +226,18 @@ class RuntimeToolSpec:
 
 
 class RuntimeToolRegistry:
-    def __init__(self, *, capability_registry: Any, bus: Any, specs: list[RuntimeToolSpec] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        capability_registry: Any,
+        bus: Any,
+        specs: list[RuntimeToolSpec] | None = None,
+        hook_pipeline: HookPipeline | None = None,
+    ) -> None:
         self.capability_registry = capability_registry
         self.bus = bus
         self._specs = {spec.tool_id: spec for spec in (specs or [])}
+        self.hook_pipeline = hook_pipeline if hook_pipeline is not None else HookPipeline()
         self._executor = ToolExecutor(bus=bus)
 
     def list_tools(self) -> list[dict[str, Any]]:
@@ -225,6 +273,17 @@ class RuntimeToolRegistry:
             raise ValueError(f"Unknown tool: {tool_id}")
 
         payload = dict(arguments or {})
+        pre_hook = self.hook_pipeline.execute_pre(normalized, payload)
+        if pre_hook.action == "block":
+            return self._blocked_result(
+                tool_id=normalized,
+                arguments=payload,
+                permission_scope=permission_scope,
+                reason=pre_hook.reason or f"Tool {normalized!r} was blocked by a pre-tool hook",
+            )
+        if pre_hook.action == "mutate" and pre_hook.mutated_input is not None:
+            payload = dict(pre_hook.mutated_input)
+
         try:
             if spec.schema is not None:
                 payload = spec.schema.model_validate(payload).model_dump(exclude_none=True)
@@ -232,7 +291,7 @@ class RuntimeToolRegistry:
             raise ToolExecutionError(json.dumps(exc.errors(), default=str)) from exc
 
         # Use shared ToolExecutor for permission gating, timing, and event emission
-        return self._executor.execute_with_gating(
+        result = self._executor.execute_with_gating(
             tool_id=normalized,
             handler=spec.executor,
             arguments=payload,
@@ -240,3 +299,41 @@ class RuntimeToolRegistry:
             permission_scope=permission_scope,
             tags=[spec.category],
         )
+        return self._apply_post_hooks(normalized, payload, result)
+
+    def _blocked_result(
+        self,
+        *,
+        tool_id: str,
+        arguments: dict[str, Any],
+        permission_scope: str,
+        reason: str,
+    ) -> dict[str, Any]:
+        return {
+            "tool_id": tool_id,
+            "status": "error",
+            "permission_scope": str(permission_scope or "user").strip().lower() or "user",
+            "arguments": dict(arguments),
+            "result": None,
+            "error": reason,
+            "latency_ms": 0.0,
+        }
+
+    def _apply_post_hooks(
+        self,
+        tool_id: str,
+        arguments: dict[str, Any],
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        post_hook = self.hook_pipeline.execute_post(tool_id, arguments, result)
+        if post_hook.action != "mutate" or post_hook.mutated_input is None:
+            return result
+
+        mutated_result = dict(result)
+        mutated_result.update(post_hook.mutated_input)
+        mutated_result["tool_id"] = str(mutated_result.get("tool_id") or tool_id)
+        if not isinstance(mutated_result.get("arguments"), dict):
+            mutated_result["arguments"] = dict(arguments)
+        if "latency_ms" in mutated_result:
+            mutated_result["latency_ms"] = float(mutated_result["latency_ms"])
+        return mutated_result

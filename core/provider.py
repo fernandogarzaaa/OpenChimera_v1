@@ -71,6 +71,7 @@ from core.schemas import (
     PreviewRepairRequest,
     SubsystemInvokeRequest,
 )
+from services.hook_pipeline import HookPipeline
 
 
 LOGGER = logging.getLogger(__name__)
@@ -97,6 +98,7 @@ class OpenChimeraProvider:
         self.model_roles = ModelRoleManager(self.model_registry)
         self.router = OpenChimeraRouter(self.llm_manager, self.model_roles)
         self.plugins = PluginManager(self.capabilities)
+        self.hook_pipeline = HookPipeline()
 
         # ------------------------------------------------------------------
         # Optional subsystems — each wrapped so a single failure never aborts
@@ -116,10 +118,16 @@ class OpenChimeraProvider:
         self.browser = self._safe_init(BrowserService, "browser")
         self.multimodal = self._safe_init(lambda: MultimodalService(credential_store=self.credential_store), "multimodal")
         self.channels = self._safe_init(lambda: ChannelManager(database=self.database), "channels")
-        self.capability_plane = CapabilityPlane(capabilities=self.capabilities, plugins=self.plugins, bus=self.bus)
+        self.capability_plane = CapabilityPlane(
+            capabilities=self.capabilities,
+            plugins=self.plugins,
+            bus=self.bus,
+            hook_pipeline=self.hook_pipeline,
+        )
         self.tool_runtime = RuntimeToolRegistry(
             capability_registry=self.capabilities,
             bus=self.bus,
+            hook_pipeline=self.hook_pipeline,
             specs=[
                 RuntimeToolSpec(
                     tool_id="browser.fetch",
