@@ -1,3 +1,36 @@
+        # --- HARNESS: Plan Mode ---
+        if path == "/v1/harness/plan-mode":
+            self._write_json(self.server.provider.get_plan_mode())
+            return
+        if path == "/v1/harness/config/discover":
+            self._write_json(self.server.provider.discover_chimera_md())
+            return
+        if path == "/v1/harness/config/json":
+            self._write_json(self.server.provider.load_chimera_json())
+            return
+        if path == "/v1/harness/transport/sse":
+            self._write_json(self.server.provider.sse_transport_status())
+            return
+        if path == "/v1/harness/transport/ws":
+            self._write_json(self.server.provider.ws_transport_status())
+            return
+        # --- HARNESS: Plan Mode POSTs ---
+        if self.path == "/v1/harness/plan-mode/enter":
+            self._write_json(self.server.provider.enter_plan_mode())
+            return
+        if self.path == "/v1/harness/plan-mode/exit":
+            self._write_json(self.server.provider.exit_plan_mode())
+            return
+        if self.path == "/v1/harness/plan-mode/log":
+            step = payload.get("step", "")
+            self._write_json(self.server.provider.log_plan_step(step))
+            return
+        # --- HARNESS: Session Compactor ---
+        if self.path == "/v1/harness/session/compact":
+            messages = payload.get("messages", [])
+            keep_last_n = int(payload.get("keep_last_n", 10))
+            self._write_json(self.server.provider.compact_session(messages, keep_last_n=keep_last_n))
+            return
 from __future__ import annotations
 
 import concurrent.futures

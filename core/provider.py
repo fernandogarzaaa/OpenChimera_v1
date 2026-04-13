@@ -71,7 +71,11 @@ from core.schemas import (
     PreviewRepairRequest,
     SubsystemInvokeRequest,
 )
+
 from services.hook_pipeline import HookPipeline
+from services.plan_mode import PlanModeContext
+from services.session_compactor import SessionCompactor
+from utils.chimera_config import discover_chimera_md, load_chimera_json
 
 
 LOGGER = logging.getLogger(__name__)
@@ -99,6 +103,45 @@ class OpenChimeraProvider:
         self.router = OpenChimeraRouter(self.llm_manager, self.model_roles)
         self.plugins = PluginManager(self.capabilities)
         self.hook_pipeline = HookPipeline()
+        self.plan_mode = PlanModeContext.instance()
+        self.session_compactor = SessionCompactor(self.llm_manager)
+    # ------------------- HARNESS: Plan Mode -------------------
+    def enter_plan_mode(self) -> dict[str, any]:
+        self.plan_mode.enter_plan_mode()
+        return {"plan_mode": True}
+
+    def exit_plan_mode(self) -> dict[str, any]:
+        self.plan_mode.exit_plan_mode()
+        return {"plan_mode": False}
+
+    def get_plan_mode(self) -> dict[str, any]:
+        return {"plan_mode": self.plan_mode.is_planning, "steps": list(self.plan_mode.plan_steps)}
+
+    def log_plan_step(self, step: str) -> dict[str, any]:
+        self.plan_mode.log_step(step)
+        return {"logged": step}
+
+    # ------------------- HARNESS: Session Compactor -------------------
+    def compact_session(self, messages: list[dict], keep_last_n: int = 10) -> dict[str, any]:
+        new_messages, summary = self.session_compactor.compact(messages, keep_last_n=keep_last_n)
+        return {"messages": new_messages, "summary": summary}
+
+    # ------------------- HARNESS: Config Discovery -------------------
+    def discover_chimera_md(self, start_path: str = ".") -> dict[str, any]:
+        content = discover_chimera_md(start_path)
+        return {"chimera_md": content}
+
+    def load_chimera_json(self, start_path: str = ".") -> dict[str, any]:
+        data = load_chimera_json(start_path)
+        return {"chimera_json": data}
+
+    # ------------------- HARNESS: Transport Placeholders -------------------
+    # For future SSE/WS endpoints
+    def sse_transport_status(self) -> dict[str, any]:
+        return {"sse": "ready"}
+
+    def ws_transport_status(self) -> dict[str, any]:
+        return {"ws": "ready"}
 
         # ------------------------------------------------------------------
         # Optional subsystems — each wrapped so a single failure never aborts
