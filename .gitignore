@@ -55,3 +55,6 @@ skills/dependency-auditor/test-project/package-lock.json
 
 # Local editor settings
 .vscode/
+
+# AI assistant guide (local only)
+CLAUDE.md
