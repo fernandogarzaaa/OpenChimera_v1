@@ -3,3 +3,18 @@ psutil>=5.9,<8
 pydantic>=2.12,<3
 networkx>=3.0,<4
 numpy>=1.24,<3
+
+# Web/API dependencies
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+
+# ML/NLP dependencies
+sentence-transformers>=2.6,<3
+torch>=2.2,<3
+scikit-learn>=1.4,<2
+pandas>=2.2,<3
+
+# General utilities
+requests>=2.31,<3
+openai>=1.30,<2
+pyyaml>=6.0,<7

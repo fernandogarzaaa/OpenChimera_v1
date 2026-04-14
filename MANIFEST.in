@@ -22,5 +22,4 @@ prune models
 prune openchimera
 prune skills
 prune swarms
-prune tests
 prune tmp_session_test

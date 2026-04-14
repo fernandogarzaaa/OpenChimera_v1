@@ -191,8 +191,8 @@ class ActiveInquiry:
                     "question_id": qid,
                     "question": question[:200],
                 })
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("[ActiveInquiry] Failed to emit question_posted event: %s", exc)
         return entry
 
     def resolve_question(self, question_id: str, answer: str) -> bool:

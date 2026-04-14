@@ -174,8 +174,8 @@ class AutonomyScheduler:
             try:
                 if self._causal is not None:
                     ece_score = self._causal.summary().get("avg_confidence")
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("[Autonomy] Failed to summarize causal confidence: %s", exc)
 
             for job in self.jobs.values():
                 if not job.enabled:
@@ -272,8 +272,8 @@ class AutonomyScheduler:
                     outcome="success" if success else "failure",
                     context={"job": job_name, "streak": self.jobs[job_name].success_streak},
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("[Autonomy] Failed to register transfer pattern: %s", exc)
         if self._transfer is not None and success:
             try:
                 from core.transfer_learning import PatternType
@@ -283,8 +283,8 @@ class AutonomyScheduler:
                     pattern_data={"job": job_name, "summary": str(result)[:500]},
                     source_domain="autonomy",
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("[Autonomy] Failed to execute block: %s", exc)
 
     def _sync_scouted_models(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         source_path = self.legacy_workspace_root / "chimera_free_fallbacks.json"

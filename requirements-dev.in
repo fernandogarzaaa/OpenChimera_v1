@@ -3,3 +3,14 @@ build>=1.2,<2
 wheel>=0.45,<1
 pip-tools>=7.5,<8
 pre-commit>=4.3,<5
+
+# Ensure all runtime/skill dependencies are present in dev
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+sentence-transformers>=2.6,<3
+torch>=2.2,<3
+scikit-learn>=1.4,<2
+pandas>=2.2,<3
+requests>=2.31,<3
+openai>=1.30,<2
+pyyaml>=6.0,<7
