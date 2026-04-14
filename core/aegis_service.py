@@ -10,10 +10,6 @@ from core.integration import import_module_from_file
 
 
 class AegisService:
-    def start(self):
-        """No-op start method for simulation and compatibility with bootstrap logic."""
-        pass
-
     def __init__(self):
         self.root = get_aegis_root()
         self.entrypoint = self.root / "main.py"
@@ -40,16 +36,6 @@ class AegisService:
                 self.last_error = str(exc)
 
     def status(self) -> dict[str, Any]:
-        return {
-            "name": "aegis",
-            "available": self.available,
-            "running": self.running,
-            "root": str(self.root),
-            "entrypoint": str(self.entrypoint),
-            "last_error": self.last_error,
-        }
-
-    def status(self):
         from core.config import load_runtime_profile
         profile = load_runtime_profile()
         if profile.get("simulate_cloud"):
@@ -75,6 +61,84 @@ class AegisService:
             "last_error": self.last_error,
             "capabilities": ["workflow-preview", "debt-scan", "remediation-bridge"],
         }
+
+    def start(self) -> dict[str, Any]:
+        """Start the aegis service. Returns running state based on availability."""
+        if self.available:
+            self.running = True
+        return {"running": self.running}
+
+    def stop(self) -> dict[str, Any]:
+        """Stop the aegis service."""
+        self.running = False
+        return {"running": False}
+
+    def run_workflow(
+        self,
+        target_project: str | None = None,
+        preview: bool = True,
+        preview_context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Run the aegis workflow or a preview scan.
+
+        In preview mode, scans the target project for debt targets and
+        returns recommended actions without mutating any files.
+
+        In live mode, instantiates the AegisSwarm and runs the full workflow.
+        """
+        if not self.available:
+            result: dict[str, Any] = {
+                "status": "error",
+                "error": "AegisService is unavailable; entrypoint or orchestrator not found.",
+            }
+            self.last_run = result
+            return result
+
+        target = Path(target_project) if target_project else self.root
+        ctx = preview_context or {}
+
+        if preview:
+            debt_targets = self._scan_debt_targets(target)
+            focus_areas = [str(item) for item in ctx.get("focus_areas", []) if str(item).strip()]
+            recommended_actions = self._preview_recommendations(ctx, debt_targets)
+            result = {
+                "status": "preview",
+                "mode": "preview",
+                "target_project": str(target),
+                "debt_count": len(debt_targets),
+                "debt_targets": debt_targets,
+                "focus_areas": focus_areas,
+                "recommended_actions": recommended_actions,
+            }
+            self.last_run = result
+            return result
+
+        # Live mode
+        if self.aegis_swarm is None:
+            result = {
+                "status": "error",
+                "error": "AegisSwarm is unavailable; cannot run live workflow.",
+            }
+            self.last_run = result
+            return result
+
+        try:
+            swarm_instance = self.aegis_swarm(target_project=str(target))
+            swarm_instance.run_workflow()
+            result = {
+                "status": "ok",
+                "mode": "workflow",
+                "target_project": str(target),
+            }
+        except Exception as exc:
+            self.last_error = str(exc)
+            result = {
+                "status": "error",
+                "error": str(exc),
+            }
+
+        self.last_run = result
+        return result
 
     def _scan_debt_targets(self, target: Path) -> list[str]:
         patterns = [
