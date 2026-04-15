@@ -177,13 +177,15 @@ def _format_job_counts(counts: dict[str, Any]) -> str:
     return f"total={total} queued={queued} running={running} completed={completed} failed={failed} cancelled={cancelled}"
 
 
-def _runtime_state_label(snapshot: dict[str, Any]) -> str:
+def _runtime_state_label(snapshot: dict[str, Any], optional: bool = False) -> str:
     if not isinstance(snapshot, dict):
         return "unknown"
     if snapshot.get("running"):
         return "running"
     if snapshot.get("available"):
         return "available"
+    if optional:
+        return "not installed (optional)"
     return "missing"
 
 
@@ -462,12 +464,29 @@ def _status_command(as_json: bool) -> int:
         return 0
 
     provider_state = "online" if payload.get("provider_online") else "degraded"
+    # A provider can be "degraded" only because optional subsystems are absent —
+    # that is normal for a fresh install.  Help the user understand what's missing.
     print(f"OpenChimera status: {provider_state}")
-    print(f"AETHER: {_runtime_state_label(payload.get('aether', {}))}")
-    print(f"WRAITH: {_runtime_state_label(payload.get('wraith', {}))}")
-    print(f"Evo: {_runtime_state_label(payload.get('evo', {}))}")
-    print(f"Aegis: {_runtime_state_label(payload.get('aegis', {}))}")
+    print(f"AETHER: {_runtime_state_label(payload.get('aether', {}), optional=True)}")
+    print(f"WRAITH: {_runtime_state_label(payload.get('wraith', {}), optional=True)}")
+    print(f"Evo: {_runtime_state_label(payload.get('evo', {}), optional=True)}")
+    print(f"Aegis: {_runtime_state_label(payload.get('aegis', {}), optional=True)}")
     print(f"Ascension: {_runtime_state_label(payload.get('ascension', {}))}")
+
+    # Explain "degraded" when all optional subsystems are absent
+    optional_keys = ("aether", "wraith", "evo", "aegis")
+    all_optional_absent = all(
+        not payload.get(k, {}).get("available") and not payload.get(k, {}).get("running")
+        for k in optional_keys
+    )
+    if provider_state == "degraded" and all_optional_absent:
+        print(
+            "  Note: 'degraded' means optional subsystems (AETHER/WRAITH/Evo/Aegis) are not\n"
+            "  installed — the core runtime and Ascension work normally. To enable them,\n"
+            "  clone their repos into external/ or set the corresponding *_ROOT env vars.\n"
+            "  See LEGACY_INTEGRATIONS.md for setup instructions."
+        )
+
     print(f"Prefer free fallbacks: {'enabled' if provider_activation.get('prefer_free_models') else 'disabled'}")
     print(f"Learned fallback rankings: {'available' if fallback_learning.get('learned_rankings_available') else 'unavailable'}")
     print(f"Fallback leaders: {_format_fallback_leaders(fallback_learning)}")
