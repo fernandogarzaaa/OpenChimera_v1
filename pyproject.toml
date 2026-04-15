@@ -41,11 +41,10 @@ include = ["core*", "openchimera*", "sandbox*", "services*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+timeout = 90
 python_classes = ["Test*"]
 python_files = ["test_*.py", "*_test.py"]
 python_functions = ["test_*"]
-# Exclude Pydantic model classes that start with "Test" from collection
-collect_ignore_glob = []
 filterwarnings = ["ignore::pytest.PytestCollectionWarning"]
 
 [tool.ruff]
