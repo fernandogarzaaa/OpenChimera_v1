@@ -138,7 +138,6 @@ class OrchestratorAgent:
         # ── Stage 3: Execute ────────────────────────────────────────────
         if self._skip_execute:
             execution_log = ExecutionLog(run_id=run_id, records=[])
-            self._stage_results.append(StageResult(stage="execute", status="skipped"))
         else:
             try:
                 execution_log, current_trust = await self._run_stage_with_gates(
@@ -155,7 +154,6 @@ class OrchestratorAgent:
         # ── Stage 4: Test ───────────────────────────────────────────────
         if self._skip_tests:
             test_report = TestReport(run_id=run_id, overall_pass=True, results=[])
-            self._stage_results.append(StageResult(stage="test", status="skipped"))
         else:
             try:
                 test_report, current_trust = await self._run_stage_with_gates(

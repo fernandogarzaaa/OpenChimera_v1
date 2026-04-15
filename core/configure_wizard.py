@@ -340,7 +340,8 @@ def run_interactive_wizard(registry: QuantumCapabilityRegistry | None = None) ->
             _collect_cloud_api_keys(list(chosen_providers))
 
     # ── STEP 2: Remote channels ──────────────────────────────────────
-    print(f"\n{bold(cyan('  STEP 2 — Remote Control Channels\n'))}")
+    _step2_header = "  STEP 2 \u2014 Remote Control Channels\n"
+    print("\n" + bold(cyan(_step2_header)))
 
     channel_options: list[tuple[str, str]] = [
         ("remote_telegram", "Telegram — control via bot DMs"),
@@ -366,7 +367,8 @@ def run_interactive_wizard(registry: QuantumCapabilityRegistry | None = None) ->
         _collect_channel_credentials(cid)
 
     # ── STEP 3: Optional modules ─────────────────────────────────────
-    print(f"\n{bold(cyan('  STEP 3 — Optional Modules\n'))}")
+    _step3_header = "  STEP 3 \u2014 Optional Modules\n"
+    print("\n" + bold(cyan(_step3_header)))
 
     optional_options: list[tuple[str, str]] = [
         ("autonomy_scheduler", "Autonomy Scheduler  — background self-repair and digest jobs"),
@@ -385,7 +387,8 @@ def run_interactive_wizard(registry: QuantumCapabilityRegistry | None = None) ->
         registry.set_enabled(cid, cid in chosen_optional)
 
     # ── Summary ──────────────────────────────────────────────────────
-    print(f"\n{bold(cyan('  ✓  Configuration saved.  Current status:\n'))}")
+    _summary_header = "  \u2713  Configuration saved.  Current status:\n"
+    print("\n" + bold(cyan(_summary_header)))
     print_capability_table(registry)
 
     return 0

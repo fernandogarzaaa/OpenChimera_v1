@@ -345,8 +345,9 @@ def _scan_dead_code_candidates(py_files: list[Path]) -> list[AuditFinding]:
 class AuditAgent:
     """Agent 1 — performs the full static audit of the workspace."""
 
-    def __init__(self, workspace: str | Path) -> None:
+    def __init__(self, workspace: str | Path, chimera=None) -> None:
         self.workspace = Path(workspace).resolve()
+        self._chimera = chimera
 
     def run(self, run_id: str) -> AuditReport:
         """Execute all scan passes and return an AuditReport."""
