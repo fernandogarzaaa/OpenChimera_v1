@@ -120,7 +120,7 @@ class RecommenderAgent:
             capped = findings[:_MAX_CLUSTER_SIZE]
             rec = Recommendation(
                 rec_id=uuid.uuid4().hex[:12],
-                priority=0,  # assigned below after sort
+                priority=1,  # assigned below after sort; placeholder must satisfy ge=1
                 title=f"[{category.upper()}] {key.split('::')[1]} — {len(findings)} issue(s)",
                 description=_build_description(category, capped),
                 affected_files=list(dict.fromkeys(f.file_path for f in capped)),
