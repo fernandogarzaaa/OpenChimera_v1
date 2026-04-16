@@ -132,6 +132,71 @@ openchimera serve
 
 ---
 
+## Production install
+
+For a pinned, repeatable production deployment install from `requirements-prod.txt`
+instead of `pip install -e .`:
+
+```bash
+# 1. Create and activate a fresh virtual environment
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+
+# 2. Install all pinned production dependencies
+pip install -r requirements-prod.txt
+
+# 3. Install OpenChimera itself (non-editable)
+pip install .
+
+# 4. Bootstrap workspace state
+python run.py bootstrap
+
+# 5. Verify
+python run.py status
+python run.py doctor --production
+```
+
+### Environment variables
+
+Copy `.env.example` to `.env` and set any values you need (all are optional — the
+runtime has safe defaults for everything):
+
+```bash
+cp .env.example .env
+# Edit .env — at minimum set OPENCHIMERA_API_TOKEN for network-exposed deployments
+```
+
+OpenChimera does **not** auto-load `.env` files. Export variables in your shell,
+systemd unit (`EnvironmentFile=`), or Docker Compose `env_file:` block.
+
+### Connecting a local LLM
+
+The API server starts and responds to health checks without any model configured.
+To enable actual LLM inference:
+
+```bash
+# Option A: Ollama (easiest, free)
+# Install from https://ollama.ai, then:
+ollama pull gemma3:4b
+# OpenChimera auto-detects Ollama at localhost:11434 on next restart.
+
+# Option B: llama-server (llama.cpp)
+# Set llama_server_path in config/runtime_profile.local.json.
+
+# Option C: Cloud provider
+# Set OPENAI_API_KEY or equivalent in .env or your shell.
+```
+
+### What "degraded" status means
+
+`python run.py status` will show **degraded** on a fresh install because the four
+optional subsystems (AETHER, WRAITH, Evo, Aegis) are separate repositories not
+bundled with this repo. The core API, Ascension swarm, God Swarm, audit pipeline,
+and chimeralang-mcp integration all work normally in this state.
+See [LEGACY_INTEGRATIONS.md](LEGACY_INTEGRATIONS.md) for setup instructions.
+
+---
+
 ## What works out of the box
 
 | Feature | Works without config |

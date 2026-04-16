@@ -55,3 +55,10 @@ skills/dependency-auditor/test-project/package-lock.json
 
 # Local editor settings
 .vscode/
+
+# AI assistant guide (local only)
+CLAUDE.md
+
+# Audit pipeline run artifacts (generated at runtime)
+artifacts/audit_runs/
+

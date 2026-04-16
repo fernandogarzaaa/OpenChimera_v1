@@ -2,6 +2,11 @@
 
 ![OpenChimera](assets/openchimera-logo.jpg)
 
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/fernandogarzaaa/OpenChimera_v1/python-ci.yml?branch=main&label=CI&logo=github)](https://github.com/fernandogarzaaa/OpenChimera_v1/actions/workflows/python-ci.yml)
+[![PyPI](https://img.shields.io/badge/pypi-openchimera-orange?logo=pypi&logoColor=white)](https://pypi.org/project/openchimera/)
+
 **Local-first orchestration for models, operator jobs, browser tasks, and optional external runtimes.**
 
 ## Quick Start (One-Liner Install)

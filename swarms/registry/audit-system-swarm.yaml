@@ -1,0 +1,125 @@
+god_swarms:
+  - id: "audit-system-20260414"
+    created: "2026-04-14T00:00:00Z"
+    objective: "Full codebase audit, prioritised recommendations, code execution, sandbox testing — governed by chimeralang-mcp hallucination detection and trust propagation"
+    status: "active"
+    entry_point: "python run_audit.py"
+    project: "/home/user/OpenChimera_v1"
+
+    core_agents:
+      orchestrator: "audit-orchestrator"
+
+    sub_swarms:
+      - id: "audit-auditor"
+        type: "code-archaeology"
+        role: "Codebase Auditor"
+        module: "swarms.audit_system.agent1_auditor"
+        class: "AuditAgent"
+        objective: "Full static scan of all Python, Rust, TypeScript files — security, quality, architecture, dead code, test coverage, dependency vulnerabilities"
+        priority: "critical"
+        chimera_tools:
+          - chimera_prove
+          - chimera_audit
+        outputs:
+          - artifacts/audit_runs/<run_id>/audit_report.json
+
+      - id: "audit-recommender"
+        type: "analysis"
+        role: "Recommendation Engine"
+        module: "swarms.audit_system.agent2_recommender"
+        class: "RecommenderAgent"
+        objective: "Generate prioritised, chimera-validated actionable recommendations from the AuditReport"
+        priority: "critical"
+        chimera_tools:
+          - chimera_detect
+          - chimera_confident
+          - chimera_audit
+        inputs:
+          - artifacts/audit_runs/<run_id>/audit_report.json
+        outputs:
+          - artifacts/audit_runs/<run_id>/recommendations.json
+
+      - id: "audit-executor"
+        type: "code-surgery"
+        role: "Code Executor"
+        module: "swarms.audit_system.agent3_executor"
+        class: "ExecutorAgent"
+        objective: "Apply recommendations as code changes with chimera constraint enforcement and integrity proofs"
+        priority: "high"
+        default_dry_run: true
+        chimera_tools:
+          - chimera_constrain
+          - chimera_prove
+          - chimera_audit
+        inputs:
+          - artifacts/audit_runs/<run_id>/recommendations.json
+        outputs:
+          - artifacts/audit_runs/<run_id>/execution_log.json
+
+      - id: "audit-tester"
+        type: "devops-pipeline"
+        role: "Test Sandbox"
+        module: "swarms.audit_system.agent4_tester"
+        class: "TesterAgent"
+        objective: "Simulate user interactions, run full pytest suite, detect regressions, produce chimera_gate verdict"
+        priority: "high"
+        chimera_tools:
+          - chimera_gate
+          - chimera_audit
+        inputs:
+          - artifacts/audit_runs/<run_id>/execution_log.json
+        outputs:
+          - artifacts/audit_runs/<run_id>/test_report.json
+
+      - id: "audit-orchestrator"
+        type: "meta-orchestrator"
+        role: "Pipeline Orchestrator (Admin)"
+        module: "swarms.audit_system.agent5_orchestrator"
+        class: "OrchestratorAgent"
+        objective: "Coordinate all 4 agents; detect/redirect hallucinations at every boundary using ALL 9 chimera tools; manage trust propagation chain; produce final orchestration report"
+        priority: "critical"
+        chimera_tools:
+          - chimera_run
+          - chimera_confident
+          - chimera_explore
+          - chimera_gate
+          - chimera_detect
+          - chimera_constrain
+          - chimera_typecheck
+          - chimera_prove
+          - chimera_audit
+        outputs:
+          - artifacts/audit_runs/<run_id>/orchestration_report.json
+          - artifacts/audit_runs/<run_id>/chimera_audit_chain.json
+
+    pipeline_state_machine:
+      stages:
+        - audit
+        - recommend
+        - execute
+        - test
+      transitions:
+        PENDING:   [RUNNING]
+        RUNNING:   [PASSED, REDIRECTED, ABORTED]
+        REDIRECTED: [RUNNING]
+        PASSED:    [next_stage_RUNNING]
+        ABORTED:   [pipeline_FAILED]
+
+    chimera_config:
+      mcp_server: "chimeralang"
+      hallucination_threshold: 0.10
+      confidence_gate: 0.85
+      chimera_confident_threshold: 0.95
+      max_retries_per_stage: 3
+
+    shared_context:
+      artifacts_dir: "artifacts/audit_runs"
+      workspace: "/home/user/OpenChimera_v1"
+      chimeralang_mcp_entry: "uvx chimeralang-mcp"
+      fallback: "core.chimera_bridge.ChimeraLangBridge"
+
+    metrics:
+      start_time: null
+      last_run_id: null
+      swarms_active: 5
+      swarms_completed: 0

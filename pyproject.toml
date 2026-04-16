@@ -38,3 +38,19 @@ core = ["migrations/*.sql"]
 
 [tool.setuptools.packages.find]
 include = ["core*", "openchimera*", "sandbox*", "services*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+timeout = 90
+python_classes = ["Test*"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]
+filterwarnings = ["ignore::pytest.PytestCollectionWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

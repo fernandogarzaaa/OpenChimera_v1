@@ -83,7 +83,7 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         rendered = output.getvalue()
         self.assertIn("AETHER: available", rendered)
-        self.assertIn("WRAITH: missing", rendered)
+        self.assertIn("WRAITH: not installed (optional)", rendered)
         self.assertIn("Evo: running", rendered)
 
     def test_doctor_payload_warns_when_aether_immune_loop_is_degraded(self) -> None:
