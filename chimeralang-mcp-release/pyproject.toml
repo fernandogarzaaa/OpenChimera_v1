@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chimeralang-mcp"
+version = "0.2.0"
+description = "ChimeraLang MCP Server — probabilistic types, consensus gates, and hallucination detection as Claude tools"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Fernando Garza", email = "fernando@openchimera.dev" }]
+keywords = ["mcp", "claude", "chimeralang", "hallucination-detection",
+            "probabilistic-types", "llm-safety", "ai", "constraint-enforcement"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["mcp>=1.0.0"]
+
+[project.scripts]
+chimeralang-mcp = "chimeralang_mcp.server:main"
+
+[project.urls]
+Homepage   = "https://github.com/fernandogarzaaa/chimeralang-mcp"
+Repository = "https://github.com/fernandogarzaaa/chimeralang-mcp"
+Issues     = "https://github.com/fernandogarzaaa/chimeralang-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["chimeralang_mcp", "chimera"]
