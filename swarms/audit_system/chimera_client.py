@@ -25,7 +25,9 @@ import json
 import logging
 import shutil
 import subprocess
+import sys
 import time
+from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
@@ -65,11 +67,12 @@ class ChimeraClient:
     def is_available(self) -> bool:
         if self._available is not None:
             return self._available
-        self._available = shutil.which("uvx") is not None
+        local_script = Path(__file__).resolve().parents[2] / "scripts" / "chimeralang_mcp_local.py"
+        self._available = local_script.exists()
         if not self._available:
             log.warning(
-                "[ChimeraClient] 'uvx' not found — chimera tools will use fallback "
-                "responses.  Install uv: https://github.com/astral-sh/uv"
+                "[ChimeraClient] scripts/chimeralang_mcp_local.py not found — "
+                "chimera tools will use fallback responses."
             )
         return self._available
 
@@ -91,8 +94,9 @@ class ChimeraClient:
         stdin_data = json.dumps(payload).encode()
 
         try:
+            local_script = Path(__file__).resolve().parents[2] / "scripts" / "chimeralang_mcp_local.py"
             proc = await asyncio.create_subprocess_exec(
-                "uvx", "chimeralang-mcp",
+                sys.executable, str(local_script),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

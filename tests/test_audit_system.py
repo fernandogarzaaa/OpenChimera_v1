@@ -174,8 +174,8 @@ class TestChimeraClientFallback:
         # Force unavailable
         self.client._available = False
 
-    def test_is_available_false_when_uvx_missing(self):
-        with patch("shutil.which", return_value=None):
+    def test_is_available_false_when_local_script_missing(self):
+        with patch("pathlib.Path.exists", return_value=False):
             from swarms.audit_system.chimera_client import ChimeraClient
             c = ChimeraClient()
             assert c.is_available() is False

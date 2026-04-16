@@ -13,9 +13,31 @@ dependencies = [
 	"numpy>=1.24,<3",
 	"psutil>=5.9,<8",
 	"pydantic>=2.12,<3",
+	# API server
+	"fastapi>=0.110,<1",
+	"uvicorn[standard]>=0.29,<1",
+	# HTTP / utilities
+	"requests>=2.31,<3",
+	"openai>=1.30,<2",
+	"pyyaml>=6.0,<7",
+	# Data
+	"pandas>=2.2,<3",
 ]
 
 [project.optional-dependencies]
+ml = [
+	"sentence-transformers>=2.6,<6",
+	"torch>=2.2,<3",
+	"transformers>=4.40,<6",
+	"scikit-learn>=1.4,<2",
+	"scipy>=1.10,<2",
+	"huggingface-hub>=1.0,<2",
+	"tokenizers>=0.15,<1",
+	"safetensors>=0.4,<1",
+	"pillow>=10.0,<13",
+	"tqdm>=4.60,<5",
+]
+full = ["openchimera[ml]"]
 redis = [
 	"redis[hiredis]>=5.0,<6",
 ]

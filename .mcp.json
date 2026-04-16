@@ -9,9 +9,9 @@
       ]
     },
     "chimeralang": {
-      "command": "uvx",
+      "command": "python",
       "args": [
-        "chimeralang-mcp"
+        "${workspaceFolder}/scripts/chimeralang_mcp_local.py"
       ]
     }
   }

@@ -67,9 +67,9 @@ fi
 echo -e "\033[33m[3/5] Installing dependencies (this may take a minute)...\033[0m"
 
 .venv/bin/pip install --upgrade pip --quiet 2>/dev/null
-.venv/bin/pip install -e . --quiet 2>/dev/null || {
+.venv/bin/pip install -e ".[ml]" --quiet 2>/dev/null || {
     echo -e "\033[31m  Dependency install failed. Re-running with output:\033[0m"
-    .venv/bin/pip install -e .
+    .venv/bin/pip install -e ".[ml]"
     exit 1
 }
 echo -e "\033[32m  All dependencies installed\033[0m"

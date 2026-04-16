@@ -79,10 +79,10 @@ $venvPip    = Join-Path $venvPath "Scripts" "pip.exe"
 Write-Host "[3/5] Installing dependencies (this may take a minute)..." -ForegroundColor Yellow
 
 & $venvPip install --upgrade pip --quiet 2>&1 | Out-Null
-& $venvPip install -e $PSScriptRoot --quiet 2>&1 | Out-Null
+& $venvPip install -e "$PSScriptRoot[ml]" --quiet 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  Dependency install failed. Re-running with output:" -ForegroundColor Red
-    & $venvPip install -e $PSScriptRoot
+    & $venvPip install -e "$PSScriptRoot[ml]"
     exit 1
 }
 Write-Host "  All dependencies installed" -ForegroundColor Green

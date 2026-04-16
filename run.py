@@ -1,5 +1,20 @@
 from __future__ import annotations
 
+# ─── Dependency bootstrap (stdlib only — runs before any third-party import) ──
+def _bootstrap_deps() -> None:
+    """Auto-install core dependencies when running from a fresh git clone."""
+    import importlib.util, subprocess, sys, os
+    from pathlib import Path
+    if importlib.util.find_spec("pydantic") and importlib.util.find_spec("fastapi"):
+        return  # already installed
+    root = str(Path(__file__).resolve().parent)
+    print("[OpenChimera] First run: installing core dependencies (~300 MB, one-time)…", flush=True)
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", root, "-q"])
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+_bootstrap_deps()
+# ──────────────────────────────────────────────────────────────────────────────
+
 import argparse
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version as package_version
