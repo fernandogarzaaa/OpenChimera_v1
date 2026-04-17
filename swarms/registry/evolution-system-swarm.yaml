@@ -1,0 +1,103 @@
+god_swarms:
+  - id: "evolution-system-20260417"
+    created: "2026-04-17T00:00:00Z"
+    objective: "6-agent AGI evolution pipeline: scan, audit, fix, research OSS repos, integrate capabilities, refactor and document"
+    status: "active"
+    entry_point: "python run_evolution.py"
+    project: "/home/user/OpenChimera_v1"
+
+    core_agents:
+      orchestrator: "swarms.evolution_system.orchestrator.EvolutionOrchestrator"
+
+    sub_swarms:
+      - id: "repo-scanner"
+        agent_num: 1
+        type: "code-archaeology"
+        role: "Full Codebase Scanner"
+        module: "swarms.evolution_system.agent1_repo_scanner"
+        class: "RepoScanner"
+        objective: "Full static scan of entire repository — wraps AuditAgent with git context"
+        priority: "critical"
+        chimera_tools: [chimera_audit, chimera_compress]
+        outputs: ["artifacts/evolution_runs/<run_id>/audit_report.json"]
+
+      - id: "gap-auditor"
+        agent_num: 2
+        type: "analysis"
+        role: "Gap and Bug Auditor"
+        module: "swarms.evolution_system.agent2_gap_auditor"
+        class: "GapAuditor"
+        objective: "Generate prioritised recommendations from audit findings with coverage and coupling analysis"
+        priority: "critical"
+        chimera_tools: [chimera_detect, chimera_confident, chimera_optimize]
+        outputs: ["artifacts/evolution_runs/<run_id>/recommendations.json"]
+
+      - id: "fix-executor"
+        agent_num: 3
+        type: "code-surgery"
+        role: "Fix Executor"
+        module: "swarms.evolution_system.agent3_fix_executor"
+        class: "FixExecutor"
+        objective: "Apply priority-1 and priority-2 fixes, run tests, verify no regressions"
+        priority: "high"
+        chimera_tools: [chimera_constrain, chimera_prove, chimera_gate]
+        outputs:
+          - "artifacts/evolution_runs/<run_id>/execution_log.json"
+          - "artifacts/evolution_runs/<run_id>/test_report.json"
+
+      - id: "agi-researcher"
+        agent_num: 4
+        type: "research"
+        role: "AGI Capability Researcher"
+        module: "swarms.evolution_system.agent4_agi_researcher"
+        class: "AGIResearcher"
+        objective: "Identify OSS repos (MIT/Apache licensed) that expand OpenChimera AGI capabilities"
+        priority: "high"
+        chimera_tools: [chimera_explore, chimera_compress]
+        outputs: ["artifacts/evolution_runs/<run_id>/research_report.json"]
+
+      - id: "capability-integrator"
+        agent_num: 5
+        type: "integration"
+        role: "Capability Integrator"
+        module: "swarms.evolution_system.agent5_capability_integrator"
+        class: "CapabilityIntegrator"
+        objective: "Extract and integrate selected low/medium complexity capabilities from research report"
+        priority: "high"
+        chimera_tools: [chimera_constrain, chimera_prove, chimera_gate]
+        outputs: ["artifacts/evolution_runs/<run_id>/capability_log.json"]
+
+      - id: "refactor-documenter"
+        agent_num: 6
+        type: "documentation"
+        role: "Refactor and Documenter"
+        module: "swarms.evolution_system.agent6_refactor_documenter"
+        class: "RefactorDocumenter"
+        objective: "Flag large files for decomposition, identify type hint gaps, update README with new capabilities"
+        priority: "medium"
+        chimera_tools: [chimera_audit, chimera_optimize]
+        outputs:
+          - "artifacts/evolution_runs/<run_id>/refactor_log.json"
+          - "README.md"
+
+    chimera_config:
+      mcp_server: "chimeralang"
+      local_script: "scripts/chimeralang_mcp_local.py"
+      hallucination_threshold: 0.10
+      confidence_gate: 0.85
+      max_retries_per_stage: 3
+      token_saving_tools: [chimera_compress, chimera_optimize, chimera_fracture]
+
+    pipeline_state_machine:
+      stages: [scan, audit, fix, research, integrate, refactor]
+      transitions:
+        PENDING: [RUNNING]
+        RUNNING: [PASSED, REDIRECTED, ABORTED]
+        REDIRECTED: [RUNNING]
+        PASSED: [next_stage_RUNNING]
+        ABORTED: [pipeline_FAILED]
+
+    shared_context:
+      artifacts_dir: "artifacts/evolution_runs"
+      workspace: "/home/user/OpenChimera_v1"
+      dry_run_default: true

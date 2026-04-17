@@ -238,3 +238,74 @@ class ChimeraClient:
             {"program": program, "inputs": json.dumps(inputs or {})},
         )
         return result or {"output": None, "confidence": 1.0, "fallback": True}
+
+    # ------------------------------------------------------------------
+    # Token-saving tools (compress / optimize / fracture)
+    # ------------------------------------------------------------------
+
+    async def compress(
+        self,
+        content: str,
+        max_chars: int = 2000,
+        mode: str = "summary",
+    ) -> dict:
+        """Compress *content* to reduce inter-agent payload size.
+
+        mode: "summary" (first 3/4 + last 1/4), "keypoints" (key lines only),
+              "truncate" (hard cut).
+        Returns: compressed (str), original_len, compressed_len, ratio.
+        """
+        result = await self._call(
+            "chimera_compress",
+            {"content": content, "max_chars": max_chars, "mode": mode},
+        )
+        if result and "compressed" in result:
+            return result
+        truncated = content[:max_chars] if len(content) > max_chars else content
+        return {
+            "compressed": truncated,
+            "original_len": len(content),
+            "compressed_len": len(truncated),
+            "ratio": round(len(truncated) / max(len(content), 1), 3),
+            "fallback": True,
+        }
+
+    async def optimize(self, prompt: str, style: str = "concise") -> dict:
+        """Rewrite *prompt* to be token-efficient while preserving intent.
+
+        style: "concise" (remove filler), "structured" (bullet form),
+               "minimal" (hard cap at 500 chars).
+        Returns: optimized (str), tokens_saved_estimate (int), transformations (list).
+        """
+        result = await self._call(
+            "chimera_optimize",
+            {"prompt": prompt, "style": style},
+        )
+        if result and "optimized" in result:
+            return result
+        return {
+            "optimized": prompt,
+            "tokens_saved_estimate": 0,
+            "transformations": [],
+            "fallback": True,
+        }
+
+    async def fracture(
+        self,
+        content: str,
+        chunk_size: int = 1500,
+        overlap: int = 100,
+        split_on: str = "paragraph",
+    ) -> dict:
+        """Split *content* into independently-processable chunks.
+
+        split_on: "paragraph", "sentence", "line", "chars".
+        Returns: chunks (list[str]), count (int), avg_chunk_len (int).
+        """
+        result = await self._call(
+            "chimera_fracture",
+            {"content": content, "chunk_size": chunk_size, "overlap": overlap, "split_on": split_on},
+        )
+        if result and "chunks" in result:
+            return result
+        return {"chunks": [content], "count": 1, "avg_chunk_len": len(content), "fallback": True}
