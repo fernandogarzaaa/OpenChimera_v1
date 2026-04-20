@@ -21,7 +21,7 @@ redis = [
 ]
 dev = [
 	"build>=1.2,<2",
-	"pytest-asyncio>=0.21,<1",
+	"pytest-asyncio>=0.21,<2",
 	"wheel>=0.45,<1",
 	"pip-tools>=7.5,<8",
 ]
