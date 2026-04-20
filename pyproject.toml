@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 redis = [
-	"redis[hiredis]>=5.0,<6",
+	"redis[hiredis]>=5.0,<8",
 ]
 dev = [
 	"build>=1.2,<2",
