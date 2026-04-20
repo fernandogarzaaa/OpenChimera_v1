@@ -16,7 +16,7 @@ anyio==4.13.0
     #   openai
     #   starlette
     #   watchfiles
-build==1.4.2
+build==1.4.3
     # via
     #   -r requirements-dev.in
     #   pip-tools
