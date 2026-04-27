@@ -133,8 +133,6 @@ packaging==26.0
     #   transformers
 pandas==2.3.3
     # via -r requirements.in
-pillow==12.2.0
-    # via sentence-transformers
 psutil==7.2.2
     # via -r requirements.in
 pydantic==2.13.2
@@ -173,7 +171,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==2.7.0
+sentence-transformers==5.4.1
     # via -r requirements.in
 six==1.17.0
     # via python-dateutil
@@ -209,6 +207,7 @@ typing-extensions==4.15.0
     #   openai
     #   pydantic
     #   pydantic-core
+    #   sentence-transformers
     #   starlette
     #   torch
     #   typing-inspection
