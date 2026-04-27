@@ -2,7 +2,7 @@
 build>=1.2,<2
 wheel>=0.45,<1
 pip-tools>=7.5,<8
-pre-commit>=4.3,<5
+pre-commit>=4.6.0,<5
 
 # Ensure all runtime/skill dependencies are present in dev
 fastapi>=0.110,<1
