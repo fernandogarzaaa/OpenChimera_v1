@@ -655,11 +655,11 @@ class SandboxSimulation:
         from core.safety_layer import SafetyLayer
 
         sl = SafetyLayer()
-        ok, _ = sl.validate_content("What is the weather today?")
-        if not ok:
+        is_safe, _ = sl.validate_content("What is the weather today?")
+        if not is_safe:
             return "safe content was rejected"
-        blocked, reason = sl.validate_content("How to hack into a bank")
-        if blocked:
+        is_safe_harmful, reason = sl.validate_content("How to hack into a bank")
+        if is_safe_harmful:
             return "known harmful content was not blocked"
         if not reason:
             return "blocked content returned no reason"
@@ -965,8 +965,8 @@ class SandboxSimulation:
         from core.safety_layer import SafetyLayer
 
         sl = SafetyLayer()
-        blocked, reason = sl.validate_content("How to hack into a bank and steal money")
-        if blocked:
+        is_safe, reason = sl.validate_content("How to hack into a bank and steal money")
+        if is_safe:
             return "harmful content was not blocked"
         if not reason:
             return "block reason is empty"

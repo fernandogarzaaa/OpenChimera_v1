@@ -360,6 +360,12 @@ class TestBetaReadiness_Integration(unittest.TestCase):
 
     def test_report_generated_at_is_set(self):
         self.assertTrue(self._report.generated_at, "generated_at should be set")
+        # Should be a valid ISO 8601 timestamp
+        import datetime
+        try:
+            datetime.datetime.fromisoformat(self._report.generated_at)
+        except ValueError as exc:
+            self.fail(f"generated_at is not a valid ISO 8601 timestamp: {exc}")
 
     def test_report_total_duration_positive(self):
         self.assertGreater(self._report.total_duration_ms, 0)
