@@ -345,13 +345,13 @@ class TestLocalSpeechAvailable(unittest.TestCase):
     @unittest.skipUnless(os.name == "nt", "PowerShell speech synthesis is Windows-only")
     def test_returns_true_when_powershell_succeeds(self):
         svc = _make_service()
-        with patch.object(svc, "_run_powershell", return_value="ok"):
+        with patch("os.name", "nt"), patch.object(svc, "_run_powershell", return_value="ok"):
             result = svc._local_speech_available()
         self.assertTrue(result)
 
     def test_returns_false_when_powershell_raises_runtime_error(self):
         svc = _make_service()
-        with patch.object(svc, "_run_powershell", side_effect=RuntimeError("no speech")):
+        with patch("os.name", "nt"), patch.object(svc, "_run_powershell", side_effect=RuntimeError("no speech")):
             result = svc._local_speech_available()
         self.assertFalse(result)
 

@@ -244,6 +244,20 @@ class DatabaseManager:
             ).fetchall()
         return [self._loads(row["event_json"], []) for row in rows]
 
+    def clear_query_sessions(self) -> int:
+        """Delete all rows from query_sessions. Returns the number of rows deleted."""
+        with self.transaction() as connection:
+            count = connection.execute("SELECT COUNT(*) FROM query_sessions").fetchone()[0]
+            connection.execute("DELETE FROM query_sessions")
+        return int(count)
+
+    def clear_tool_events(self) -> int:
+        """Delete all rows from query_tool_history. Returns the number of rows deleted."""
+        with self.transaction() as connection:
+            count = connection.execute("SELECT COUNT(*) FROM query_tool_history").fetchone()[0]
+            connection.execute("DELETE FROM query_tool_history")
+        return int(count)
+
     def load_credentials(self) -> dict[str, Any]:
         with self.transaction() as connection:
             rows = connection.execute(
