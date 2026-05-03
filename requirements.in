@@ -6,7 +6,7 @@ numpy>=1.24,<3
 
 # Web/API dependencies
 fastapi>=0.110,<1
-uvicorn[standard]>=0.29,<1
+uvicorn[standard]>=0.46.0,<1
 
 # ML/NLP dependencies
 sentence-transformers>=5.4.1,<6

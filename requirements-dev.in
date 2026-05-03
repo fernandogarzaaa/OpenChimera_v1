@@ -6,7 +6,7 @@ pre-commit>=4.6.0,<5
 
 # Ensure all runtime/skill dependencies are present in dev
 fastapi>=0.110,<1
-uvicorn[standard]>=0.29,<1
+uvicorn[standard]>=0.46.0,<1
 sentence-transformers>=5.4.1,<6
 torch>=2.2,<3
 scikit-learn>=1.4,<2

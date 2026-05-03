@@ -219,7 +219,7 @@ tzdata==2026.1
     # via pandas
 urllib3==2.6.3
     # via requests
-uvicorn[standard]==0.44.0
+uvicorn[standard]==0.46.0
     # via -r requirements.in
 uvloop==0.22.1
     # via uvicorn
