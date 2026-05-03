@@ -151,7 +151,7 @@ nvidia-nvshmem-cu13==3.4.5
     # via torch
 nvidia-nvtx==13.0.85
     # via cuda-toolkit
-openai==1.109.1
+openai==2.32.0
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
