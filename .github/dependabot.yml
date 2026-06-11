@@ -56,9 +56,8 @@ updates:
       day: monday
     open-pull-requests-limit: 3
 
-  # npm — dependency-auditor demo fixture (scan for automated updates)
-  - package-ecosystem: npm
-    directory: "/skills/dependency-auditor/test-project"
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 10
+  # NOTE: /skills/dependency-auditor/test-project is intentionally a
+  # deliberately-vulnerable sample fixture used by the dependency-auditor
+  # skill to demonstrate vulnerability scanning. It is never installed or
+  # shipped, so it is deliberately excluded from Dependabot version updates
+  # to avoid generating noise from non-shippable sample data.
