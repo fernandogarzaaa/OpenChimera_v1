@@ -108,6 +108,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
         self._request_started_at = time.perf_counter()
         self._request_id = self.headers.get("X-Request-Id", "").strip() or f"req-{uuid.uuid4().hex[:12]}"
         self._response_recorded = False
+        self._granted_permission: str | None = None
         self._request_context_token = set_request_context(self._request_id)
 
     def _record_response(self, status: HTTPStatus) -> None:
@@ -142,7 +143,15 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
 
     def _authorize_request(self) -> bool:
         decision = self.server.authorizer.authorize(self.command, self.path, self.headers)
+        # Bind the permission scope to the authenticated session so privileged
+        # tool execution can never be driven by a client-supplied request body.
+        # When auth is disabled (no auth required) the local operator is fully
+        # trusted and granted admin; otherwise the scope is taken strictly from
+        # the validated token.
+        self._granted_permission = decision.granted_permission
         if decision.allowed:
+            if self._granted_permission is None and not decision.auth_required:
+                self._granted_permission = "admin"
             return True
         self._write_json(
             {
@@ -154,6 +163,16 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             www_authenticate=decision.status == HTTPStatus.UNAUTHORIZED,
         )
         return False
+
+    def _session_permission_scope(self) -> str:
+        """Return the permission scope bound to the authenticated session.
+
+        The scope is derived from the validated auth token (or ``admin`` when
+        auth is disabled for local use). It must never be read from the client
+        request body, otherwise a low-privilege caller could escalate to admin
+        tools by supplying ``"permission_scope": "admin"`` (CWE-863).
+        """
+        return str(getattr(self, "_granted_permission", None) or "user")
 
     def _extract_auth_token(self) -> str | None:
         raw = self.headers.get(self.server.authorizer.auth_header, "")
@@ -684,7 +703,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                         query=str(payload.get("query", "")),
                         messages=messages,
                         session_id=str(payload.get("session_id", "")).strip() or None,
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                         max_tokens=int(payload.get("max_tokens", 512)),
                         allow_tool_planning=bool(payload.get("allow_tool_planning", True)),
                         execute_tools=bool(payload.get("execute_tools", False)),
@@ -700,7 +719,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     self.server.provider.execute_tool(
                         str(payload.get("tool_id", "")).strip(),
                         dict(payload.get("arguments", {})),
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                     )
                 )
                 return
@@ -714,7 +733,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     self.server.provider.resume_session(
                         session_id=str(payload.get("session_id", "")).strip(),
                         query=str(payload.get("query", "")).strip(),
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                         max_tokens=int(payload.get("max_tokens", 512)),
                     )
                 )

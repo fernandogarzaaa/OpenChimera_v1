@@ -143,6 +143,20 @@ class _FakeProvider:
                 return session
         raise ValueError(f"Unknown session: {session_id}")
 
+    def resume_session(
+        self,
+        session_id: str = "",
+        query: str = "",
+        permission_scope: str = "user",
+        max_tokens: int = 512,
+    ) -> dict[str, object]:
+        return {
+            "session_id": session_id,
+            "query_type": "general",
+            "permission_context": {"scope": permission_scope, "requires_admin": False},
+            "response": self.chat_completion(),
+        }
+
     def inspect_memory(self) -> dict[str, object]:
         return {
             "scopes": {
@@ -1443,6 +1457,68 @@ class ApiContractTests(unittest.TestCase):
             headers={"Authorization": "Bearer admin-token"},
         )
         self.assertIn("generated_at", refreshed)
+
+    def test_tools_execute_ignores_client_supplied_permission_scope(self) -> None:
+        """Regression for GHSA-mgmq-49gp-977m (CWE-863).
+
+        A low-privilege user token must not be able to escalate to the admin
+        permission scope by placing ``"permission_scope": "admin"`` in the
+        request body. The effective scope is bound to the authenticated session.
+        """
+        os.environ["OPENCHIMERA_API_TOKEN"] = "user-token"
+        os.environ["OPENCHIMERA_ADMIN_TOKEN"] = "admin-token"
+        self._restart_server()
+
+        # User token + forged admin scope in body -> server forces "user".
+        escalation = self._post(
+            "/v1/tools/execute",
+            {"tool_id": "browser.fetch", "permission_scope": "admin", "arguments": {"url": "http://169.254.169.254/"}},
+            headers={"Authorization": "Bearer user-token"},
+        )
+        self.assertEqual(escalation["permission_scope"], "user")
+
+        # Admin token -> session-derived "admin" scope regardless of body value.
+        privileged = self._post(
+            "/v1/tools/execute",
+            {"tool_id": "browser.fetch", "permission_scope": "user", "arguments": {"url": "https://example.com"}},
+            headers={"Authorization": "Bearer admin-token"},
+        )
+        self.assertEqual(privileged["permission_scope"], "admin")
+
+    def test_query_run_binds_permission_scope_to_session(self) -> None:
+        """query/run (admin-gated) derives the tool scope from the session token, not the body."""
+        os.environ["OPENCHIMERA_API_TOKEN"] = "user-token"
+        os.environ["OPENCHIMERA_ADMIN_TOKEN"] = "admin-token"
+        self._restart_server()
+
+        # Admin token reaches the endpoint; a downgraded body scope is ignored.
+        result = self._post(
+            "/v1/query/run",
+            {
+                "query": "fetch metadata",
+                "permission_scope": "user",
+                "execute_tools": True,
+                "tool_requests": [{"tool_id": "browser.fetch", "arguments": {"url": "http://169.254.169.254/"}}],
+            },
+            headers={"Authorization": "Bearer admin-token"},
+        )
+        executed = result["executed_tools"]
+        self.assertEqual(len(executed), 1)
+        self.assertEqual(executed[0]["permission_scope"], "admin")
+        self.assertEqual(result["permission_context"]["scope"], "admin")
+
+    def test_sessions_resume_ignores_client_supplied_permission_scope(self) -> None:
+        """sessions/resume (user-gated) must not let a user token forge an admin scope."""
+        os.environ["OPENCHIMERA_API_TOKEN"] = "user-token"
+        os.environ["OPENCHIMERA_ADMIN_TOKEN"] = "admin-token"
+        self._restart_server()
+
+        resumed = self._post(
+            "/v1/sessions/resume",
+            {"session_id": "qs-1", "query": "again", "permission_scope": "admin"},
+            headers={"Authorization": "Bearer user-token"},
+        )
+        self.assertEqual(resumed["permission_context"]["scope"], "user")
 
     def test_provider_credentials_can_be_persisted_via_api(self) -> None:
         os.environ["OPENCHIMERA_API_TOKEN"] = "user-token"
