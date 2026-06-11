@@ -5,8 +5,8 @@ description: "Release Manager"
 
 # Release Manager
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Domain:** Software Release Management & DevOps
 
 ## Overview
@@ -45,7 +45,7 @@ The Release Manager skill provides comprehensive tools and knowledge for managin
 Semantic Versioning follows the MAJOR.MINOR.PATCH format where:
 
 - **MAJOR** version when you make incompatible API changes
-- **MINOR** version when you add functionality in a backwards compatible manner  
+- **MINOR** version when you add functionality in a backwards compatible manner
 - **PATCH** version when you make backwards compatible bug fixes
 
 #### Pre-release Versions
@@ -110,7 +110,7 @@ Changelogs are automatically generated from conventional commits, organized by:
 
 ## [Unreleased]
 ### Added
-### Changed  
+### Changed
 ### Deprecated
 ### Removed
 ### Fixed
@@ -156,7 +156,7 @@ Version bumps are determined by analyzing commits since the last release:
 #### Pre-release Handling
 ```python
 # Alpha: 1.0.0-alpha.1 → 1.0.0-alpha.2
-# Beta: 1.0.0-alpha.5 → 1.0.0-beta.1  
+# Beta: 1.0.0-alpha.5 → 1.0.0-beta.1
 # RC: 1.0.0-beta.3 → 1.0.0-rc.1
 # Release: 1.0.0-rc.2 → 1.0.0
 ```
@@ -191,7 +191,7 @@ main (production) ← release/1.2.0 ← develop ← feature/login
 #### Trunk-based Development
 ```
 main ← feature/login (short-lived)
-    ← feature/payment (short-lived)  
+    ← feature/payment (short-lived)
     ← hotfix/critical-fix
 ```
 
@@ -307,7 +307,7 @@ else:
 
 #### Deployment Sequence
 1. **Pre-deployment** (T-24h): Final validation, freeze code
-2. **Database migrations** (T-2h): Run and validate schema changes  
+2. **Database migrations** (T-2h): Run and validate schema changes
 3. **Blue-green deployment** (T-0): Switch traffic gradually
 4. **Post-deployment** (T+1h): Monitor metrics and logs
 5. **Rollback window** (T+4h): Decision point for rollback
@@ -331,7 +331,7 @@ Hotfixes address critical production issues requiring immediate deployment:
 - **Approval**: Engineering Lead + On-call Manager
 
 **P1 - High**: Major feature broken, significant user impact
-- **SLA**: Fix within 24 hours  
+- **SLA**: Fix within 24 hours
 - **Process**: Expedited review and deployment
 - **Approval**: Engineering Lead + Product Manager
 

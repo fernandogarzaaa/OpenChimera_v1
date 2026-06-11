@@ -240,7 +240,7 @@ class ActuatorInterface:
         Failed commands can be automatically retried up to *retry_count* times.
         Otherwise the command is stored with status ``"pending"``.
         Returns the completed (or pending) command.
-        
+
         Parameters
         ──────────
         timeout_s:
@@ -268,11 +268,11 @@ class ActuatorInterface:
 
         with self._lock:
             handler = self._handlers.get(actuator_id)
-            
+
             if handler is not None:
                 attempts = 0
                 max_attempts = 1 + max(0, retry_count)
-                
+
                 while attempts < max_attempts:
                     attempts += 1
                     try:
@@ -280,15 +280,15 @@ class ActuatorInterface:
                         started = time.perf_counter()
                         result = handler(cmd)
                         elapsed = time.perf_counter() - started
-                        
+
                         # Check for timeout
                         if elapsed > timeout:
                             raise TimeoutError(f"Command execution exceeded {timeout}s timeout")
-                        
+
                         cmd.result = result or {}
                         cmd.status = "completed"
                         break  # Success, exit retry loop
-                        
+
                     except TimeoutError as exc:
                         cmd.status = "timeout"
                         cmd.result = {"error": str(exc), "attempt": attempts}
@@ -296,7 +296,7 @@ class ActuatorInterface:
                                    actuator_id, attempts, max_attempts, exc)
                         if attempts >= max_attempts:
                             break
-                            
+
                     except Exception as exc:
                         cmd.status = "failed"
                         cmd.result = {"error": str(exc), "attempt": attempts}
@@ -304,7 +304,7 @@ class ActuatorInterface:
                                    actuator_id, attempts, max_attempts, exc)
                         if attempts >= max_attempts:
                             break
-                            
+
             self._history.append(cmd)
 
         log.debug("[Actuator] Command '%s' → actuator='%s' action='%s' status=%s",

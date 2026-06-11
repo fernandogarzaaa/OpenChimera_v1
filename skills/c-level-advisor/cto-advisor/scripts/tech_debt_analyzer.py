@@ -47,7 +47,7 @@ class TechDebtAnalyzer:
                 ]
             }
         }
-        
+
         self.impact_matrix = {
             'user_impact': {'weight': 0.30, 'score': 0},
             'developer_velocity': {'weight': 0.25, 'score': 0},
@@ -55,7 +55,7 @@ class TechDebtAnalyzer:
             'scalability': {'weight': 0.15, 'score': 0},
             'maintenance_cost': {'weight': 0.10, 'score': 0}
         }
-    
+
     def analyze_system(self, system_data: Dict) -> Dict:
         """Analyze a system for technical debt"""
         results = {
@@ -69,12 +69,12 @@ class TechDebtAnalyzer:
             'risk_assessment': {},
             'recommendations': []
         }
-        
+
         # Calculate debt scores by category
         total_debt_score = 0
         for category, config in self.debt_categories.items():
             category_score = self._calculate_category_score(
-                system_data.get(category, {}), 
+                system_data.get(category, {}),
                 config['indicators']
             )
             weighted_score = category_score * config['weight']
@@ -84,49 +84,49 @@ class TechDebtAnalyzer:
                 'level': self._get_level(category_score)
             }
             total_debt_score += weighted_score
-        
+
         results['debt_score'] = round(total_debt_score, 2)
         results['debt_level'] = self._get_level(total_debt_score)
-        
+
         # Calculate impact and prioritize
         results['prioritized_actions'] = self._prioritize_actions(
             results['category_scores'],
             system_data.get('business_context', {})
         )
-        
+
         # Estimate effort
         results['estimated_effort'] = self._estimate_effort(
             results['prioritized_actions'],
             system_data.get('team_size', 5)
         )
-        
+
         # Risk assessment
         results['risk_assessment'] = self._assess_risks(
             results['debt_score'],
             system_data.get('system_criticality', 'medium')
         )
-        
+
         # Generate recommendations
         results['recommendations'] = self._generate_recommendations(results)
-        
+
         return results
-    
+
     def _calculate_category_score(self, category_data: Dict, indicators: List) -> float:
         """Calculate score for a specific category"""
         if not category_data:
             return 50.0  # Default middle score if no data
-        
+
         total_score = 0
         count = 0
-        
+
         for indicator in indicators:
             if indicator in category_data:
                 # Score from 0 (no debt) to 100 (high debt)
                 total_score += category_data[indicator]
                 count += 1
-        
+
         return (total_score / count) if count > 0 else 50.0
-    
+
     def _get_level(self, score: float) -> str:
         """Convert numerical score to level"""
         if score < 20:
@@ -139,11 +139,11 @@ class TechDebtAnalyzer:
             return 'Medium-High'
         else:
             return 'Critical'
-    
+
     def _prioritize_actions(self, category_scores: Dict, business_context: Dict) -> List:
         """Prioritize technical debt reduction actions"""
         actions = []
-        
+
         for category, scores in category_scores.items():
             if scores['raw_score'] > 60:  # Focus on high debt areas
                 priority = self._calculate_priority(
@@ -151,7 +151,7 @@ class TechDebtAnalyzer:
                     category,
                     business_context
                 )
-                
+
                 action = {
                     'category': category,
                     'priority': priority,
@@ -159,27 +159,27 @@ class TechDebtAnalyzer:
                     'action_items': self._get_action_items(category, scores['level'])
                 }
                 actions.append(action)
-        
+
         # Sort by priority
         actions.sort(key=lambda x: x['priority'], reverse=True)
         return actions[:5]  # Top 5 priorities
-    
+
     def _calculate_priority(self, score: float, category: str, context: Dict) -> float:
         """Calculate priority based on score and business context"""
         base_priority = score
-        
+
         # Adjust based on business context
         if context.get('growth_phase') == 'rapid' and category in ['scalability', 'performance']:
             base_priority *= 1.5
-        
+
         if context.get('compliance_required') and category == 'security':
             base_priority *= 2.0
-        
+
         if context.get('cost_pressure') and category == 'infrastructure':
             base_priority *= 1.3
-        
+
         return min(100, base_priority)
-    
+
     def _get_action_items(self, category: str, level: str) -> List[str]:
         """Get specific action items based on category and level"""
         actions = {
@@ -255,55 +255,55 @@ class TechDebtAnalyzer:
                 ]
             }
         }
-        
+
         return actions.get(category, {}).get(level, ['Create action plan'])
-    
+
     def _estimate_effort(self, actions: List, team_size: int) -> Dict:
         """Estimate effort required for debt reduction"""
         total_story_points = 0
         effort_breakdown = {}
-        
+
         for action in actions:
             # Estimate based on category and score
             base_points = action['score'] * 2  # Higher debt = more effort
-            
+
             if action['category'] == 'architecture':
                 points = base_points * 1.5  # Architecture changes are complex
             elif action['category'] == 'security':
                 points = base_points * 1.2  # Security requires careful work
             else:
                 points = base_points
-            
+
             effort_breakdown[action['category']] = {
                 'story_points': round(points),
                 'sprints': math.ceil(points / (team_size * 20)),  # 20 points per dev per sprint
                 'developers_needed': math.ceil(points / 100)
             }
             total_story_points += points
-        
+
         return {
             'total_story_points': round(total_story_points),
             'estimated_sprints': math.ceil(total_story_points / (team_size * 20)),
             'recommended_team_size': max(team_size, math.ceil(total_story_points / 200)),
             'breakdown': effort_breakdown
         }
-    
+
     def _assess_risks(self, debt_score: float, criticality: str) -> Dict:
         """Assess risks associated with technical debt"""
         risk_level = 'Low'
-        
+
         if debt_score > 70 and criticality == 'high':
             risk_level = 'Critical'
         elif debt_score > 60 or criticality == 'high':
             risk_level = 'High'
         elif debt_score > 40:
             risk_level = 'Medium'
-        
+
         risks = {
             'overall_risk': risk_level,
             'specific_risks': []
         }
-        
+
         if debt_score > 60:
             risks['specific_risks'].extend([
                 'System failure risk increasing',
@@ -311,7 +311,7 @@ class TechDebtAnalyzer:
                 'Innovation velocity blocked',
                 'Maintenance costs escalating'
             ])
-        
+
         if debt_score > 80:
             risks['specific_risks'].extend([
                 'Competitive disadvantage emerging',
@@ -319,13 +319,13 @@ class TechDebtAnalyzer:
                 'Customer satisfaction impact',
                 'Potential data breach vulnerability'
             ])
-        
+
         return risks
-    
+
     def _generate_recommendations(self, results: Dict) -> List[str]:
         """Generate strategic recommendations"""
         recommendations = []
-        
+
         # Overall strategy based on debt level
         if results['debt_level'] == 'Critical':
             recommendations.append('🚨 URGENT: Dedicate 40% of engineering capacity to debt reduction')
@@ -339,7 +339,7 @@ class TechDebtAnalyzer:
         else:
             recommendations.append('Maintain 15-20% ongoing debt reduction allocation')
             recommendations.append('Focus on prevention over correction')
-        
+
         # Category-specific recommendations
         for category, scores in results['category_scores'].items():
             if scores['raw_score'] > 70:
@@ -349,19 +349,19 @@ class TechDebtAnalyzer:
                     recommendations.append(f'Engage security audit firm')
                 elif category == 'performance':
                     recommendations.append(f'Implement performance SLA monitoring')
-        
+
         # Team recommendations
         effort = results.get('estimated_effort', {})
         if effort.get('recommended_team_size', 0) > effort.get('total_story_points', 0) / 200:
             recommendations.append(f"Scale team to {effort['recommended_team_size']} engineers")
-        
+
         return recommendations
 
 def analyze_technical_debt(system_config: Dict) -> str:
     """Main function to analyze technical debt"""
     analyzer = TechDebtAnalyzer()
     results = analyzer.analyze_system(system_config)
-    
+
     # Format output
     output = [
         f"=== Technical Debt Analysis Report ===",
@@ -372,19 +372,19 @@ def analyze_technical_debt(system_config: Dict) -> str:
         f"",
         "Category Breakdown:"
     ]
-    
+
     for category, scores in results['category_scores'].items():
         output.append(f"  {category.title()}: {scores['raw_score']:.1f} ({scores['level']})")
-    
+
     output.extend([
         f"",
         "Risk Assessment:",
         f"  Overall Risk: {results['risk_assessment']['overall_risk']}"
     ])
-    
+
     for risk in results['risk_assessment']['specific_risks']:
         output.append(f"  • {risk}")
-    
+
     output.extend([
         f"",
         "Effort Estimation:",
@@ -394,20 +394,20 @@ def analyze_technical_debt(system_config: Dict) -> str:
         f"",
         "Top Priority Actions:"
     ])
-    
+
     for i, action in enumerate(results['prioritized_actions'][:3], 1):
         output.append(f"\n{i}. {action['category'].title()} (Priority: {action['priority']:.0f})")
         for item in action['action_items'][:3]:
             output.append(f"   - {item}")
-    
+
     output.extend([
         f"",
         "Strategic Recommendations:"
     ])
-    
+
     for rec in results['recommendations']:
         output.append(f"  • {rec}")
-    
+
     return '\n'.join(output)
 
 if __name__ == "__main__":
@@ -446,5 +446,5 @@ if __name__ == "__main__":
             'cost_pressure': False
         }
     }
-    
+
     print(analyze_technical_debt(example_system))

@@ -312,4 +312,3 @@ class TestActivationPlaneConfigureProvider(unittest.TestCase):
             result = plane.configure_provider_activation(prefer_free_models=False)
 
         self.assertFalse(result["prefer_free_models"])
-

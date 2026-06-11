@@ -37,7 +37,7 @@ This comprehensive benchmark evaluates 15 popular embedding models across multip
    - General web search scenarios
    - Factual and informational queries
 
-2. **Natural Questions** (307K passages, 3,452 queries)  
+2. **Natural Questions** (307K passages, 3,452 queries)
    - Wikipedia-based question answering
    - Natural language queries
 
@@ -194,7 +194,7 @@ Tested on translated versions of Natural Questions (Spanish, French, German):
 - Active development community
 - Good documentation
 
-### Cost-Sensitive Applications  
+### Cost-Sensitive Applications
 **Primary**: all-MiniLM-L6-v2
 - Lowest operational cost
 - Fastest processing
@@ -229,12 +229,12 @@ Tested on translated versions of Natural Questions (Spanish, French, German):
 
 ### Domain-Specific Applications
 
-**Scientific/Research**: 
+**Scientific/Research**:
 1. Domain-specific model (SciBERT, BioBERT) if available
 2. text-embedding-3-large for general scientific content
 3. intfloat/e5-large-v2 as open-source alternative
 
-**Code/Technical**: 
+**Code/Technical**:
 1. microsoft/codebert-base for code search
 2. text-embedding-ada-002 for mixed code/text
 3. all-mpnet-base-v2 for technical documentation

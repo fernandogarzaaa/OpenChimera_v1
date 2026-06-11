@@ -55,7 +55,7 @@ class UserService:
             email_address=email    # New column
         )
         return user.save()
-    
+
     def update_email(self, user_id, new_email):
         # Update both columns
         user = User.objects.get(id=user_id)
@@ -68,9 +68,9 @@ class UserService:
 **Phase 3: Backfill Data**
 ```sql
 -- Backfill existing data (in batches)
-UPDATE users 
-SET email_address = email 
-WHERE email_address IS NULL 
+UPDATE users
+SET email_address = email
+WHERE email_address IS NULL
   AND id BETWEEN ? AND ?;
 ```
 
@@ -103,7 +103,7 @@ ALTER TABLE orders ADD COLUMN status_new VARCHAR(20) DEFAULT 'pending';
 CREATE INDEX CONCURRENTLY idx_orders_status_new ON orders(status_new);
 
 -- Safe constraint addition (after data validation)
-ALTER TABLE orders ADD CONSTRAINT check_status_new 
+ALTER TABLE orders ADD CONSTRAINT check_status_new
 CHECK (status_new IN ('pending', 'processing', 'completed', 'cancelled'));
 ```
 
@@ -117,9 +117,9 @@ pt-online-schema-change \
   D=mydb,t=orders
 
 -- Online DDL (MySQL 5.6+)
-ALTER TABLE orders 
+ALTER TABLE orders
 ADD COLUMN priority INT DEFAULT 1,
-ALGORITHM=INPLACE, 
+ALGORITHM=INPLACE,
 LOCK=NONE;
 ```
 
@@ -133,33 +133,33 @@ class DataMigrator:
         self.source_table = source_table
         self.target_table = target_table
         self.chunk_size = chunk_size
-    
+
     def migrate_data(self):
         last_id = 0
         total_migrated = 0
-        
+
         while True:
             # Get next chunk
             chunk = self.get_chunk(last_id, self.chunk_size)
-            
+
             if not chunk:
                 break
-            
+
             # Transform and migrate chunk
             for record in chunk:
                 transformed = self.transform_record(record)
                 self.insert_or_update(transformed)
-            
+
             last_id = chunk[-1]['id']
             total_migrated += len(chunk)
-            
+
             # Brief pause to avoid overwhelming the database
             time.sleep(0.1)
-            
+
             self.log_progress(total_migrated)
-        
+
         return total_migrated
-    
+
     def get_chunk(self, last_id, limit):
         return db.execute(f"""
             SELECT * FROM {self.source_table}
@@ -176,22 +176,22 @@ class CDCProcessor:
     def __init__(self):
         self.kafka_consumer = KafkaConsumer('db_changes')
         self.target_db = TargetDatabase()
-    
+
     def process_changes(self):
         for message in self.kafka_consumer:
             change = json.loads(message.value)
-            
+
             if change['operation'] == 'INSERT':
                 self.handle_insert(change)
             elif change['operation'] == 'UPDATE':
                 self.handle_update(change)
             elif change['operation'] == 'DELETE':
                 self.handle_delete(change)
-    
+
     def handle_insert(self, change):
         transformed_data = self.transform_data(change['after'])
         self.target_db.insert(change['table'], transformed_data)
-    
+
     def handle_update(self, change):
         key = change['key']
         transformed_data = self.transform_data(change['after'])
@@ -332,12 +332,12 @@ for i in {1..30}; do
         echo "Health check passed"
         break
     fi
-    
+
     if [ $i -eq 30 ]; then
         echo "Health check failed after 30 attempts"
         exit 1
     fi
-    
+
     sleep 2
 done
 
@@ -422,62 +422,62 @@ class CanaryController:
         self.max_weight = 100
         self.weight_increment = 5
         self.validation_window = 300  # 5 minutes
-    
+
     async def deploy_canary(self, app_name, new_version):
         """Deploy new version using canary strategy"""
-        
+
         # Start with small percentage
         await self.update_traffic_split(app_name, self.canary_weight)
-        
+
         while self.canary_weight < self.max_weight:
             # Monitor metrics for validation window
             await asyncio.sleep(self.validation_window)
-            
+
             # Check canary health
             if not await self.is_canary_healthy(app_name, new_version):
                 await self.rollback_canary(app_name)
                 raise Exception("Canary deployment failed health checks")
-            
+
             # Increase traffic to canary
             self.canary_weight = min(
                 self.canary_weight + self.weight_increment,
                 self.max_weight
             )
-            
+
             await self.update_traffic_split(app_name, self.canary_weight)
-            
+
             print(f"Canary traffic increased to {self.canary_weight}%")
-        
+
         print("Canary deployment completed successfully")
-    
+
     async def is_canary_healthy(self, app_name, version):
         """Check if canary version is healthy"""
-        
+
         # Check error rate
         error_rate = await self.prometheus.query(
             f'rate(http_requests_total{{app="{app_name}", version="{version}", status=~"5.."}}'
             f'[5m]) / rate(http_requests_total{{app="{app_name}", version="{version}"}}[5m])'
         )
-        
+
         if error_rate > 0.05:  # 5% error rate threshold
             return False
-        
+
         # Check response time
         p95_latency = await self.prometheus.query(
             f'histogram_quantile(0.95, rate(http_request_duration_seconds_bucket'
             f'{{app="{app_name}", version="{version}"}}[5m]))'
         )
-        
+
         if p95_latency > 2.0:  # 2 second p95 threshold
             return False
-        
+
         return True
-    
+
     async def update_traffic_split(self, app_name, canary_weight):
         """Update Istio virtual service with new traffic split"""
-        
+
         stable_weight = 100 - canary_weight
-        
+
         virtual_service = {
             "apiVersion": "networking.istio.io/v1beta1",
             "kind": "VirtualService",
@@ -498,7 +498,7 @@ class CanaryController:
                 }]
             }
         }
-        
+
         await self.istio.apply_virtual_service(virtual_service)
 ```
 
@@ -556,47 +556,47 @@ class RollingUpdateController:
         self.k8s = k8s_client
         self.max_surge = 2
         self.max_unavailable = 1
-        
+
     async def rolling_update(self, deployment_name, new_image):
         """Perform rolling update with custom logic"""
-        
+
         deployment = await self.k8s.get_deployment(deployment_name)
         total_replicas = deployment.spec.replicas
-        
+
         # Calculate batch size
         batch_size = min(self.max_surge, total_replicas // 5)  # Update 20% at a time
-        
+
         updated_pods = []
-        
+
         for i in range(0, total_replicas, batch_size):
             batch_end = min(i + batch_size, total_replicas)
-            
+
             # Update batch of pods
             for pod_index in range(i, batch_end):
                 old_pod = await self.get_pod_by_index(deployment_name, pod_index)
-                
+
                 # Create new pod with new image
                 new_pod = await self.create_updated_pod(old_pod, new_image)
-                
+
                 # Wait for new pod to be ready
                 await self.wait_for_pod_ready(new_pod.metadata.name)
-                
+
                 # Remove old pod
                 await self.k8s.delete_pod(old_pod.metadata.name)
-                
+
                 updated_pods.append(new_pod)
-                
+
                 # Brief pause between pod updates
                 await asyncio.sleep(2)
-            
+
             # Validate batch health before continuing
             if not await self.validate_batch_health(updated_pods[-batch_size:]):
                 # Rollback batch
                 await self.rollback_batch(updated_pods[-batch_size:])
                 raise Exception("Rolling update failed validation")
-            
+
             print(f"Updated {batch_end}/{total_replicas} pods")
-        
+
         print("Rolling update completed successfully")
 ```
 
@@ -611,7 +611,7 @@ upstream backend {
     # Old version - 80% traffic
     server old-app-1:8080 weight=4;
     server old-app-2:8080 weight=4;
-    
+
     # New version - 20% traffic
     server new-app-1:8080 weight=1;
     server new-app-2:8080 weight=1;
@@ -624,7 +624,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        
+
         # Health check headers
         proxy_set_header X-Health-Check-Timeout 5s;
     }
@@ -637,11 +637,11 @@ server {
 backend app_servers
     balance roundrobin
     option httpchk GET /health
-    
+
     # Old version servers
     server old-app-1 old-app-1:8080 check weight 80
     server old-app-2 old-app-2:8080 check weight 80
-    
+
     # New version servers
     server new-app-1 new-app-1:8080 check weight 20
     server new-app-2 new-app-2:8080 check weight 20
@@ -649,7 +649,7 @@ backend app_servers
 frontend app_frontend
     bind *:80
     default_backend app_servers
-    
+
     # Custom health check endpoint
     acl health_check path_beg /health
     http-request return status 200 content-type text/plain string "OK" if health_check
@@ -666,16 +666,16 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = None
         self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
-        
+
     def call(self, func, *args, **kwargs):
         """Execute function with circuit breaker protection"""
-        
+
         if self.state == 'OPEN':
             if self._should_attempt_reset():
                 self.state = 'HALF_OPEN'
             else:
                 raise CircuitBreakerOpenException("Circuit breaker is OPEN")
-        
+
         try:
             result = func(*args, **kwargs)
             self._on_success()
@@ -683,21 +683,21 @@ class CircuitBreaker:
         except self.expected_exception as e:
             self._on_failure()
             raise
-    
+
     def _should_attempt_reset(self):
         return (
             self.last_failure_time and
             time.time() - self.last_failure_time >= self.recovery_timeout
         )
-    
+
     def _on_success(self):
         self.failure_count = 0
         self.state = 'CLOSED'
-    
+
     def _on_failure(self):
         self.failure_count += 1
         self.last_failure_time = time.time()
-        
+
         if self.failure_count >= self.failure_threshold:
             self.state = 'OPEN'
 
@@ -722,19 +722,19 @@ def handle_request(request):
 class HealthChecker:
     def __init__(self):
         self.checks = []
-        
+
     def add_check(self, name, check_func, timeout=5):
         self.checks.append({
             'name': name,
             'func': check_func,
             'timeout': timeout
         })
-    
+
     async def run_checks(self):
         """Run all health checks and return status"""
         results = {}
         overall_status = 'healthy'
-        
+
         for check in self.checks:
             try:
                 result = await asyncio.wait_for(
@@ -757,7 +757,7 @@ class HealthChecker:
                     'error': str(e)
                 }
                 overall_status = 'unhealthy'
-        
+
         return {
             'status': overall_status,
             'checks': results,
@@ -803,7 +803,7 @@ spec:
     image: myapp:2.0.0
     ports:
     - containerPort: 8080
-    
+
     # Readiness probe - determines if pod should receive traffic
     readinessProbe:
       httpGet:
@@ -814,7 +814,7 @@ spec:
       timeoutSeconds: 2
       successThreshold: 1
       failureThreshold: 3
-    
+
     # Liveness probe - determines if pod should be restarted
     livenessProbe:
       httpGet:
@@ -825,7 +825,7 @@ spec:
       timeoutSeconds: 5
       successThreshold: 1
       failureThreshold: 3
-    
+
     # Startup probe - gives app time to start before other probes
     startupProbe:
       httpGet:
@@ -844,43 +844,43 @@ spec:
 class MigrationMetrics:
     def __init__(self, prometheus_client):
         self.prometheus = prometheus_client
-        
+
         # Define custom metrics
         self.migration_progress = Counter(
             'migration_progress_total',
             'Total migration operations completed',
             ['operation', 'status']
         )
-        
+
         self.migration_duration = Histogram(
             'migration_operation_duration_seconds',
             'Time spent on migration operations',
             ['operation']
         )
-        
+
         self.system_health = Gauge(
             'system_health_score',
             'Overall system health score (0-1)',
             ['component']
         )
-        
+
         self.traffic_split = Gauge(
             'traffic_split_percentage',
             'Percentage of traffic going to each version',
             ['version']
         )
-    
+
     def record_migration_step(self, operation, status, duration=None):
         """Record completion of a migration step"""
         self.migration_progress.labels(operation=operation, status=status).inc()
-        
+
         if duration:
             self.migration_duration.labels(operation=operation).observe(duration)
-    
+
     def update_health_score(self, component, score):
         """Update health score for a component"""
         self.system_health.labels(component=component).set(score)
-    
+
     def update_traffic_split(self, version_weights):
         """Update traffic split metrics"""
         for version, weight in version_weights.items():
@@ -891,17 +891,17 @@ metrics = MigrationMetrics(prometheus_client)
 
 def perform_migration_step(operation):
     start_time = time.time()
-    
+
     try:
         # Perform migration operation
         result = execute_migration_operation(operation)
-        
+
         # Record success
         duration = time.time() - start_time
         metrics.record_migration_step(operation, 'success', duration)
-        
+
         return result
-        
+
     except Exception as e:
         # Record failure
         duration = time.time() - start_time
@@ -935,10 +935,10 @@ class AutoRollbackSystem:
                 'auto_rollback': True
             }
         }
-    
+
     async def monitor_and_rollback(self, deployment_name):
         """Monitor deployment and trigger rollback if needed"""
-        
+
         while True:
             for trigger_name, config in self.rollback_triggers.items():
                 if await self.check_trigger(trigger_name, config):
@@ -946,35 +946,35 @@ class AutoRollbackSystem:
                         await self.execute_rollback(deployment_name, trigger_name)
                     else:
                         await self.alert_for_manual_rollback(deployment_name, trigger_name)
-            
+
             await asyncio.sleep(30)  # Check every 30 seconds
-    
+
     async def check_trigger(self, trigger_name, config):
         """Check if rollback trigger condition is met"""
-        
+
         current_value = await self.metrics.get_current_value(trigger_name)
         baseline_value = await self.metrics.get_baseline_value(trigger_name)
-        
+
         if trigger_name == 'error_rate_spike':
             return current_value > config['threshold']
         elif trigger_name == 'latency_increase':
             return current_value > baseline_value * config['threshold']
         elif trigger_name == 'availability_drop':
             return current_value < config['threshold']
-        
+
         return False
-    
+
     async def execute_rollback(self, deployment_name, reason):
         """Execute automatic rollback"""
-        
+
         print(f"Executing automatic rollback for {deployment_name}. Reason: {reason}")
-        
+
         # Get previous revision
         previous_revision = await self.deployment.get_previous_revision(deployment_name)
-        
+
         # Perform rollback
         await self.deployment.rollback_to_revision(deployment_name, previous_revision)
-        
+
         # Notify stakeholders
         await self.notify_rollback_executed(deployment_name, reason)
 ```
@@ -998,62 +998,62 @@ class DataRollbackManager:
     def __init__(self, database_client, backup_service):
         self.db = database_client
         self.backup = backup_service
-    
+
     async def create_rollback_point(self, migration_id):
         """Create a rollback point before migration"""
-        
+
         rollback_point = {
             'migration_id': migration_id,
             'timestamp': datetime.utcnow(),
             'backup_location': None,
             'schema_snapshot': None
         }
-        
+
         # Create database backup
         backup_path = await self.backup.create_backup(
             f"pre_migration_{migration_id}_{int(time.time())}"
         )
         rollback_point['backup_location'] = backup_path
-        
+
         # Capture schema snapshot
         schema_snapshot = await self.capture_schema_snapshot()
         rollback_point['schema_snapshot'] = schema_snapshot
-        
+
         # Store rollback point metadata
         await self.store_rollback_metadata(rollback_point)
-        
+
         return rollback_point
-    
+
     async def execute_rollback(self, migration_id):
         """Execute data rollback to specified point"""
-        
+
         rollback_point = await self.get_rollback_metadata(migration_id)
-        
+
         if not rollback_point:
             raise Exception(f"No rollback point found for migration {migration_id}")
-        
+
         # Stop application traffic
         await self.stop_application_traffic()
-        
+
         try:
             # Restore from backup
             await self.backup.restore_from_backup(
                 rollback_point['backup_location']
             )
-            
+
             # Validate data integrity
             await self.validate_data_integrity(
                 rollback_point['schema_snapshot']
             )
-            
+
             # Update application configuration
             await self.update_application_config(rollback_point)
-            
+
             # Resume application traffic
             await self.resume_application_traffic()
-            
+
             print(f"Data rollback completed successfully for migration {migration_id}")
-            
+
         except Exception as e:
             # If rollback fails, we have a serious problem
             await self.escalate_rollback_failure(migration_id, str(e))

@@ -5,8 +5,8 @@ description: "MCP Server Builder"
 
 # MCP Server Builder
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Domain:** AI / API Integration
 
 ## Overview

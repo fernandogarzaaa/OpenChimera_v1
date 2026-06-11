@@ -24,8 +24,8 @@ The patterns below are structured to be self-contained by design. If the AI pull
 
 **Template:**
 ```markdown
-**[Term]** is [precise definition — what it is, what it does, who uses it]. 
-[One sentence on why it matters or what problem it solves]. 
+**[Term]** is [precise definition — what it is, what it does, who uses it].
+[One sentence on why it matters or what problem it solves].
 [Optional: one sentence example — "For example, a SaaS company might use X to..."].
 ```
 

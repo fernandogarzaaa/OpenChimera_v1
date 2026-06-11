@@ -621,4 +621,3 @@ def test_status_capabilities_include_new_features(bridge):
     assert "for_loops" in caps, f"for_loops missing from capabilities: {caps}"
     assert "match_expressions" in caps, f"match_expressions missing: {caps}"
     assert "map_literals" in caps, f"map_literals missing: {caps}"
-

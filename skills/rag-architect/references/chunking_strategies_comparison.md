@@ -12,7 +12,7 @@ Document chunking is the foundation of effective RAG systems. This analysis comp
 
 **Variants**:
 - Character-based: 512, 1024, 2048 characters
-- Token-based: 128, 256, 512 tokens  
+- Token-based: 128, 256, 512 tokens
 - Overlap: 0%, 10%, 20%
 
 **Performance Metrics**:
@@ -22,7 +22,7 @@ Document chunking is the foundation of effective RAG systems. This analysis comp
 - Implementation: ⭐⭐⭐⭐⭐ (Simplest)
 - Memory Efficiency: ⭐⭐⭐⭐⭐ (Predictable sizes)
 
-**Best For**: 
+**Best For**:
 - Large-scale processing where speed is critical
 - Uniform document types
 - When consistent chunk sizes are required
@@ -176,7 +176,7 @@ Document chunking is the foundation of effective RAG systems. This analysis comp
 **Secondary**: Recursive
 **Rationale**: Technical docs have clear hierarchical structure that should be preserved
 
-### Scientific Papers  
+### Scientific Papers
 **Primary**: Semantic (heading-aware)
 **Secondary**: Paragraph-based
 **Rationale**: Papers have sections (abstract, methodology, results) that form coherent units

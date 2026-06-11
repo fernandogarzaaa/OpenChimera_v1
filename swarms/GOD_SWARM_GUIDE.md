@@ -56,7 +56,7 @@ Base swarms available:
 - content-studio, incident-response, security-audit
 - knowledge-synthesis, devops-pipeline, design-system
 - data-engineering, api-crafting, learning-adaptation""",
-    label="god-architect", 
+    label="god-architect",
     mode="session",
     timeout_seconds=300
 )
@@ -172,13 +172,13 @@ god_swarms:
     created: "2026-02-24T03:45:00Z"
     objective: "Build SaaS with auth and payments"
     status: "active"
-    
+
     core_agents:
       omniscient: "session-key-abc"
       architect: "session-key-def"
       demiurge: "session-key-ghi"
       chronos: "session-key-jkl"
-    
+
     sub_swarms:
       - id: "ff-001"
         type: "feature-forge"
@@ -190,7 +190,7 @@ god_swarms:
         objective: "Payment integration"
         status: "pending"
         session: null
-    
+
     shared_context:
       requirements: "path/to/reqs.yaml"
       artifacts_dir: "swarms/artifacts/gs-001"

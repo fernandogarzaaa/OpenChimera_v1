@@ -26,7 +26,7 @@ from datetime import datetime, timedelta
 
 class DashboardGenerator:
     """Generate comprehensive dashboard specifications."""
-    
+
     # Dashboard layout templates by role
     ROLE_LAYOUTS = {
         'sre': {
@@ -54,7 +54,7 @@ class DashboardGenerator:
             'default_refresh': '15s'
         }
     }
-    
+
     # Service type specific metric configurations
     SERVICE_METRICS = {
         'api': {
@@ -98,7 +98,7 @@ class DashboardGenerator:
             'resource_metrics': ['cpu_usage', 'memory_usage', 'disk_usage']
         }
     }
-    
+
     # Visualization type recommendations
     VISUALIZATION_TYPES = {
         'latency': 'line_chart',
@@ -128,7 +128,7 @@ class DashboardGenerator:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in service definition: {e}")
 
-    def create_service_definition(self, service_type: str, name: str, 
+    def create_service_definition(self, service_type: str, name: str,
                                 criticality: str = 'medium') -> Dict[str, Any]:
         """Create a service definition from parameters."""
         return {
@@ -142,15 +142,15 @@ class DashboardGenerator:
             'tags': []
         }
 
-    def generate_dashboard_specification(self, service_def: Dict[str, Any], 
+    def generate_dashboard_specification(self, service_def: Dict[str, Any],
                                        target_role: str = 'sre') -> Dict[str, Any]:
         """Generate comprehensive dashboard specification."""
         service_name = service_def.get('name', 'Service')
         service_type = service_def.get('type', 'api')
-        
+
         # Get role-specific configuration
         role_config = self.ROLE_LAYOUTS.get(target_role, self.ROLE_LAYOUTS['sre'])
-        
+
         dashboard_spec = {
             'metadata': {
                 'title': f"{service_name} - {target_role.upper()} Dashboard",
@@ -172,10 +172,10 @@ class DashboardGenerator:
             'alerts_integration': self._generate_alerts_integration(service_def),
             'drill_down_paths': self._generate_drill_down_paths(service_def)
         }
-        
+
         return dashboard_spec
 
-    def _generate_dashboard_layout(self, service_def: Dict[str, Any], 
+    def _generate_dashboard_layout(self, service_def: Dict[str, Any],
                                  role_config: Dict[str, Any]) -> Dict[str, Any]:
         """Generate dashboard layout configuration."""
         return {
@@ -212,22 +212,22 @@ class DashboardGenerator:
             ]
         }
 
-    def _generate_panels(self, service_def: Dict[str, Any], 
+    def _generate_panels(self, service_def: Dict[str, Any],
                         role_config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Generate dashboard panels based on service and role."""
         service_name = service_def.get('name', 'service')
         service_type = service_def.get('type', 'api')
         panels = []
-        
+
         # Service Overview Panels
         panels.extend(self._create_overview_panels(service_def))
-        
+
         # Golden Signals Panels
         panels.extend(self._create_golden_signals_panels(service_def))
-        
+
         # Resource Utilization Panels
         panels.extend(self._create_resource_panels(service_def))
-        
+
         # Service-specific panels
         if service_type == 'api':
             panels.extend(self._create_api_specific_panels(service_def))
@@ -235,20 +235,20 @@ class DashboardGenerator:
             panels.extend(self._create_database_specific_panels(service_def))
         elif service_type == 'queue':
             panels.extend(self._create_queue_specific_panels(service_def))
-        
+
         # Role-specific additional panels
         if 'business_metrics' in role_config['primary_focus']:
             panels.extend(self._create_business_metrics_panels(service_def))
-        
+
         if 'capacity' in role_config['primary_focus']:
             panels.extend(self._create_capacity_panels(service_def))
-        
+
         return panels
 
     def _create_overview_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create service overview panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'service_status',
@@ -354,7 +354,7 @@ class DashboardGenerator:
     def _create_golden_signals_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create golden signals monitoring panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'latency',
@@ -508,7 +508,7 @@ class DashboardGenerator:
     def _create_resource_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create resource utilization panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'cpu_usage',
@@ -615,7 +615,7 @@ class DashboardGenerator:
     def _create_api_specific_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create API-specific panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'endpoint_latency',
@@ -679,7 +679,7 @@ class DashboardGenerator:
     def _create_database_specific_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create database-specific panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'db_connections',
@@ -746,7 +746,7 @@ class DashboardGenerator:
     def _create_queue_specific_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create queue-specific panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'queue_depth',
@@ -781,7 +781,7 @@ class DashboardGenerator:
     def _create_business_metrics_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create business metrics panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'business_kpis',
@@ -820,7 +820,7 @@ class DashboardGenerator:
     def _create_capacity_panels(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Create capacity planning panels."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'id': 'capacity_trends',
@@ -852,7 +852,7 @@ class DashboardGenerator:
     def _generate_template_variables(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Generate template variables for dynamic dashboard filtering."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'name': 'environment',
@@ -886,7 +886,7 @@ class DashboardGenerator:
     def _generate_alerts_integration(self, service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Generate alerts integration configuration."""
         service_name = service_def.get('name', 'service')
-        
+
         return {
             'alert_annotations': True,
             'alert_rules_query': f'ALERTS{{service="{service_name}"}}',
@@ -903,7 +903,7 @@ class DashboardGenerator:
     def _generate_drill_down_paths(self, service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Generate drill-down navigation paths."""
         service_name = service_def.get('name', 'service')
-        
+
         return {
             'service_overview': {
                 'from': 'service_status',
@@ -935,7 +935,7 @@ class DashboardGenerator:
         """Convert dashboard specification to Grafana JSON format."""
         metadata = dashboard_spec['metadata']
         config = dashboard_spec['configuration']
-        
+
         grafana_json = {
             'dashboard': {
                 'id': None,
@@ -956,13 +956,13 @@ class DashboardGenerator:
             },
             'overwrite': True
         }
-        
+
         return grafana_json
 
     def _convert_panels_to_grafana_format(self, panels: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert panel specifications to Grafana format."""
         grafana_panels = []
-        
+
         for panel in panels:
             grafana_panel = {
                 'id': hash(panel['id']) % 1000,  # Generate numeric ID
@@ -975,14 +975,14 @@ class DashboardGenerator:
                 'transformations': panel.get('transformations', [])
             }
             grafana_panels.append(grafana_panel)
-        
+
         return grafana_panels
 
     def generate_documentation(self, dashboard_spec: Dict[str, Any]) -> str:
         """Generate documentation for the dashboard."""
         metadata = dashboard_spec['metadata']
         service = metadata['service']
-        
+
         doc_content = f"""# {metadata['title']} Documentation
 
 ## Overview
@@ -1014,14 +1014,14 @@ This dashboard provides comprehensive monitoring for {service['name']}, a {servi
 
 ### SLIs Tracked
 """
-        
+
         # Add service-type specific metrics
         service_type = service.get('type', 'api')
         if service_type in self.SERVICE_METRICS:
             metrics = self.SERVICE_METRICS[service_type]['key_metrics']
             for metric in metrics:
                 doc_content += f"- `{metric}`: Core service metric\n"
-        
+
         doc_content += f"""
 ## Alert Integration
 - Active alerts are displayed in context with relevant panels
@@ -1030,18 +1030,18 @@ This dashboard provides comprehensive monitoring for {service['name']}, a {servi
 
 ## Drill-Down Paths
 """
-        
+
         drill_downs = dashboard_spec.get('drill_down_paths', {})
         for path_name, path_config in drill_downs.items():
             doc_content += f"- **{path_name}**: From {path_config['from']} → {path_config['to']}\n"
-        
+
         doc_content += f"""
 ## Usage Guidelines
 
 ### Time Ranges
 Use appropriate time ranges for different investigation types:
 - **Real-time monitoring**: 15m - 1h
-- **Recent incident investigation**: 1h - 6h  
+- **Recent incident investigation**: 1h - 6h
 - **Trend analysis**: 1d - 7d
 - **Capacity planning**: 7d - 30d
 
@@ -1062,10 +1062,10 @@ Use appropriate time ranges for different investigation types:
 - Template variables refresh based on actual metric labels
 - Review and update business metrics quarterly
 """
-        
+
         return doc_content
 
-    def export_specification(self, dashboard_spec: Dict[str, Any], output_file: str, 
+    def export_specification(self, dashboard_spec: Dict[str, Any], output_file: str,
                            format_type: str = 'json'):
         """Export dashboard specification."""
         if format_type.lower() == 'json':
@@ -1084,47 +1084,47 @@ Use appropriate time ranges for different investigation types:
         service = metadata['service']
         config = dashboard_spec['configuration']
         panels = dashboard_spec['panels']
-        
+
         print(f"\n{'='*60}")
         print(f"DASHBOARD SPECIFICATION SUMMARY")
         print(f"{'='*60}")
-        
+
         print(f"\nDashboard Details:")
         print(f"  Title: {metadata['title']}")
         print(f"  Target Role: {metadata['target_role'].upper()}")
         print(f"  Service: {service['name']} ({service['type']})")
         print(f"  Criticality: {service['criticality']}")
         print(f"  Generated: {metadata['generated_at']}")
-        
+
         print(f"\nConfiguration:")
         print(f"  Default Time Range: {config['default_time_range']}")
         print(f"  Refresh Interval: {config['refresh_interval']}")
         print(f"  Available Time Ranges: {', '.join(config['time_ranges'])}")
-        
+
         print(f"\nPanels ({len(panels)}):")
         panel_types = {}
         for panel in panels:
             panel_type = panel['type']
             panel_types[panel_type] = panel_types.get(panel_type, 0) + 1
-        
+
         for panel_type, count in panel_types.items():
             print(f"  {panel_type}: {count}")
-        
+
         variables = dashboard_spec.get('variables', [])
         print(f"\nTemplate Variables ({len(variables)}):")
         for var in variables:
             print(f"  {var['name']} ({var['type']})")
-        
+
         drill_downs = dashboard_spec.get('drill_down_paths', {})
         print(f"\nDrill-down Paths: {len(drill_downs)}")
-        
+
         print(f"\nKey Features:")
         print(f"  • Golden Signals monitoring")
         print(f"  • Resource utilization tracking")
         print(f"  • Alert integration")
         print(f"  • Role-optimized layout")
         print(f"  • Service-type specific panels")
-        
+
         print(f"\n{'='*60}\n")
 
 
@@ -1137,21 +1137,21 @@ def main():
 Examples:
     # Generate from service definition file
     python dashboard_generator.py --input service.json --output dashboard.json
-    
+
     # Generate from command line parameters
     python dashboard_generator.py --service-type api --name "Payment Service" --output payment_dashboard.json
-    
+
     # Generate Grafana-compatible JSON
     python dashboard_generator.py --input service.json --output dashboard.json --format grafana
-    
+
     # Generate with specific role focus
     python dashboard_generator.py --service-type web --name "Frontend" --role developer --output frontend_dev.json
         """
     )
-    
+
     parser.add_argument('--input', '-i',
                        help='Input service definition JSON file')
-    parser.add_argument('--output', '-o', 
+    parser.add_argument('--output', '-o',
                        help='Output dashboard specification file')
     parser.add_argument('--service-type',
                        choices=['api', 'web', 'database', 'queue', 'batch', 'ml'],
@@ -1174,14 +1174,14 @@ Examples:
                        help='Generate documentation file')
     parser.add_argument('--summary-only', action='store_true',
                        help='Only display summary, do not save files')
-    
+
     args = parser.parse_args()
-    
+
     if not args.input and not (args.service_type and args.name):
         parser.error("Must provide either --input file or --service-type and --name")
-    
+
     generator = DashboardGenerator()
-    
+
     try:
         # Load or create service definition
         if args.input:
@@ -1190,26 +1190,26 @@ Examples:
             service_def = generator.create_service_definition(
                 args.service_type, args.name, args.criticality
             )
-        
+
         # Generate dashboard specification
         dashboard_spec = generator.generate_dashboard_specification(service_def, args.role)
-        
+
         # Output results
         if not args.summary_only:
             output_file = args.output or f"{service_def['name'].replace(' ', '_').lower()}_dashboard.json"
             generator.export_specification(dashboard_spec, output_file, args.format)
             print(f"Dashboard specification saved to: {output_file}")
-            
+
             # Generate documentation if requested
             if args.doc_output:
                 documentation = generator.generate_documentation(dashboard_spec)
                 with open(args.doc_output, 'w') as f:
                     f.write(documentation)
                 print(f"Documentation saved to: {args.doc_output}")
-        
+
         # Always show summary
         generator.print_summary(dashboard_spec)
-        
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

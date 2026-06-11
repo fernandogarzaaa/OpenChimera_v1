@@ -11,7 +11,7 @@ python scripts/text_processor.py analyze sample.txt
 # Get JSON output
 python scripts/text_processor.py analyze sample.txt --format json
 
-# Transform text to uppercase  
+# Transform text to uppercase
 python scripts/text_processor.py transform sample.txt --mode upper
 
 # Process multiple files

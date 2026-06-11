@@ -5,8 +5,8 @@ description: "Changelog Generator"
 
 # Changelog Generator
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Domain:** Release Management / Documentation
 
 ## Overview

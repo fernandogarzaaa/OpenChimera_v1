@@ -15,7 +15,7 @@ On March 15, 2024, we experienced a sev2 incident affecting ['payment-api', 'che
 ### Customer Impact
 80% of users unable to complete payments or checkout. Approximately 2,400 failed payment attempts during the incident. Users experienced immediate 500 errors when attempting to pay.
 
-### Business Impact  
+### Business Impact
 Estimated revenue loss of $45,000 during outage period. No SLA breaches as resolution was within 2-hour window. 12 customer escalations through support channels.
 
 ## Timeline

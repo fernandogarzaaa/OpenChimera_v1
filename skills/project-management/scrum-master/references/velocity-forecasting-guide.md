@@ -111,7 +111,7 @@ def simple_monte_carlo_forecast(velocities, sprints_ahead, iterations=10000):
 def normal_distribution_forecast(velocities, sprints_ahead, iterations=10000):
     mean_velocity = statistics.mean(velocities)
     std_velocity = statistics.stdev(velocities)
-    
+
     results = []
     for _ in range(iterations):
         total_points = sum(
@@ -136,7 +136,7 @@ def bootstrap_forecast(velocities, sprints_ahead, iterations=10000):
         # Calculate statistics from bootstrap sample
         mean_vel = statistics.mean(bootstrap_sample)
         std_vel = statistics.stdev(bootstrap_sample)
-        
+
         total_points = sum(
             max(0, random.normalvariate(mean_vel, std_vel))
             for _ in range(sprints_ahead)
@@ -159,11 +159,11 @@ def bootstrap_forecast(velocities, sprints_ahead, iterations=10000):
 def calculate_confidence_intervals(results, confidence_levels=[0.5, 0.7, 0.85, 0.95]):
     sorted_results = sorted(results)
     intervals = {}
-    
+
     for confidence in confidence_levels:
         percentile_index = int(confidence * len(sorted_results))
         intervals[f"{int(confidence*100)}%"] = sorted_results[percentile_index]
-    
+
     return intervals
 ```
 
@@ -225,14 +225,14 @@ def trend_adjusted_forecast(velocities, sprints_ahead):
     # Calculate linear trend
     x = range(len(velocities))
     slope, intercept = calculate_linear_regression(x, velocities)
-    
+
     # Adjust future velocities for trend
     adjusted_velocities = []
     for i in range(sprints_ahead):
         future_sprint = len(velocities) + i
         predicted_velocity = slope * future_sprint + intercept
         adjusted_velocities.append(predicted_velocity)
-    
+
     return monte_carlo_with_adjusted_velocities(adjusted_velocities)
 ```
 
@@ -242,7 +242,7 @@ For teams with seasonal patterns (holidays, budget cycles):
 def seasonal_adjustment(velocities, sprint_dates, forecast_dates):
     # Identify seasonal patterns
     seasonal_factors = calculate_seasonal_factors(velocities, sprint_dates)
-    
+
     # Apply factors to forecast
     adjusted_forecast = apply_seasonal_factors(forecast_dates, seasonal_factors)
     return adjusted_forecast
@@ -255,7 +255,7 @@ def capacity_adjusted_forecast(velocities, historical_capacity, future_capacity)
     # Calculate velocity per capacity unit
     velocity_per_capacity = [v/c for v, c in zip(velocities, historical_capacity)]
     baseline_efficiency = statistics.mean(velocity_per_capacity)
-    
+
     # Forecast based on future capacity
     future_velocities = [capacity * baseline_efficiency for capacity in future_capacity]
     return monte_carlo_forecast(future_velocities)
@@ -306,7 +306,7 @@ def multi_team_forecast(team_forecasts, dependencies):
 
 ### Case Study 1: Stabilizing Team
 **Situation:** New team, first 10 sprints, velocity ranging 15-25 points
-**Approach:** 
+**Approach:**
 - Used bootstrap sampling due to small sample size
 - Applied 30% buffer for team learning curve
 - Updated forecast every 2 sprints

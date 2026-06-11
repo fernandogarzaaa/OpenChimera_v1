@@ -380,7 +380,7 @@
     {
       "task_id": "task_008",
       "agent_id": "research_agent_1",
-      "task_type": "web_research", 
+      "task_type": "web_research",
       "task_description": "Research industry best practices for remote work",
       "start_time": "2024-01-15T10:30:00Z",
       "end_time": "2024-01-15T10:33:15Z",
@@ -398,7 +398,7 @@
           }
         },
         {
-          "type": "tool_call", 
+          "type": "tool_call",
           "tool_name": "web_search",
           "duration_ms": 2400,
           "success": true,
@@ -431,7 +431,7 @@
       "retry_count": 0,
       "metadata": {
         "user_id": "user_404",
-        "session_id": "session_vwx", 
+        "session_id": "session_vwx",
         "request_priority": "normal"
       }
     },

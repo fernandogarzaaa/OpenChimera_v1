@@ -80,36 +80,36 @@ Mitigation: [Specific action that reduces this risk]
 ```
 [CRITICAL] Concern #1: Single-thread fundraise
 
-What the plan assumes: The Tier 1 VC will lead the round, and the process 
+What the plan assumes: The Tier 1 VC will lead the round, and the process
 will close in Q2.
 
-Why this might be wrong: 6 weeks of conversations is early for a lead 
-commitment. Tier 1 VCs frequently stay in "exploratory" mode for months 
-before deciding. If they pass — or ask for a reference customer you don't 
+Why this might be wrong: 6 weeks of conversations is early for a lead
+commitment. Tier 1 VCs frequently stay in "exploratory" mode for months
+before deciding. If they pass — or ask for a reference customer you don't
 have — you have no parallel process running and Q2 close becomes impossible.
 
-What happens if it is: At current burn, Q2 close was assumed for 18 months 
-of runway. A 3-month slip changes this to 15 months — still manageable, but 
+What happens if it is: At current burn, Q2 close was assumed for 18 months
+of runway. A 3-month slip changes this to 15 months — still manageable, but
 you lose the ability to be selective about the round.
 
-Mitigation: Run parallel conversations with 3–4 additional funds now, even 
+Mitigation: Run parallel conversations with 3–4 additional funds now, even
 if the Tier 1 is preferred. Parallel processes also create leverage.
 
 ---
 
 [HIGH] Concern #2: Valuation expectation mismatch
 
-What the plan assumes: Valuation expectations are aligned between you and 
+What the plan assumes: Valuation expectations are aligned between you and
 the lead investor.
 
-Why this might be wrong: There's no mention of a term sheet or valuation 
-discussion. Many founders reach advanced-stage conversations before the 
+Why this might be wrong: There's no mention of a term sheet or valuation
+discussion. Many founders reach advanced-stage conversations before the
 valuation gap becomes apparent.
 
-What happens if it is: Late-stage valuation misalignment often kills rounds 
+What happens if it is: Late-stage valuation misalignment often kills rounds
 or forces founder-unfavorable terms under time pressure.
 
-Mitigation: Have the valuation conversation explicitly in the next meeting, 
+Mitigation: Have the valuation conversation explicitly in the next meeting,
 before other investors are engaged.
 
 ---
@@ -118,15 +118,15 @@ before other investors are engaged.
 
 What the plan assumes: Q2 close means Q3 hires can proceed on schedule.
 
-Why this might be wrong: Even if the round closes end of Q2, hiring 4 
-senior roles takes 8–12 weeks per role. The revenue impact of those hires 
+Why this might be wrong: Even if the round closes end of Q2, hiring 4
+senior roles takes 8–12 weeks per role. The revenue impact of those hires
 was modeled assuming Q3 start.
 
-What happens if it is: Revenue in Q4 will be lower than modeled, which 
-affects the Series A story — you'll be raising on lower numbers than your 
+What happens if it is: Revenue in Q4 will be lower than modeled, which
+affects the Series A story — you'll be raising on lower numbers than your
 projections showed seed investors.
 
-Mitigation: Either model hiring 6 weeks later in the financial model, 
+Mitigation: Either model hiring 6 weeks later in the financial model,
 or begin recruiting now for roles you'll close post-funding.
 ```
 

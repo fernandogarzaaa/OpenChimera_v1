@@ -66,18 +66,18 @@ class DatabaseRouter:
         self.feature_flags = feature_flag_service
         self.old_db = OldDatabaseConnection()
         self.new_db = NewDatabaseConnection()
-    
+
     def route_query(self, user_id, query_type):
         if self.feature_flags.is_enabled("new_schema", user_id):
             return self.new_db.execute(query_type)
         else:
             return self.old_db.execute(query_type)
-    
+
     def dual_write(self, data):
         # Write to both databases for consistency
         success_old = self.old_db.write(data)
         success_new = self.new_db.write(transform_data(data))
-        
+
         if not (success_old and success_new):
             # Handle partial failures
             self.handle_dual_write_failure(data, success_old, success_new)
@@ -118,7 +118,7 @@ class MigrationEventHandler:
         self.old_store = old_store
         self.new_store = new_store
         self.event_log = []
-    
+
     def handle_update(self, entity_id, old_data, new_data):
         # Log the change as an event
         event = MigrationEvent(
@@ -128,19 +128,19 @@ class MigrationEventHandler:
             new_data=new_data,
             timestamp=datetime.now()
         )
-        
+
         self.event_log.append(event)
-        
+
         # Apply to new store
         success = self.new_store.update(entity_id, new_data)
-        
+
         if not success:
             # Mark for retry
             event.status = "failed"
             self.schedule_retry(event)
-        
+
         return success
-    
+
     def replay_events(self, from_timestamp=None):
         """Replay events for reconciliation"""
         events = self.get_events_since(from_timestamp)
@@ -189,20 +189,20 @@ class StranglerProxy:
         self.legacy_service = LegacyUserService()
         self.new_service = NewUserService()
         self.feature_flags = FeatureFlagService()
-    
+
     def handle_request(self, request):
         route = self.determine_route(request)
-        
+
         if route == "new":
             return self.handle_with_new_service(request)
         elif route == "both":
             return self.handle_with_both_services(request)
         else:
             return self.handle_with_legacy_service(request)
-    
+
     def determine_route(self, request):
         user_id = request.get('user_id')
-        
+
         if self.feature_flags.is_enabled("new_user_service", user_id):
             if self.feature_flags.is_enabled("dual_write", user_id):
                 return "both"
@@ -230,7 +230,7 @@ class ParallelRunManager:
         self.candidate_service = CandidateService()
         self.comparator = ResponseComparator()
         self.metrics = MetricsCollector()
-    
+
     async def parallel_execute(self, request):
         # Execute both services concurrently
         primary_task = asyncio.create_task(
@@ -239,29 +239,29 @@ class ParallelRunManager:
         candidate_task = asyncio.create_task(
             self.candidate_service.process(request)
         )
-        
+
         # Always wait for primary
         primary_result = await primary_task
-        
+
         try:
             # Wait for candidate with timeout
             candidate_result = await asyncio.wait_for(
                 candidate_task, timeout=5.0
             )
-            
+
             # Compare results
             comparison = self.comparator.compare(
                 primary_result, candidate_result
             )
-            
+
             # Record metrics
             self.metrics.record_comparison(comparison)
-            
+
         except asyncio.TimeoutError:
             self.metrics.record_timeout("candidate")
         except Exception as e:
             self.metrics.record_error("candidate", str(e))
-        
+
         # Always return primary result
         return primary_result
 ```
@@ -410,7 +410,7 @@ resource "aws_vpc" "main" {
 
 resource "aws_vpn_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  
+
   tags = {
     Name = "hybrid-vpn-gateway"
   }
@@ -420,7 +420,7 @@ resource "aws_customer_gateway" "main" {
   bgp_asn    = 65000
   ip_address = var.on_premises_public_ip
   type       = "ipsec.1"
-  
+
   tags = {
     Name = "on-premises-gateway"
   }
@@ -442,31 +442,31 @@ class HybridDataSync:
         self.on_prem_db = OnPremiseDatabase()
         self.cloud_db = CloudDatabase()
         self.sync_log = SyncLogManager()
-    
+
     async def bidirectional_sync(self):
         """Synchronize data between on-premises and cloud"""
-        
+
         # Get last sync timestamp
         last_sync = self.sync_log.get_last_sync_time()
-        
+
         # Sync on-prem changes to cloud
         on_prem_changes = self.on_prem_db.get_changes_since(last_sync)
         for change in on_prem_changes:
             await self.apply_change_to_cloud(change)
-        
+
         # Sync cloud changes to on-prem
         cloud_changes = self.cloud_db.get_changes_since(last_sync)
         for change in cloud_changes:
             await self.apply_change_to_on_prem(change)
-        
+
         # Handle conflicts
         conflicts = self.detect_conflicts(on_prem_changes, cloud_changes)
         for conflict in conflicts:
             await self.resolve_conflict(conflict)
-        
+
         # Update sync timestamp
         self.sync_log.record_sync_completion()
-    
+
     async def apply_change_to_cloud(self, change):
         """Apply on-premises change to cloud database"""
         try:
@@ -476,9 +476,9 @@ class HybridDataSync:
                 await self.cloud_db.update(change.table, change.key, change.data)
             elif change.operation == "DELETE":
                 await self.cloud_db.delete(change.table, change.key)
-                
+
             self.sync_log.record_success(change.id, "cloud")
-            
+
         except Exception as e:
             self.sync_log.record_failure(change.id, "cloud", str(e))
             raise
@@ -559,14 +559,14 @@ class ProgressiveRollout:
         self.feature_name = feature_name
         self.rollout_percentage = 0
         self.user_buckets = {}
-        
+
     def is_enabled_for_user(self, user_id):
         # Consistent user bucketing
         user_hash = hashlib.md5(f"{self.feature_name}:{user_id}".encode()).hexdigest()
         bucket = int(user_hash, 16) % 100
-        
+
         return bucket < self.rollout_percentage
-    
+
     def increase_rollout(self, target_percentage, step_size=10):
         """Gradually increase rollout percentage"""
         while self.rollout_percentage < target_percentage:
@@ -574,7 +574,7 @@ class ProgressiveRollout:
                 self.rollout_percentage + step_size,
                 target_percentage
             )
-            
+
             # Monitor metrics before next increase
             yield self.rollout_percentage
             time.sleep(300)  # Wait 5 minutes between increases
@@ -592,14 +592,14 @@ class MigrationCircuitBreaker:
         self.timeout = timeout
         self.last_failure_time = None
         self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
-    
+
     def call_new_service(self, request):
         if self.state == 'OPEN':
             if self.should_attempt_reset():
                 self.state = 'HALF_OPEN'
             else:
                 return self.fallback_to_legacy(request)
-        
+
         try:
             response = self.new_service.process(request)
             self.on_success()
@@ -607,18 +607,18 @@ class MigrationCircuitBreaker:
         except Exception as e:
             self.on_failure()
             return self.fallback_to_legacy(request)
-    
+
     def on_success(self):
         self.failure_count = 0
         self.state = 'CLOSED'
-    
+
     def on_failure(self):
         self.failure_count += 1
         self.last_failure_time = time.time()
-        
+
         if self.failure_count >= self.failure_threshold:
             self.state = 'OPEN'
-    
+
     def should_attempt_reset(self):
         return (time.time() - self.last_failure_time) >= self.timeout
 ```

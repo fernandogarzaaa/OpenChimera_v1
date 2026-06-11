@@ -1,7 +1,7 @@
 # OpenChimera — 100% Completion Roadmap
 
 > Generated from full codebase audit (2220 tests passing, 90 core modules, 53 files across 18 commits)
-> Current estimated completion: **~65%**  
+> Current estimated completion: **~65%**
 > Target: **100% production-grade AGI cognitive architecture**
 
 ---

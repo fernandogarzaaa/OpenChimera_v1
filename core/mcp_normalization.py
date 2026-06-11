@@ -15,7 +15,7 @@ def normalize_mcp_server_entry(
     source_path: Path | str | None = None,
 ) -> dict[str, Any]:
     """Normalize an MCP server registry entry to a consistent format.
-    
+
     Parameters
     ----------
     server_id:
@@ -24,7 +24,7 @@ def normalize_mcp_server_entry(
         Raw details dict from the registry file.
     source_path:
         Optional source file path for tracking provenance.
-    
+
     Returns
     -------
     Normalized entry dict with standardized fields:
@@ -39,9 +39,9 @@ def normalize_mcp_server_entry(
             transport = "stdio"
         else:
             transport = "unknown"
-    
+
     enabled = bool(details.get("enabled", True))
-    
+
     entry: dict[str, Any] = {
         "id": server_id,
         "name": str(
@@ -53,7 +53,7 @@ def normalize_mcp_server_entry(
         "source": str(source_path) if source_path else "unknown",
         "kind": "mcp_server",
     }
-    
+
     if details.get("description"):
         entry["description"] = str(details.get("description"))
     if details.get("url"):
@@ -62,5 +62,5 @@ def normalize_mcp_server_entry(
         entry["command"] = str(details.get("command"))
     if isinstance(details.get("args"), list):
         entry["args"] = [str(item) for item in details.get("args", [])]
-    
+
     return entry

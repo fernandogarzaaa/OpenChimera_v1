@@ -44,7 +44,7 @@ A good SLI should be:
 # Availability SLI
 sum(rate(http_requests_total{code!~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
 
-# Latency SLI  
+# Latency SLI
 histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
 ```
 
@@ -102,7 +102,7 @@ Setting SLO targets is balancing act between:
 - **Latency (P95)**: 100-200ms
 - **Error Rate**: < 0.1%
 
-#### High Priority Services  
+#### High Priority Services
 - **Availability**: 99.9% - 99.95%
 - **Latency (P95)**: 200-500ms
 - **Error Rate**: < 0.5%
@@ -133,7 +133,7 @@ Define what happens when you consume your error budget:
 
 #### Conservative Policy (High-Risk Services)
 - **> 50% consumed**: Freeze non-critical feature releases
-- **> 75% consumed**: Focus entirely on reliability improvements  
+- **> 75% consumed**: Focus entirely on reliability improvements
 - **> 90% consumed**: Consider emergency measures (traffic shaping, etc.)
 
 #### Balanced Policy (Standard Services)
@@ -158,7 +158,7 @@ Multi-window burn rate alerts help you catch SLO violations before they become c
   )
   for: 2m
 
-# Slow burn: 10% budget consumed in 3 days  
+# Slow burn: 10% budget consumed in 3 days
 - alert: SlowBurnSLOViolation
   expr: (
     (1 - (sum(rate(http_requests_total{code!~"5.."}[6h])) / sum(rate(http_requests_total[6h])))) > (1.0 * 0.001)
@@ -303,7 +303,7 @@ sum(rate(records_valid_total[5m])) / sum(rate(records_processed_total[5m])) >= 0
 ### Essential Tools
 
 1. **Metrics Collection**: Prometheus, InfluxDB, CloudWatch
-2. **Alerting**: Alertmanager, PagerDuty, OpsGenie  
+2. **Alerting**: Alertmanager, PagerDuty, OpsGenie
 3. **Dashboards**: Grafana, DataDog, New Relic
 4. **SLO Platforms**: Sloth, Pyrra, Service Level Blue
 

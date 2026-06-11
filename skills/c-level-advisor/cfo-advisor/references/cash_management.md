@@ -317,7 +317,7 @@ Focus cuts: G&A and underperforming sales roles first. Protect engineering and k
 
 ### The False Economy Trap
 
-**Don't cut:** 
+**Don't cut:**
 - Top-of-funnel demand gen that generates qualified pipeline (if CAC payback is < 12 months, this is your best investment)
 - Engineering capacity on core product (technical debt compounds and slows you down permanently)
 - Key account managers on your largest customers (churn from top customers is catastrophic)

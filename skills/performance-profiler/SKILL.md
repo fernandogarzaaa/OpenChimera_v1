@@ -5,9 +5,9 @@ description: "Performance Profiler"
 
 # Performance Profiler
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
-**Domain:** Performance Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
+**Domain:** Performance Engineering
 
 ---
 
@@ -57,9 +57,9 @@ Systematic performance profiling for Node.js, Python, and Go applications. Ident
 ```markdown
 ## Performance Optimization: [What You Fixed]
 
-**Date:** 2026-03-01  
-**Engineer:** @username  
-**Ticket:** PROJ-123  
+**Date:** 2026-03-01
+**Engineer:** @username
+**Ticket:** PROJ-123
 
 ### Problem
 [1-2 sentences: what was slow, how was it observed]

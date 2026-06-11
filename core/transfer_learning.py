@@ -797,4 +797,3 @@ class SkillSynthesizer:
                 if entry["skill_name"] == skill_name:
                     return dict(entry)
         return None
-

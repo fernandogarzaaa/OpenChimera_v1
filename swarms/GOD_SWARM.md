@@ -262,7 +262,7 @@ Process:
 Spawn format:
 ```
 sessions_spawn(
-  task="You are [Swarm Type] Lead. Objective: [objective]. 
+  task="You are [Swarm Type] Lead. Objective: [objective].
         Context: [shared context]. Dependencies: [blocking swarms].
         Report to God Swarm session [key] on completion/blocks.",
   label="swarm-[type]-[id]",
@@ -289,7 +289,7 @@ Process:
 1. Poll active swarms every 5 minutes
 2. Check for:
    - Completion signals
-   - Block signals  
+   - Block signals
    - Timeout conditions
    - Token budget exhaustion
    - Error conditions
@@ -319,7 +319,7 @@ Status: ████████░░ 80% complete
 Agent: Implementer → Test (handoff pending)
 ETA: 10 minutes
 
-Swarm: Content Studio (swarm-002)  
+Swarm: Content Studio (swarm-002)
 Status: ████░░░░░░ 40% complete
 Agent: Script → Editor
 Block: Waiting for swarm-001 API contract
@@ -385,19 +385,19 @@ god_swarm_context:
   objective: "original user request"
   requirements: "from Omniscient"
   architecture: "from Architect"
-  
+
   swarms:
     [swarm_id]:
       status: "active|complete|blocked|failed"
       outputs: {}
       artifacts: []
       lessons: []
-  
+
   shared_artifacts:
     - path: "relative/path"
       produced_by: "swarm-id"
       consumed_by: ["swarm-ids"]
-  
+
   timeline:
     - timestamp: "ISO8601"
       event: "description"
@@ -435,7 +435,7 @@ God Swarm:
 ├─ Architect: Designing composite swarm...
 │  └─ 3 parallel swarms identified:
 │     ├─ Feature Forge: Auth + payments backend
-│     ├─ Feature Forge: Core PM features  
+│     ├─ Feature Forge: Core PM features
 │     └─ Content Studio: Landing page copy
 ├─ Demiurge: Spawning swarms...
 ├─ Chronos: Monitoring...

@@ -84,7 +84,7 @@ Key question at each level: **Does the business survive? Does the plan make sens
 
 Some assumptions matter more than others. Sensitivity analysis answers: **if this one assumption changes, how much does the outcome change?**
 
-Example: 
+Example:
 - If CAC doubles, how does that change runway?
 - If churn goes from 5% to 10%, how does that change NRR in 24 months?
 - If the deal cycle is 6 months instead of 3, how does that affect Q3 revenue?

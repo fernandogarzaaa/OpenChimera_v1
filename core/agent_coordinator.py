@@ -32,21 +32,21 @@ class AgentTask:
 
 class AgentCoordinator:
     """Coordinates multiple agents working on related tasks.
-    
+
     Features:
     - Task assignment to agents
     - Agent lifecycle management
     - Result aggregation
     - Load balancing
     """
-    
+
     def __init__(self, bus: Any | None = None) -> None:
         self._bus = bus
         self._agents: dict[str, dict[str, Any]] = {}  # agent_id -> metadata
         self._tasks: dict[str, AgentTask] = {}
         self._lock = threading.RLock()
         log.info("AgentCoordinator initialized")
-    
+
     def register_agent(
         self,
         agent_id: str,
@@ -63,7 +63,7 @@ class AgentCoordinator:
                 "active": True,
             }
             log.info("Registered agent %s with capabilities: %s", agent_id, capabilities)
-    
+
     def assign_task(
         self,
         agent_id: str,
@@ -74,7 +74,7 @@ class AgentCoordinator:
         with self._lock:
             if agent_id not in self._agents:
                 raise ValueError(f"Agent {agent_id} not registered")
-            
+
             task_id = f"task_{uuid.uuid4().hex[:8]}"
             task = AgentTask(
                 task_id=task_id,
@@ -82,18 +82,18 @@ class AgentCoordinator:
                 description=description,
                 parameters=parameters or {},
             )
-            
+
             self._tasks[task_id] = task
             self._agents[agent_id]["task_count"] += 1
-            
+
             if self._bus:
                 self._bus.publish_nowait("agent/task_assigned", {
                     "task_id": task_id,
                     "agent_id": agent_id,
                 })
-            
+
             return task
-    
+
     def update_task(
         self,
         task_id: str,
@@ -106,24 +106,24 @@ class AgentCoordinator:
             task = self._tasks.get(task_id)
             if task is None:
                 return False
-            
+
             if status == "running" and task.started_at is None:
                 task.started_at = time.time()
-            
+
             task.status = status
             task.result = result
             task.error = error
-            
+
             if status in ("completed", "failed"):
                 task.completed_at = time.time()
-            
+
             return True
-    
+
     def get_task(self, task_id: str) -> AgentTask | None:
         """Get a task by ID."""
         with self._lock:
             return self._tasks.get(task_id)
-    
+
     def list_agent_tasks(self, agent_id: str, status: str | None = None) -> list[AgentTask]:
         """List tasks for an agent, optionally filtered by status."""
         with self._lock:
@@ -131,7 +131,7 @@ class AgentCoordinator:
             if status:
                 tasks = [t for t in tasks if t.status == status]
             return tasks
-    
+
     def find_agent_for_capability(self, capability: str) -> str | None:
         """Find an active agent with the specified capability."""
         with self._lock:
@@ -139,7 +139,7 @@ class AgentCoordinator:
                 if info["active"] and capability in info["capabilities"]:
                     return agent_id
             return None
-    
+
     def status(self) -> dict[str, Any]:
         """Get coordinator status."""
         with self._lock:

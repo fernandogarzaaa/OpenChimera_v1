@@ -19,7 +19,7 @@
     "previous_company_size": "large"
   },
   {
-    "candidate_id": "candidate_001", 
+    "candidate_id": "candidate_001",
     "role": "Senior Software Engineer",
     "interviewer_id": "interviewer_bob",
     "date": "2024-01-15T11:00:00Z",
@@ -32,14 +32,14 @@
     },
     "overall_recommendation": "Hire",
     "gender": "male",
-    "ethnicity": "asian", 
+    "ethnicity": "asian",
     "years_experience": 6,
     "university_tier": "tier_1",
     "previous_company_size": "large"
   },
   {
     "candidate_id": "candidate_002",
-    "role": "Senior Software Engineer", 
+    "role": "Senior Software Engineer",
     "interviewer_id": "interviewer_alice",
     "date": "2024-01-16T09:00:00Z",
     "scores": {
@@ -59,7 +59,7 @@
   {
     "candidate_id": "candidate_002",
     "role": "Senior Software Engineer",
-    "interviewer_id": "interviewer_charlie", 
+    "interviewer_id": "interviewer_charlie",
     "date": "2024-01-16T11:00:00Z",
     "scores": {
       "system_design": 2.0,
@@ -79,7 +79,7 @@
     "candidate_id": "candidate_003",
     "role": "Senior Software Engineer",
     "interviewer_id": "interviewer_david",
-    "date": "2024-01-17T14:00:00Z", 
+    "date": "2024-01-17T14:00:00Z",
     "scores": {
       "coding_fundamentals": 4.0,
       "system_design": 3.5,
@@ -96,7 +96,7 @@
   },
   {
     "candidate_id": "candidate_003",
-    "role": "Senior Software Engineer", 
+    "role": "Senior Software Engineer",
     "interviewer_id": "interviewer_alice",
     "date": "2024-01-17T16:00:00Z",
     "scores": {
@@ -110,7 +110,7 @@
     "gender": "male",
     "ethnicity": "white",
     "years_experience": 8,
-    "university_tier": "tier_1", 
+    "university_tier": "tier_1",
     "previous_company_size": "large"
   },
   {
@@ -133,7 +133,7 @@
     "previous_company_size": "medium"
   },
   {
-    "candidate_id": "candidate_005", 
+    "candidate_id": "candidate_005",
     "role": "Product Manager",
     "interviewer_id": "interviewer_frank",
     "date": "2024-01-19T13:00:00Z",
@@ -154,7 +154,7 @@
   {
     "candidate_id": "candidate_006",
     "role": "Junior Software Engineer",
-    "interviewer_id": "interviewer_alice", 
+    "interviewer_id": "interviewer_alice",
     "date": "2024-01-20T09:00:00Z",
     "scores": {
       "coding_fundamentals": 3.0,
@@ -177,7 +177,7 @@
     "date": "2024-01-21T10:30:00Z",
     "scores": {
       "coding_fundamentals": 2.0,
-      "debugging": 2.5, 
+      "debugging": 2.5,
       "testing_basics": 2.0,
       "collaboration": 3.0,
       "learning_agility": 3.0
@@ -193,7 +193,7 @@
     "candidate_id": "candidate_008",
     "role": "Staff Frontend Engineer",
     "interviewer_id": "interviewer_grace",
-    "date": "2024-01-22T14:00:00Z", 
+    "date": "2024-01-22T14:00:00Z",
     "scores": {
       "frontend_architecture": 4.0,
       "system_design": 4.0,
@@ -220,7 +220,7 @@
       "cross_functional_collaboration": 4.0,
       "organizational_impact": 3.5
     },
-    "overall_recommendation": "Hire", 
+    "overall_recommendation": "Hire",
     "gender": "female",
     "ethnicity": "white",
     "years_experience": 9,
@@ -248,7 +248,7 @@
   },
   {
     "candidate_id": "candidate_010",
-    "role": "DevOps Engineer", 
+    "role": "DevOps Engineer",
     "interviewer_id": "interviewer_jane",
     "date": "2024-01-24T15:00:00Z",
     "scores": {
@@ -272,7 +272,7 @@
     "date": "2024-01-25T10:00:00Z",
     "scores": {
       "design_process": 4.0,
-      "user_research": 3.5, 
+      "user_research": 3.5,
       "design_systems": 4.0,
       "cross_functional_collaboration": 3.5,
       "design_leadership": 3.0
@@ -293,7 +293,7 @@
       "people_leadership": 4.0,
       "technical_background": 3.5,
       "strategic_thinking": 3.5,
-      "performance_management": 4.0, 
+      "performance_management": 4.0,
       "cross_functional_leadership": 3.5
     },
     "overall_recommendation": "Hire",
@@ -305,7 +305,7 @@
   },
   {
     "candidate_id": "candidate_013",
-    "role": "Senior Software Engineer", 
+    "role": "Senior Software Engineer",
     "interviewer_id": "interviewer_alice",
     "date": "2024-01-27T09:00:00Z",
     "scores": {
@@ -325,7 +325,7 @@
   {
     "candidate_id": "candidate_013",
     "role": "Senior Software Engineer",
-    "interviewer_id": "interviewer_charlie", 
+    "interviewer_id": "interviewer_charlie",
     "date": "2024-01-27T11:00:00Z",
     "scores": {
       "system_design": 3.5,
@@ -344,7 +344,7 @@
   {
     "candidate_id": "candidate_014",
     "role": "Senior Software Engineer",
-    "interviewer_id": "interviewer_david", 
+    "interviewer_id": "interviewer_david",
     "date": "2024-01-28T14:00:00Z",
     "scores": {
       "coding_fundamentals": 1.5,
@@ -371,7 +371,7 @@
       "data_analysis": 4.0,
       "stakeholder_management": 4.0,
       "communication": 3.5
-    }, 
+    },
     "overall_recommendation": "Strong Hire",
     "gender": "male",
     "ethnicity": "black",

@@ -381,5 +381,3 @@ class EpisodicMemory:
         if isinstance(ep.get("reasoning_chain"), str):
             ep["reasoning_chain"] = json.loads(ep["reasoning_chain"])
         return ep
-
-

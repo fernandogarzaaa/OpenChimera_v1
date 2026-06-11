@@ -705,4 +705,3 @@ class QuantumServiceContract:
             self._bus.publish_nowait(topic, payload)
         except Exception as exc:
             log.warning("[QuantumEngine] Failed to emit on topic '%s': %s", topic, exc)
-

@@ -114,19 +114,19 @@ Before sending data externally:
 
 1. Does it include a specific dollar amount?
    → YES: Replace with range or relative descriptor
-   
+
 2. Does it include a person's name?
    → YES: Replace with role only (unless publicly known)
-   
+
 3. Does it include a company or customer name?
    → YES: Replace with "Customer A" or segment descriptor
-   
+
 4. Does it include specific headcount or runway months?
    → YES: Replace with range (1–10, 10–50) or "healthy/tight/critical"
-   
+
 5. Does it include proprietary data, roadmap, or unreleased product info?
    → YES: Do not include. Reference only generically ("product expansion planned")
-   
+
 6. Is it publicly available information?
    → YES: Safe to send as-is
 ```

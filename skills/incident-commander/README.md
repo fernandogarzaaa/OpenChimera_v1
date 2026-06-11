@@ -143,7 +143,7 @@ Complete severity classification system with:
 - Communication requirements
 - Decision trees and examples
 
-### references/rca_frameworks_guide.md  
+### references/rca_frameworks_guide.md
 Detailed guide for root cause analysis:
 - 5 Whys methodology
 - Fishbone (Ishikawa) diagram analysis
@@ -233,7 +233,7 @@ Use classification output to automatically select appropriate runbooks and escal
 Each script includes comprehensive help:
 ```bash
 python scripts/incident_classifier.py --help
-python scripts/timeline_reconstructor.py --help  
+python scripts/timeline_reconstructor.py --help
 python scripts/pir_generator.py --help
 ```
 

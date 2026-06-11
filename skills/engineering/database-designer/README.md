@@ -11,7 +11,7 @@ A comprehensive database design and analysis toolkit that provides expert-level 
 - **ERD Generation**: Creates Mermaid diagrams from DDL or JSON schema
 - **Naming Convention Validation**: Ensures consistent naming patterns
 
-### ⚡ Index Optimizer  
+### ⚡ Index Optimizer
 - **Missing Index Detection**: Identifies indexes needed for query patterns
 - **Composite Index Design**: Optimizes column ordering for maximum efficiency
 - **Redundancy Analysis**: Finds duplicate and overlapping indexes
@@ -134,7 +134,7 @@ python schema_analyzer.py \
 
 **Analysis Features:**
 - Selectivity estimation based on column patterns
-- Composite index column ordering optimization  
+- Composite index column ordering optimization
 - Covering index recommendations for SELECT queries
 - Foreign key index validation
 - Redundancy detection (duplicates, overlaps, unused indexes)
@@ -194,7 +194,7 @@ database-designer/
 ├── README.md                          # This file
 ├── SKILL.md                          # Comprehensive database design guide
 ├── schema_analyzer.py                # Schema analysis tool
-├── index_optimizer.py                # Index optimization tool  
+├── index_optimizer.py                # Index optimization tool
 ├── migration_generator.py            # Migration generation tool
 ├── references/                       # Reference documentation
 │   ├── normalization_guide.md        # Normalization principles and patterns
@@ -290,7 +290,7 @@ For index optimization, provide query patterns in this format:
 3. **Consider History**: Some denormalization may be intentional for performance
 4. **Validate Results**: Review recommendations against business requirements
 
-### Index Optimization  
+### Index Optimization
 1. **Real Query Patterns**: Use actual application queries, not theoretical ones
 2. **Include Frequency**: Query frequency is crucial for prioritization
 3. **Monitor Performance**: Validate recommendations with actual performance testing
@@ -322,7 +322,7 @@ The index optimizer uses pattern-based selectivity estimation. You can improve a
 For production systems, use the zero-downtime flag to generate expand-contract migrations:
 
 1. **Expand Phase**: Add new columns/tables without constraints
-2. **Dual Write**: Application writes to both old and new structures  
+2. **Dual Write**: Application writes to both old and new structures
 3. **Backfill**: Populate new structures with existing data
 4. **Contract Phase**: Remove old structures after validation
 
@@ -352,7 +352,7 @@ python migration_generator.py \
 - Check for syntax errors in DDL
 - Verify file encoding (UTF-8 recommended)
 
-**"Invalid JSON schema"**  
+**"Invalid JSON schema"**
 - Validate JSON syntax with a JSON validator
 - Ensure all required fields are present
 - Check that foreign key references use "table.column" format

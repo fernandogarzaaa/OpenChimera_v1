@@ -37,7 +37,7 @@ Debt work should be sustainable over time. Avoid boom-bust cycles of neglect fol
 - Strategic value: Alignment with business goals
 - Competitive advantage: Market positioning benefits
 
-**Urgency (1-10 scale)**  
+**Urgency (1-10 scale)**
 - Time sensitivity: How quickly does value decay?
 - Dependency criticality: Does this block other work?
 - Market timing: External deadlines or windows
@@ -59,7 +59,7 @@ Debt work should be sustainable over time. Avoid boom-bust cycles of neglect fol
 ```
 Authentication module refactor:
 - Business Value: 8 (affects all users, blocks SSO)
-- Urgency: 7 (blocks Q2 enterprise features)  
+- Urgency: 7 (blocks Q2 enterprise features)
 - Risk Reduction: 9 (high security risk)
 - Total Numerator: 24
 - Effort: 3 weeks = 15 story points
@@ -79,7 +79,7 @@ Authentication module refactor:
 - Direct revenue or cost impact
 - Strategic importance to business objectives
 
-**Time Criticality (1-20 scale)**  
+**Time Criticality (1-20 scale)**
 - How user/business value declines over time
 - Dependency on other work items
 - Fixed deadlines or time-sensitive opportunities
@@ -95,7 +95,7 @@ Authentication module refactor:
 - Consider dependencies and coordination overhead
 
 **WSJF Bands**:
-- **Highest (WSJF > 10)**: Do immediately  
+- **Highest (WSJF > 10)**: Do immediately
 - **High (WSJF 5-10)**: Next quarter priority
 - **Medium (WSJF 2-5)**: Planned work
 - **Low (WSJF < 2)**: Backlog
@@ -115,7 +115,7 @@ Authentication module refactor:
 
 **Impact (1-3 scale)**
 - 3 = Massive impact
-- 2 = High impact  
+- 2 = High impact
 - 1 = Medium impact
 - 0.5 = Low impact
 - 0.25 = Minimal impact
@@ -154,7 +154,7 @@ Based on Martin Fowler's framework, categorize debt into quadrants:
 - **Priority**: Highest - created knowingly with poor justification
 
 **Quadrant 2: Prudent & Deliberate**
-- "We must ship now and deal with consequences"  
+- "We must ship now and deal with consequences"
 - **Strategy**: Planned remediation
 - **Priority**: High - was right decision at time, now needs attention
 
@@ -184,7 +184,7 @@ Plot debt items on 2D matrix:
 
 **Impact Categories**:
 - **Security**: Data breaches, vulnerability exploitation
-- **Reliability**: System outages, data corruption  
+- **Reliability**: System outages, data corruption
 - **Performance**: User experience degradation
 - **Compliance**: Regulatory violations, audit findings
 - **Productivity**: Team velocity reduction, developer frustration
@@ -199,13 +199,13 @@ Plot debt items on 2D matrix:
 - Use Risk-Impact for security review
 
 **Team Maturity Progression**:
-- Start with simple Risk-Impact matrix  
+- Start with simple Risk-Impact matrix
 - Progress to RICE as metrics improve
 - Advanced teams can use CoD effectively
 
 **Context-Dependent Selection**:
 - **Regulated industries**: Risk-Impact primary, WSJF secondary
-- **Product companies**: RICE primary, CoD secondary  
+- **Product companies**: RICE primary, CoD secondary
 - **Enterprise software**: CoD primary, WSJF secondary
 
 ### Combining Framework Results
@@ -217,7 +217,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 
 **Tier-Based Approach**:
 1. Security/compliance items (Risk-Impact)
-2. High business value items (RICE/CoD)  
+2. High business value items (RICE/CoD)
 3. Developer productivity items (WSJF)
 4. Technical excellence items (Quadrants)
 
@@ -230,7 +230,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 - Start simple, evolve complexity over time
 - Ensure framework aligns with business planning cycles
 
-**Step 2: Define Scoring Criteria**  
+**Step 2: Define Scoring Criteria**
 - Create rubrics for each scoring dimension
 - Use organization-specific examples
 - Train team on consistent application
@@ -264,7 +264,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 - **Problem**: Complex frameworks nobody uses
 - **Solution**: Start simple, add complexity only when needed
 
-**Neglecting Stakeholder Buy-In**  
+**Neglecting Stakeholder Buy-In**
 - **Problem**: Engineering-only prioritization decisions
 - **Solution**: Include product, business stakeholders in framework design
 
@@ -278,7 +278,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 
 **Lagging Indicators**:
 - Debt reduction velocity
-- Business outcome improvements  
+- Business outcome improvements
 - Technical incident reduction
 - Developer satisfaction improvements
 
@@ -308,7 +308,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 
 **Sprint Planning Input**:
 - Debt items affecting feature velocity
-- User experience impact from debt  
+- User experience impact from debt
 - Feature delivery risk from debt
 - Opportunity cost of debt work vs features
 
@@ -323,7 +323,7 @@ Final Priority = 0.4 × CoD_Score + 0.3 × RICE_Score + 0.3 × Risk_Score
 **Executive Summary**:
 - Overall technical health trend
 - Business risk from technical debt
-- Investment recommendations  
+- Investment recommendations
 - Competitive implications
 
 **Key Metrics**:

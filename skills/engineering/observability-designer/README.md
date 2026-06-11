@@ -103,7 +103,7 @@ Analyzes existing alert configurations and provides optimization recommendations
 #### Features
 - **Noise Detection**: Identifies alerts with high false positive rates
 - **Coverage Analysis**: Finds gaps in monitoring coverage
-- **Duplicate Detection**: Locates redundant or overlapping alerts  
+- **Duplicate Detection**: Locates redundant or overlapping alerts
 - **Threshold Analysis**: Reviews alert thresholds for appropriateness
 - **Fatigue Assessment**: Evaluates alert volume and routing
 
@@ -207,7 +207,7 @@ python3 scripts/dashboard_generator.py \
 #### Target Roles
 
 - **sre**: Focus on availability, latency, errors, resource utilization
-- **developer**: Emphasize latency, errors, throughput, business metrics  
+- **developer**: Emphasize latency, errors, throughput, business metrics
 - **executive**: Highlight availability, business metrics, user experience
 - **ops**: Priority on resource utilization, capacity, alerts, deployments
 
@@ -223,7 +223,7 @@ python3 scripts/dashboard_generator.py \
 The `assets/` directory contains sample configurations for testing:
 
 - `sample_service_api.json`: Critical API service definition
-- `sample_service_web.json`: High-priority web application definition  
+- `sample_service_web.json`: High-priority web application definition
 - `sample_alerts.json`: Alert configuration with optimization opportunities
 
 The `expected_outputs/` directory shows example outputs from each script:
@@ -246,7 +246,7 @@ The `expected_outputs/` directory shows example outputs from each script:
 - Use multi-window burn rate alerts for SLO protection
 - Implement proper escalation and routing policies
 
-### Dashboard Design  
+### Dashboard Design
 - Follow the F-pattern for visual hierarchy
 - Use consistent color semantics across dashboards
 - Include drill-down paths for effective troubleshooting
@@ -316,7 +316,7 @@ Generate multiple dashboard variants for different use cases:
 # SRE operational dashboard
 python3 scripts/dashboard_generator.py --input service.json --role sre --output sre-dashboard.json
 
-# Developer debugging dashboard  
+# Developer debugging dashboard
 python3 scripts/dashboard_generator.py --input service.json --role developer --output dev-dashboard.json
 
 # Executive business dashboard
@@ -367,7 +367,7 @@ python3 -m flake8 scripts/
 
 ### Adding New Features
 1. Follow existing code patterns and error handling
-2. Include comprehensive docstrings and type hints  
+2. Include comprehensive docstrings and type hints
 3. Add test cases for new functionality
 4. Update documentation and examples
 

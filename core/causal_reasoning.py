@@ -1019,4 +1019,3 @@ class CounterfactualReasoner:
             })
 
         return alternatives[:n]
-

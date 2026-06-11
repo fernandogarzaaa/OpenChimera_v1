@@ -105,7 +105,7 @@ Subject: Free [Tool Name] that might fit your "[Resource List Title]" post
 
 Hi [Name],
 
-I noticed your post on the best free tools for [category]. I recently built [Tool Name] 
+I noticed your post on the best free tools for [category]. I recently built [Tool Name]
 — it helps [audience] [specific outcome] without [common pain point].
 
 [Direct link to tool]

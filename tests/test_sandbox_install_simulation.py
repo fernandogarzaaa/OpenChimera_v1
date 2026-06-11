@@ -114,4 +114,3 @@ class PluginManagerTests(unittest.TestCase):
             self.assertEqual(pm.status()["counts"]["installed"], 1)
             pm.install("beta")
             self.assertEqual(pm.status()["counts"]["installed"], 2)
-

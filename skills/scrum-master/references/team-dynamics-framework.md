@@ -226,7 +226,7 @@ Psychological safety is the belief that one can show vulnerability, ask question
 
 ### Google's Four Components Applied to Scrum
 1. **Ability to show vulnerability and ask for help**
-2. **Permission to discuss difficult topics and disagreements** 
+2. **Permission to discuss difficult topics and disagreements**
 3. **Freedom to take risks and make mistakes**
 4. **Encouragement to be authentic and express oneself**
 
@@ -403,7 +403,7 @@ Psychological safety is the belief that one can show vulnerability, ask question
 
 **Storming Indicators:**
 - [ ] Open disagreements about approach
-- [ ] Questioning of established processes  
+- [ ] Questioning of established processes
 - [ ] Subgroup formation
 - [ ] Inconsistent performance
 - [ ] Emotional reactions to feedback

@@ -574,7 +574,7 @@ You now have **14 world-class skills** covering:
 
 ### **Engineering (9 Skills)**
 ✅ Architecture & Design
-✅ Frontend & Backend Development  
+✅ Frontend & Backend Development
 ✅ Full-Stack Development
 ✅ Quality Assurance & Testing
 ✅ DevOps & Infrastructure

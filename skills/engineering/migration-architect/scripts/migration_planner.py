@@ -101,11 +101,11 @@ class MigrationPlan:
 
 class MigrationPlanner:
     """Main migration planner class"""
-    
+
     def __init__(self):
         self.migration_patterns = self._load_migration_patterns()
         self.risk_templates = self._load_risk_templates()
-        
+
     def _load_migration_patterns(self) -> Dict[str, Any]:
         """Load predefined migration patterns"""
         return {
@@ -146,7 +146,7 @@ class MigrationPlanner:
                 }
             }
         }
-    
+
     def _load_risk_templates(self) -> Dict[str, List[RiskItem]]:
         """Load risk templates for different migration types"""
         return {
@@ -181,11 +181,11 @@ class MigrationPlanner:
                         "Provide training and create detailed documentation", "Platform Team")
             ]
         }
-    
+
     def _calculate_complexity(self, spec: Dict[str, Any]) -> str:
         """Calculate migration complexity based on specification"""
         complexity_score = 0
-        
+
         # Data volume complexity
         data_volume = spec.get("constraints", {}).get("data_volume_gb", 0)
         if data_volume > 10000:
@@ -194,7 +194,7 @@ class MigrationPlanner:
             complexity_score += 2
         elif data_volume > 100:
             complexity_score += 1
-        
+
         # System dependencies
         dependencies = len(spec.get("constraints", {}).get("dependencies", []))
         if dependencies > 10:
@@ -203,7 +203,7 @@ class MigrationPlanner:
             complexity_score += 2
         elif dependencies > 2:
             complexity_score += 1
-        
+
         # Downtime constraints
         max_downtime = spec.get("constraints", {}).get("max_downtime_minutes", 480)
         if max_downtime < 60:
@@ -212,11 +212,11 @@ class MigrationPlanner:
             complexity_score += 2
         elif max_downtime < 480:
             complexity_score += 1
-        
+
         # Special requirements
         special_reqs = spec.get("constraints", {}).get("special_requirements", [])
         complexity_score += len(special_reqs)
-        
+
         if complexity_score >= 8:
             return "critical"
         elif complexity_score >= 5:
@@ -225,21 +225,21 @@ class MigrationPlanner:
             return "medium"
         else:
             return "low"
-    
+
     def _estimate_duration(self, migration_type: str, migration_pattern: str, complexity: str) -> int:
         """Estimate migration duration based on type, pattern, and complexity"""
         pattern_info = self.migration_patterns.get(migration_type, {}).get(migration_pattern, {})
         base_duration = pattern_info.get("base_duration", 48)
         multiplier = pattern_info.get("complexity_multiplier", {}).get(complexity, 1.5)
-        
+
         return int(base_duration * multiplier)
-    
+
     def _generate_phases(self, spec: Dict[str, Any]) -> List[MigrationPhase]:
         """Generate migration phases based on specification"""
         migration_type = spec.get("type")
         migration_pattern = spec.get("pattern", "")
         complexity = self._calculate_complexity(spec)
-        
+
         pattern_info = self.migration_patterns.get(migration_type, {})
         if migration_pattern in pattern_info:
             phase_names = pattern_info[migration_pattern]["phases"]
@@ -250,18 +250,18 @@ class MigrationPlanner:
                 "service": ["preparation", "deployment", "testing", "cutover"],
                 "infrastructure": ["assessment", "preparation", "migration", "validation"]
             }.get(migration_type, ["preparation", "execution", "validation", "cleanup"])
-        
+
         phases = []
         total_duration = self._estimate_duration(migration_type, migration_pattern, complexity)
         phase_duration = total_duration // len(phase_names)
-        
+
         for i, phase_name in enumerate(phase_names):
             phase = self._create_phase(phase_name, phase_duration, complexity, i, phase_names)
             phases.append(phase)
-        
+
         return phases
-    
-    def _create_phase(self, phase_name: str, duration: int, complexity: str, 
+
+    def _create_phase(self, phase_name: str, duration: int, complexity: str,
                      phase_index: int, all_phases: List[str]) -> MigrationPhase:
         """Create a detailed migration phase"""
         phase_templates = {
@@ -351,32 +351,32 @@ class MigrationPlanner:
                 "risk_level": "critical"
             }
         }
-        
+
         template = phase_templates.get(phase_name, {
             "description": f"Execute {phase_name} phase",
             "tasks": [f"Complete {phase_name} activities"],
             "validation_criteria": [f"{phase_name.title()} phase completed successfully"],
             "risk_level": "medium"
         })
-        
+
         dependencies = []
         if phase_index > 0:
             dependencies.append(all_phases[phase_index - 1])
-        
+
         rollback_triggers = [
             "Critical system failure",
             "Data corruption detected",
             "Performance degradation > 50%",
             "Business process failure"
         ]
-        
+
         resources_required = [
             "Technical team availability",
             "System access and permissions",
             "Monitoring and alerting systems",
             "Communication channels"
         ]
-        
+
         return MigrationPhase(
             name=phase_name,
             description=template["description"],
@@ -388,41 +388,41 @@ class MigrationPlanner:
             risk_level=template["risk_level"],
             resources_required=resources_required
         )
-    
+
     def _assess_risks(self, spec: Dict[str, Any]) -> List[RiskItem]:
         """Generate risk assessment for migration"""
         migration_type = spec.get("type")
         base_risks = self.risk_templates.get(migration_type, [])
-        
+
         # Add specification-specific risks
         additional_risks = []
         constraints = spec.get("constraints", {})
-        
+
         if constraints.get("max_downtime_minutes", 480) < 60:
             additional_risks.append(
                 RiskItem("business", "Zero-downtime requirement increases complexity", "high", "medium", "high",
                         "Implement blue-green deployment or rolling update strategy", "DevOps Team")
             )
-        
+
         if constraints.get("data_volume_gb", 0) > 5000:
             additional_risks.append(
                 RiskItem("technical", "Large data volumes may cause extended migration time", "high", "medium", "medium",
                         "Implement parallel processing and progress monitoring", "Data Team")
             )
-        
+
         compliance_reqs = constraints.get("compliance_requirements", [])
         if compliance_reqs:
             additional_risks.append(
                 RiskItem("compliance", "Regulatory compliance requirements", "medium", "high", "high",
                         "Ensure all compliance checks are integrated into migration process", "Compliance Team")
             )
-        
+
         return base_risks + additional_risks
-    
+
     def _generate_rollback_plan(self, phases: List[MigrationPhase]) -> Dict[str, Any]:
         """Generate comprehensive rollback plan"""
         rollback_phases = []
-        
+
         for phase in reversed(phases):
             rollback_phase = {
                 "phase": phase.name,
@@ -439,7 +439,7 @@ class MigrationPlanner:
                 "estimated_time_minutes": phase.duration_hours * 15  # 25% of original phase time
             }
             rollback_phases.append(rollback_phase)
-        
+
         return {
             "rollback_phases": rollback_phases,
             "rollback_triggers": [
@@ -458,12 +458,12 @@ class MigrationPlanner:
             },
             "rollback_contacts": [
                 "Migration Lead",
-                "Technical Lead", 
+                "Technical Lead",
                 "Business Owner",
                 "On-call Engineer"
             ]
         }
-    
+
     def generate_plan(self, spec: Dict[str, Any]) -> MigrationPlan:
         """Generate complete migration plan from specification"""
         migration_id = hashlib.md5(json.dumps(spec, sort_keys=True).encode()).hexdigest()[:12]
@@ -472,7 +472,7 @@ class MigrationPlanner:
         risks = self._assess_risks(spec)
         total_duration = sum(phase.duration_hours for phase in phases)
         rollback_plan = self._generate_rollback_plan(phases)
-        
+
         success_criteria = [
             "All data successfully migrated with 100% integrity",
             "System performance meets or exceeds baseline",
@@ -481,16 +481,16 @@ class MigrationPlanner:
             "Stakeholder acceptance criteria met",
             "Documentation and runbooks updated"
         ]
-        
+
         stakeholders = [
             "Business Owner",
             "Technical Lead",
             "DevOps Team",
-            "QA Team", 
+            "QA Team",
             "Security Team",
             "End Users"
         ]
-        
+
         return MigrationPlan(
             migration_id=migration_id,
             source_system=spec.get("source", "Unknown"),
@@ -505,7 +505,7 @@ class MigrationPlanner:
             stakeholders=stakeholders,
             created_at=datetime.datetime.now().isoformat()
         )
-    
+
     def generate_human_readable_plan(self, plan: MigrationPlan) -> str:
         """Generate human-readable migration plan"""
         output = []
@@ -519,7 +519,7 @@ class MigrationPlanner:
         output.append(f"Estimated Duration: {plan.estimated_duration_hours} hours ({plan.estimated_duration_hours/24:.1f} days)")
         output.append(f"Created: {plan.created_at}")
         output.append("")
-        
+
         # Phases
         output.append("MIGRATION PHASES")
         output.append("-" * 40)
@@ -536,7 +536,7 @@ class MigrationPlanner:
             for criteria in phase.validation_criteria:
                 output.append(f"     ✓ {criteria}")
             output.append("")
-        
+
         # Risk Assessment
         output.append("RISK ASSESSMENT")
         output.append("-" * 40)
@@ -545,7 +545,7 @@ class MigrationPlanner:
             if risk.severity not in risk_by_severity:
                 risk_by_severity[risk.severity] = []
             risk_by_severity[risk.severity].append(risk)
-        
+
         for severity in ["critical", "high", "medium", "low"]:
             if severity in risk_by_severity:
                 output.append(f"{severity.upper()} SEVERITY RISKS:")
@@ -556,7 +556,7 @@ class MigrationPlanner:
                     output.append(f"    Mitigation: {risk.mitigation}")
                     output.append(f"    Owner: {risk.owner}")
                     output.append("")
-        
+
         # Rollback Plan
         output.append("ROLLBACK STRATEGY")
         output.append("-" * 40)
@@ -564,7 +564,7 @@ class MigrationPlanner:
         for trigger in plan.rollback_plan["rollback_triggers"]:
             output.append(f"  • {trigger}")
         output.append("")
-        
+
         output.append("Rollback Phases:")
         for rb_phase in plan.rollback_plan["rollback_phases"]:
             output.append(f"  {rb_phase['phase'].upper()}:")
@@ -572,21 +572,21 @@ class MigrationPlanner:
                 output.append(f"    - {action}")
             output.append(f"    Estimated Time: {rb_phase['estimated_time_minutes']} minutes")
             output.append("")
-        
+
         # Success Criteria
         output.append("SUCCESS CRITERIA")
         output.append("-" * 40)
         for criteria in plan.success_criteria:
             output.append(f"✓ {criteria}")
         output.append("")
-        
+
         # Stakeholders
         output.append("STAKEHOLDERS")
         output.append("-" * 40)
         for stakeholder in plan.stakeholders:
             output.append(f"• {stakeholder}")
         output.append("")
-        
+
         return "\n".join(output)
 
 
@@ -598,29 +598,29 @@ def main():
     parser.add_argument("--format", "-f", choices=["json", "text", "both"], default="both",
                        help="Output format")
     parser.add_argument("--validate", action="store_true", help="Validate migration specification only")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load migration specification
         with open(args.input, 'r') as f:
             spec = json.load(f)
-        
+
         # Validate required fields
         required_fields = ["type", "source", "target"]
         for field in required_fields:
             if field not in spec:
                 print(f"Error: Missing required field '{field}' in specification", file=sys.stderr)
                 return 1
-        
+
         if args.validate:
             print("Migration specification is valid")
             return 0
-        
+
         # Generate migration plan
         planner = MigrationPlanner()
         plan = planner.generate_plan(spec)
-        
+
         # Output results
         if args.format in ["json", "both"]:
             plan_dict = asdict(plan)
@@ -630,7 +630,7 @@ def main():
                 print(f"Migration plan saved to {args.output}")
             else:
                 print(json.dumps(plan_dict, indent=2))
-        
+
         if args.format in ["text", "both"]:
             human_plan = planner.generate_human_readable_plan(plan)
             text_output = args.output.replace('.json', '.txt') if args.output else None
@@ -643,7 +643,7 @@ def main():
                 print("HUMAN-READABLE MIGRATION PLAN")
                 print("="*80)
                 print(human_plan)
-        
+
     except FileNotFoundError:
         print(f"Error: Input file '{args.input}' not found", file=sys.stderr)
         return 1
@@ -653,7 +653,7 @@ def main():
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
-    
+
     return 0
 
 

@@ -47,6 +47,7 @@ jobs:
         run: python scripts/quantum_sim_verify.py
 
       - name: Run pytest with coverage
+        shell: bash
         run: |
           python -m pytest tests/ --ignore=tests/test_local_llm_quality.py \
             --cov=core --cov-report=term-missing --cov-fail-under=60 -q

@@ -1,7 +1,7 @@
 # Team Health Check - Spotify Squad Model
-**Team:** [TEAM_NAME]  
-**Assessment Date:** [DATE]  
-**Facilitator:** [FACILITATOR_NAME]  
+**Team:** [TEAM_NAME]
+**Assessment Date:** [DATE]
+**Facilitator:** [FACILITATOR_NAME]
 **Participants:** [PARTICIPANT_COUNT] of [TOTAL_TEAM_SIZE] members
 
 ---
@@ -11,7 +11,7 @@
 The Team Health Check is based on Spotify's Squad Health Check model, designed to visualize team health across multiple dimensions. Each dimension is assessed using a simple traffic light system:
 
 - 🟢 **Green (Awesome):** We're doing great! No major concerns.
-- 🟡 **Yellow (Some Concerns):** We're doing okay, but there are some things we could improve.  
+- 🟡 **Yellow (Some Concerns):** We're doing okay, but there are some things we could improve.
 - 🔴 **Red (Not Good):** This really sucks and we need to do something about it.
 
 ### Assessment Method
@@ -26,8 +26,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 1. Delivering Value 🎯
 *Are we delivering value to our users and stakeholders?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -47,8 +47,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 2. Learning 📚
 *Are we learning and growing as individuals and as a team?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -68,8 +68,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 3. Fun 🎉
 *Do we enjoy working together and find our work engaging?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -89,8 +89,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 4. Health of Codebase 🏗️
 *Is our code healthy, maintainable, and of good quality?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -110,8 +110,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 5. Mission Clarity 🎯
 *Do we understand why we exist and what we're supposed to achieve?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -131,8 +131,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 6. Suitable Process ⚙️
 *Is our process helping us be effective?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -152,8 +152,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 7. Support 🤝
 *Do we get the support we need from management and other teams?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -173,8 +173,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 8. Speed ⚡
 *Are we able to deliver quickly without compromising quality?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -194,8 +194,8 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 ### 9. Pawns or Players 👥
 *Do we feel like we have control over our work and destiny?*
 
-**Current Status:** [🟢/🟡/🔴]  
-**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]  
+**Current Status:** [🟢/🟡/🔴]
+**Trend from Last Check:** [⬆️ Improving / ➡️ Stable / ⬇️ Declining]
 **Team Rating:** [X]/5 team members voted Green, [Y]/5 Yellow, [Z]/5 Red
 
 **What's Working Well:**
@@ -216,14 +216,14 @@ The Team Health Check is based on Spotify's Squad Health Check model, designed t
 
 ### Health Score Distribution
 - 🟢 **Green Dimensions:** [GREEN_COUNT]/9 ([GREEN_PERCENTAGE]%)
-- 🟡 **Yellow Dimensions:** [YELLOW_COUNT]/9 ([YELLOW_PERCENTAGE]%)  
+- 🟡 **Yellow Dimensions:** [YELLOW_COUNT]/9 ([YELLOW_PERCENTAGE]%)
 - 🔴 **Red Dimensions:** [RED_COUNT]/9 ([RED_PERCENTAGE]%)
 
 ### Overall Health Grade: [EXCELLENT/GOOD/FAIR/POOR]
 
 ### Trend Analysis
 - **Improving:** [IMPROVING_COUNT] dimensions
-- **Stable:** [STABLE_COUNT] dimensions  
+- **Stable:** [STABLE_COUNT] dimensions
 - **Declining:** [DECLINING_COUNT] dimensions
 
 ### Team Maturity Level
@@ -305,7 +305,7 @@ Based on the health check results and team dynamics observed:
 ## Follow-up Plan
 
 ### Next Health Check
-**Scheduled Date:** [NEXT_DATE]  
+**Scheduled Date:** [NEXT_DATE]
 **Frequency:** [MONTHLY/QUARTERLY/BI-ANNUAL]
 
 ### Interim Check-ins
@@ -372,8 +372,8 @@ We'll know we're improving when we see:
 
 ---
 
-**Assessment completed by:** [FACILITATOR_NAME]  
-**Report distribution:** Team Members, Product Owner, Management (summary only)  
+**Assessment completed by:** [FACILITATOR_NAME]
+**Report distribution:** Team Members, Product Owner, Management (summary only)
 **Confidentiality:** Individual responses kept confidential, only aggregate data shared
 
 ---

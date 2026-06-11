@@ -22,4 +22,3 @@ class QuantumSimVerifyTests(unittest.TestCase):
         by_name = {item["name"]: item for item in results}
         self.assertIn("late_arrival_consensus", by_name)
         self.assertTrue(by_name["late_arrival_consensus"]["passed"])
-

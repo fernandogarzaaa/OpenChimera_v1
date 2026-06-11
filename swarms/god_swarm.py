@@ -27,13 +27,13 @@ log = logging.getLogger(__name__)
 
 def _load_god_swarm_agent_specs(config_path: Path | None = None) -> dict[str, Any]:
     """Load GodSwarm agent specifications from config/god_swarm_agents.json.
-    
+
     Falls back to hardcoded defaults if the file is missing or invalid.
     """
     if config_path is None:
         from core.config import ROOT
         config_path = ROOT / "config" / "god_swarm_agents.json"
-    
+
     if config_path.exists():
         try:
             payload = json.loads(config_path.read_text(encoding="utf-8"))
@@ -44,7 +44,7 @@ def _load_god_swarm_agent_specs(config_path: Path | None = None) -> dict[str, An
                     return {"core_agents": core, "supporting_agents": supporting}
         except (json.JSONDecodeError, OSError):
             pass
-    
+
     # Fallback to hardcoded defaults
     return {"core_agents": _DEFAULT_CORE_AGENTS, "supporting_agents": _DEFAULT_SUPPORTING_AGENTS}
 
@@ -175,15 +175,15 @@ class GodSwarm(SwarmOrchestrator):
         Emits a ``god_swarm.agent.spawned`` event on success.
         Config keys: agent_id (optional), role, description, capabilities (list).
         Newly spawned agents inherit the current LLM callback (if any).
-        
+
         Raises ValueError if agent_id already exists.
         """
         agent_id = str(agent_config.get("agent_id") or f"dyn-{uuid.uuid4().hex[:8]}")
-        
+
         # Uniqueness check
         if agent_id in self._agents:
             raise ValueError(f"Agent ID '{agent_id}' already exists")
-        
+
         role = str(agent_config.get("role", "Dynamic Agent"))
         description = str(agent_config.get("description", "Dynamically spawned agent."))
         capabilities = list(agent_config.get("capabilities", []))

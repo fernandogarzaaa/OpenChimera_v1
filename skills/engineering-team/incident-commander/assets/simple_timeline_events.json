@@ -10,7 +10,7 @@
     "timestamp": "2024-03-10T09:05:00Z",
     "source": "slack",
     "message": "Engineer investigating high CPU alerts",
-    "severity": "medium", 
+    "severity": "medium",
     "actor": "john.doe"
   },
   {

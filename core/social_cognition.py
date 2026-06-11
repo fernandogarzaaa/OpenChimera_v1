@@ -432,7 +432,7 @@ class SocialNormRegistry:
             SocialNorm("confidentiality", "Protect sensitive information shared in context.", weight=0.85, category="privacy"),
             SocialNorm("fairness", "Distribute effort and credit equitably.", weight=0.75, category="cooperation"),
         ]
-        
+
         # Try loading from config
         try:
             if config_path.exists():
@@ -451,7 +451,7 @@ class SocialNormRegistry:
                     log.info("Loaded %d social norms from config", len(defaults))
         except Exception as exc:
             log.warning("Failed to load social_norms.json, using hardcoded defaults: %s", exc)
-        
+
         for norm in defaults:
             self._norms[norm.name] = norm
 
@@ -488,7 +488,7 @@ class SocialNormRegistry:
         action_lower = action_description.lower()
         action_words = set(action_lower.split())
         results: list[dict[str, Any]] = []
-        
+
         with self._lock:
             for name, norm in self._norms.items():
                 # Layer 1: keyword violation → score = 0
@@ -499,7 +499,7 @@ class SocialNormRegistry:
                     # Layer 2: word embedding similarity (simple implementation)
                     rule_words = set(norm.rule.lower().split())
                     similarity = self._compute_word_embedding_similarity(action_words, rule_words)
-                    
+
                     # High similarity with a positive rule → compliant
                     score = round(0.6 + 0.4 * similarity, 4)
                 results.append({"norm": name, "weight": norm.weight, "score": score, "violated": violated})
@@ -510,13 +510,13 @@ class SocialNormRegistry:
 
     def _compute_word_embedding_similarity(self, words1: set[str], words2: set[str]) -> float:
         """Compute cosine similarity between two word sets using simple character-based vectors.
-        
+
         This is a lightweight implementation that doesn't require external embeddings.
         It creates a simple character n-gram vector for each word set and computes cosine similarity.
         """
         if not words1 or not words2:
             return 0.0
-        
+
         # Create character n-gram vectors
         def make_char_vector(words: set[str], n: int = 3) -> dict[str, int]:
             vector = {}
@@ -527,22 +527,22 @@ class SocialNormRegistry:
                     ngram = padded[i:i+n]
                     vector[ngram] = vector.get(ngram, 0) + 1
             return vector
-        
+
         vec1 = make_char_vector(words1)
         vec2 = make_char_vector(words2)
-        
+
         # Compute cosine similarity
         all_keys = set(vec1.keys()) | set(vec2.keys())
         if not all_keys:
             return 0.0
-        
+
         dot_product = sum(vec1.get(k, 0) * vec2.get(k, 0) for k in all_keys)
         magnitude1 = sum(v * v for v in vec1.values()) ** 0.5
         magnitude2 = sum(v * v for v in vec2.values()) ** 0.5
-        
+
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
-        
+
         similarity = dot_product / (magnitude1 * magnitude2)
         return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
 

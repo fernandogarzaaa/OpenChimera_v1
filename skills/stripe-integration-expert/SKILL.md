@@ -5,8 +5,8 @@ description: "Stripe Integration Expert"
 
 # Stripe Integration Expert
 
-**Tier:** POWERFUL  
-**Category:** Engineering Team  
+**Tier:** POWERFUL
+**Category:** Engineering Team
 **Domain:** Payments / Billing Infrastructure
 
 ---
@@ -268,12 +268,12 @@ export async function POST(req: Request) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (session.mode !== "subscription") return
-  
+
   const userId = session.metadata?.userId
   if (!userId) throw new Error("No userId in checkout session metadata")
 
   const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
-  
+
   await db.user.update({
     where: { id: userId },
     data: {
@@ -325,7 +325,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   if (!invoice.subscription) return
   const attemptCount = invoice.attempt_count
-  
+
   await db.user.update({
     where: { stripeSubscriptionId: invoice.subscription as string },
     data: { subscriptionStatus: "past_due" },

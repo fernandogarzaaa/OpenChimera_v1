@@ -45,7 +45,7 @@ class VersionInfo:
     patch: int
     prerelease: Optional[str] = None
     build: Optional[str] = None
-    
+
     def __str__(self):
         version = f"{self.major}.{self.minor}.{self.patch}"
         if self.prerelease:
@@ -88,12 +88,12 @@ class UpgradePlan:
 
 class UpgradePlanner:
     """Main upgrade planning and risk analysis class."""
-    
+
     def __init__(self):
         self.breaking_change_patterns = self._build_breaking_change_patterns()
         self.ecosystem_knowledge = self._build_ecosystem_knowledge()
         self.security_advisories = self._build_security_advisories()
-    
+
     def _build_breaking_change_patterns(self) -> Dict[str, List[str]]:
         """Build patterns for detecting breaking changes."""
         return {
@@ -125,7 +125,7 @@ class UpgradePlanner:
                 r'API.*incompatible'
             ]
         }
-    
+
     def _build_ecosystem_knowledge(self) -> Dict[str, Dict[str, Any]]:
         """Build ecosystem-specific upgrade knowledge."""
         return {
@@ -178,7 +178,7 @@ class UpgradePlanner:
                 ]
             }
         }
-    
+
     def _build_security_advisories(self) -> Dict[str, List[Dict[str, Any]]]:
         """Build security advisory database for upgrade prioritization."""
         return {
@@ -215,11 +215,11 @@ class UpgradePlanner:
                 }
             ]
         }
-    
+
     def analyze_upgrades(self, dependency_inventory: str, timeline_days: int = 90) -> Dict[str, Any]:
         """Analyze potential dependency upgrades and create upgrade plan."""
         dependencies = self._load_dependency_inventory(dependency_inventory)
-        
+
         analysis_results = {
             'timestamp': datetime.now().isoformat(),
             'timeline_days': timeline_days,
@@ -230,42 +230,42 @@ class UpgradePlanner:
             'upgrade_plans': [],
             'recommendations': []
         }
-        
+
         # Analyze each dependency for upgrades
         for dep in dependencies:
             upgrade_info = self._analyze_dependency_upgrade(dep)
             if upgrade_info:
                 analysis_results['available_upgrades'].append(upgrade_info)
-        
+
         # Generate upgrade statistics
         analysis_results['upgrade_statistics'] = self._generate_upgrade_statistics(
             analysis_results['available_upgrades']
         )
-        
+
         # Perform risk assessment
         analysis_results['risk_assessment'] = self._perform_risk_assessment(
             analysis_results['available_upgrades']
         )
-        
+
         # Create phased upgrade plans
         analysis_results['upgrade_plans'] = self._create_upgrade_plans(
             analysis_results['available_upgrades'],
             timeline_days
         )
-        
+
         # Generate recommendations
         analysis_results['recommendations'] = self._generate_upgrade_recommendations(
             analysis_results
         )
-        
+
         return analysis_results
-    
+
     def _load_dependency_inventory(self, inventory_path: str) -> List[Dict[str, Any]]:
         """Load dependency inventory from JSON file."""
         try:
             with open(inventory_path, 'r') as f:
                 data = json.load(f)
-            
+
             if 'dependencies' in data:
                 return data['dependencies']
             elif isinstance(data, list):
@@ -273,55 +273,55 @@ class UpgradePlanner:
             else:
                 print("Warning: Unexpected inventory format")
                 return []
-        
+
         except Exception as e:
             print(f"Error loading dependency inventory: {e}")
             return []
-    
+
     def _analyze_dependency_upgrade(self, dependency: Dict[str, Any]) -> Optional[DependencyUpgrade]:
         """Analyze upgrade possibilities for a single dependency."""
         name = dependency.get('name', '')
         current_version = dependency.get('version', '').replace('^', '').replace('~', '')
         ecosystem = dependency.get('ecosystem', '')
-        
+
         if not name or not current_version:
             return None
-        
+
         # Parse current version
         current_ver = self._parse_version(current_version)
         if not current_ver:
             return None
-        
+
         # Get latest version (simulated - in practice would query package registries)
         latest_version = self._get_latest_version(name, ecosystem)
         if not latest_version:
             return None
-        
+
         latest_ver = self._parse_version(latest_version)
         if not latest_ver:
             return None
-        
+
         # Determine if upgrade is needed
         if self._compare_versions(current_ver, latest_ver) >= 0:
             return None  # Already up to date
-        
+
         # Determine update type
         update_type = self._determine_update_type(current_ver, latest_ver)
-        
+
         # Assess upgrade risk
         risk_level = self._assess_upgrade_risk(name, current_ver, latest_ver, ecosystem, update_type)
-        
+
         # Check for security updates
         security_updates = self._check_security_updates(name, current_version, latest_version)
-        
+
         # Analyze breaking changes
         breaking_changes = self._analyze_breaking_changes(name, current_ver, latest_ver, ecosystem)
-        
+
         # Calculate priority score
         priority_score = self._calculate_priority_score(
             update_type, risk_level, security_updates, dependency.get('direct', False)
         )
-        
+
         return DependencyUpgrade(
             name=name,
             current_version=current_version,
@@ -338,16 +338,16 @@ class UpgradePlanner:
             estimated_time=self._estimate_upgrade_time(update_type, breaking_changes),
             priority_score=priority_score
         )
-    
+
     def _parse_version(self, version_string: str) -> Optional[VersionInfo]:
         """Parse semantic version string."""
         # Clean version string
         version = re.sub(r'[^0-9a-zA-Z.-]', '', version_string)
-        
+
         # Basic semver pattern
         pattern = r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$'
         match = re.match(pattern, version)
-        
+
         if match:
             major, minor, patch, prerelease, build = match.groups()
             return VersionInfo(
@@ -357,7 +357,7 @@ class UpgradePlanner:
                 prerelease=prerelease,
                 build=build
             )
-        
+
         # Fallback for simpler version patterns
         simple_pattern = r'^(\d+)\.(\d+)(?:\.(\d+))?'
         match = re.match(simple_pattern, version)
@@ -368,9 +368,9 @@ class UpgradePlanner:
                 minor=int(minor),
                 patch=int(patch or 0)
             )
-        
+
         return None
-    
+
     def _compare_versions(self, v1: VersionInfo, v2: VersionInfo) -> int:
         """Compare two versions. Returns -1, 0, or 1."""
         if (v1.major, v1.minor, v1.patch) < (v2.major, v2.minor, v2.patch):
@@ -388,9 +388,9 @@ class UpgradePlanner:
                     return -1
                 elif v1.prerelease > v2.prerelease:
                     return 1
-            
+
             return 0
-    
+
     def _get_latest_version(self, package_name: str, ecosystem: str) -> Optional[str]:
         """Get latest version from package registry (simulated)."""
         # Simulated latest versions for common packages
@@ -406,14 +406,14 @@ class UpgradePlanner:
             'fastapi': '0.104.0',
             'pytest': '7.4.0'
         }
-        
+
         # In production, would query actual package registries:
         # npm: npm view <package> version
         # pypi: pip index versions <package>
         # maven: maven metadata API
-        
+
         return mock_versions.get(package_name.lower())
-    
+
     def _determine_update_type(self, current: VersionInfo, latest: VersionInfo) -> UpdateType:
         """Determine the type of update based on semantic versioning."""
         if latest.major > current.major:
@@ -426,7 +426,7 @@ class UpgradePlanner:
             return UpdateType.PRERELEASE
         else:
             return UpdateType.PATCH  # Default fallback
-    
+
     def _assess_upgrade_risk(self, package_name: str, current: VersionInfo, latest: VersionInfo,
                             ecosystem: str, update_type: UpdateType) -> UpgradeRisk:
         """Assess the risk level of an upgrade."""
@@ -437,7 +437,7 @@ class UpgradePlanner:
             UpdateType.MAJOR: UpgradeRisk.HIGH,
             UpdateType.PRERELEASE: UpgradeRisk.MEDIUM
         }.get(update_type, UpgradeRisk.MEDIUM)
-        
+
         # Adjust for package-specific factors
         high_risk_packages = [
             'webpack', 'babel', 'typescript', 'eslint',  # Build tools
@@ -445,19 +445,19 @@ class UpgradePlanner:
             'django', 'flask', 'fastapi',  # Web frameworks
             'spring-boot', 'hibernate'  # Java frameworks
         ]
-        
+
         if package_name.lower() in high_risk_packages and update_type == UpdateType.MAJOR:
             base_risk = UpgradeRisk.CRITICAL
-        
+
         # Check for known breaking changes
         if self._has_known_breaking_changes(package_name, current, latest):
             if base_risk in [UpgradeRisk.SAFE, UpgradeRisk.LOW]:
                 base_risk = UpgradeRisk.MEDIUM
             elif base_risk == UpgradeRisk.MEDIUM:
                 base_risk = UpgradeRisk.HIGH
-        
+
         return base_risk
-    
+
     def _has_known_breaking_changes(self, package_name: str, current: VersionInfo, latest: VersionInfo) -> bool:
         """Check if there are known breaking changes between versions."""
         # Simulated breaking change detection
@@ -468,79 +468,79 @@ class UpgradePlanner:
             'babel': ['7.0.0', '8.0.0'],
             'typescript': ['4.0.0', '5.0.0']
         }
-        
+
         package_versions = breaking_change_versions.get(package_name.lower(), [])
         latest_str = str(latest)
-        
+
         return any(latest_str.startswith(v.split('.')[0]) for v in package_versions)
-    
+
     def _check_security_updates(self, package_name: str, current_version: str, latest_version: str) -> List[str]:
         """Check for security updates in the upgrade."""
         security_updates = []
-        
+
         if package_name in self.security_advisories:
             for advisory in self.security_advisories[package_name]:
                 fixed_version = advisory['fixed_in']
-                
+
                 # Simple version comparison for security fixes
                 if (self._is_version_greater(fixed_version, current_version) and
                     not self._is_version_greater(fixed_version, latest_version)):
                     security_updates.append(f"{advisory['advisory_id']}: {advisory['description']}")
-        
+
         return security_updates
-    
+
     def _is_version_greater(self, v1: str, v2: str) -> bool:
         """Simple version comparison."""
         v1_parts = [int(x) for x in v1.split('.')]
         v2_parts = [int(x) for x in v2.split('.')]
-        
+
         # Pad shorter version
         max_len = max(len(v1_parts), len(v2_parts))
         v1_parts.extend([0] * (max_len - len(v1_parts)))
         v2_parts.extend([0] * (max_len - len(v2_parts)))
-        
+
         return v1_parts > v2_parts
-    
-    def _analyze_breaking_changes(self, package_name: str, current: VersionInfo, 
+
+    def _analyze_breaking_changes(self, package_name: str, current: VersionInfo,
                                  latest: VersionInfo, ecosystem: str) -> List[str]:
         """Analyze potential breaking changes."""
         breaking_changes = []
-        
+
         # Check if major version change
         if latest.major > current.major:
             breaking_changes.append(f"Major version upgrade from {current.major}.x to {latest.major}.x")
-            
+
             # Add ecosystem-specific common breaking changes
             ecosystem_knowledge = self.ecosystem_knowledge.get(ecosystem, {})
             common_changes = ecosystem_knowledge.get('common_breaking_changes', [])
             breaking_changes.extend(common_changes[:2])  # Add top 2
-        
+
         # Check for specific package patterns
         if package_name.lower() == 'react' and latest.major >= 17:
             breaking_changes.append("New JSX Transform")
             if latest.major >= 18:
                 breaking_changes.append("Concurrent Rendering changes")
-        
+
         elif package_name.lower() == 'django' and latest.major >= 4:
             breaking_changes.append("CSRF token changes")
             breaking_changes.append("Default AUTO_INCREMENT field changes")
-        
+
         elif package_name.lower() == 'webpack' and latest.major >= 5:
             breaking_changes.append("Module Federation support")
             breaking_changes.append("Asset modules replace file-loader")
-        
+
         return breaking_changes
-    
+
     def _calculate_priority_score(self, update_type: UpdateType, risk_level: UpgradeRisk,
                                  security_updates: List[str], is_direct: bool) -> float:
         """Calculate priority score for upgrade (0-100)."""
         score = 50.0  # Base score
-        
+
         # Security updates get highest priority
         if security_updates:
             score += 30.0
             score += len(security_updates) * 5.0  # Multiple security fixes
-        
+
         # Update type scoring
         type_scores = {
             UpdateType.PATCH: 20.0,
@@ -549,7 +549,7 @@ class UpgradePlanner:
             UpdateType.PRERELEASE: -5.0
         }
         score += type_scores.get(update_type, 0)
-        
+
         # Risk level adjustment
         risk_adjustments = {
             UpgradeRisk.SAFE: 15.0,
@@ -559,13 +559,13 @@ class UpgradePlanner:
             UpgradeRisk.CRITICAL: -25.0
         }
         score += risk_adjustments.get(risk_level, 0)
-        
+
         # Direct dependencies get slightly higher priority
         if is_direct:
             score += 5.0
-        
+
         return max(0.0, min(100.0, score))
-    
+
     def _estimate_migration_effort(self, update_type: UpdateType, breaking_changes: List[str]) -> str:
         """Estimate migration effort level."""
         if update_type == UpdateType.PATCH and not breaking_changes:
@@ -576,7 +576,7 @@ class UpgradePlanner:
             return "High"
         else:
             return "Medium"
-    
+
     def _get_affected_dependencies(self, package_name: str, dependency: Dict[str, Any]) -> List[str]:
         """Get list of dependencies that might be affected by this upgrade."""
         # Simulated dependency impact analysis
@@ -586,9 +586,9 @@ class UpgradePlanner:
             'webpack': ['webpack-cli', 'webpack-dev-server', 'html-webpack-plugin'],
             'babel': ['@babel/core', '@babel/preset-env', '@babel/preset-react']
         }
-        
+
         return common_dependencies.get(package_name.lower(), [])
-    
+
     def _assess_rollback_complexity(self, update_type: UpdateType, risk_level: UpgradeRisk) -> str:
         """Assess complexity of rolling back the upgrade."""
         if update_type == UpdateType.PATCH:
@@ -599,7 +599,7 @@ class UpgradePlanner:
             return "Complex"
         else:
             return "Moderate"
-    
+
     def _estimate_upgrade_time(self, update_type: UpdateType, breaking_changes: List[str]) -> str:
         """Estimate time required for upgrade."""
         base_times = {
@@ -608,9 +608,9 @@ class UpgradePlanner:
             UpdateType.MAJOR: "1 day",
             UpdateType.PRERELEASE: "4 hours"
         }
-        
+
         base_time = base_times.get(update_type, "4 hours")
-        
+
         if len(breaking_changes) > 2:
             if "30 minutes" in base_time:
                 base_time = "2 hours"
@@ -618,14 +618,14 @@ class UpgradePlanner:
                 base_time = "1 day"
             elif "1 day" in base_time:
                 base_time = "3 days"
-        
+
         return base_time
-    
+
     def _generate_upgrade_statistics(self, upgrades: List[DependencyUpgrade]) -> Dict[str, Any]:
         """Generate statistics about available upgrades."""
         if not upgrades:
             return {}
-        
+
         return {
             'total_upgrades': len(upgrades),
             'by_type': {
@@ -645,13 +645,13 @@ class UpgradePlanner:
             'direct_dependencies': len([u for u in upgrades if u.direct]),
             'average_priority': sum(u.priority_score for u in upgrades) / len(upgrades)
         }
-    
+
     def _perform_risk_assessment(self, upgrades: List[DependencyUpgrade]) -> Dict[str, Any]:
         """Perform comprehensive risk assessment."""
         high_risk_upgrades = [u for u in upgrades if u.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL]]
         security_upgrades = [u for u in upgrades if u.security_updates]
         major_upgrades = [u for u in upgrades if u.update_type == UpdateType.MAJOR]
-        
+
         return {
             'overall_risk': self._calculate_overall_upgrade_risk(upgrades),
             'high_risk_count': len(high_risk_upgrades),
@@ -660,12 +660,12 @@ class UpgradePlanner:
             'risk_factors': self._identify_risk_factors(upgrades),
             'mitigation_strategies': self._suggest_mitigation_strategies(upgrades)
         }
-    
+
     def _calculate_overall_upgrade_risk(self, upgrades: List[DependencyUpgrade]) -> str:
         """Calculate overall risk level for all upgrades."""
         if not upgrades:
             return "LOW"
-        
+
         risk_scores = {
             UpgradeRisk.SAFE: 1,
             UpgradeRisk.LOW: 2,
@@ -673,10 +673,10 @@ class UpgradePlanner:
             UpgradeRisk.HIGH: 4,
             UpgradeRisk.CRITICAL: 5
         }
-        
+
         total_score = sum(risk_scores.get(u.risk_level, 3) for u in upgrades)
         average_score = total_score / len(upgrades)
-        
+
         if average_score >= 4.0:
             return "CRITICAL"
         elif average_score >= 3.0:
@@ -685,58 +685,58 @@ class UpgradePlanner:
             return "MEDIUM"
         else:
             return "LOW"
-    
+
     def _identify_risk_factors(self, upgrades: List[DependencyUpgrade]) -> List[str]:
         """Identify key risk factors across all upgrades."""
         factors = []
-        
+
         major_count = len([u for u in upgrades if u.update_type == UpdateType.MAJOR])
         if major_count > 0:
             factors.append(f"{major_count} major version upgrades with potential breaking changes")
-        
+
         critical_count = len([u for u in upgrades if u.risk_level == UpgradeRisk.CRITICAL])
         if critical_count > 0:
             factors.append(f"{critical_count} critical risk upgrades requiring careful planning")
-        
-        framework_upgrades = [u for u in upgrades if any(fw in u.name.lower() 
+
+        framework_upgrades = [u for u in upgrades if any(fw in u.name.lower()
                              for fw in ['react', 'django', 'spring', 'webpack', 'babel'])]
         if framework_upgrades:
             factors.append(f"Core framework upgrades: {[u.name for u in framework_upgrades[:3]]}")
-        
+
         return factors
-    
+
     def _suggest_mitigation_strategies(self, upgrades: List[DependencyUpgrade]) -> List[str]:
         """Suggest risk mitigation strategies."""
         strategies = []
-        
+
         high_risk_count = len([u for u in upgrades if u.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL]])
         if high_risk_count > 0:
             strategies.append("Create comprehensive test suite before high-risk upgrades")
             strategies.append("Plan rollback procedures for critical upgrades")
-        
+
         major_count = len([u for u in upgrades if u.update_type == UpdateType.MAJOR])
         if major_count > 3:
             strategies.append("Phase major upgrades across multiple releases")
             strategies.append("Use feature flags for gradual rollout")
-        
+
         security_count = len([u for u in upgrades if u.security_updates])
         if security_count > 0:
             strategies.append("Prioritize security updates regardless of risk level")
-        
+
         return strategies
-    
+
     def _create_upgrade_plans(self, upgrades: List[DependencyUpgrade], timeline_days: int) -> List[UpgradePlan]:
         """Create phased upgrade plans."""
         if not upgrades:
             return []
-        
+
         # Sort upgrades by priority score (descending)
         sorted_upgrades = sorted(upgrades, key=lambda x: x.priority_score, reverse=True)
-        
+
         plans = []
-        
+
         # Phase 1: Security and safe updates (first 30% of timeline)
-        phase1_upgrades = [u for u in sorted_upgrades if 
+        phase1_upgrades = [u for u in sorted_upgrades if
                           u.security_updates or u.risk_level == UpgradeRisk.SAFE][:10]
         if phase1_upgrades:
             plans.append(self._create_upgrade_plan(
@@ -744,9 +744,9 @@ class UpgradePlanner:
                 "Immediate security fixes and low-risk updates",
                 1, phase1_upgrades, timeline_days // 3
             ))
-        
+
         # Phase 2: Low-medium risk updates (middle 40% of timeline)
-        phase2_upgrades = [u for u in sorted_upgrades if 
+        phase2_upgrades = [u for u in sorted_upgrades if
                           u.risk_level in [UpgradeRisk.LOW, UpgradeRisk.MEDIUM] and
                           not u.security_updates][:8]
         if phase2_upgrades:
@@ -755,9 +755,9 @@ class UpgradePlanner:
                 "Standard dependency updates with moderate risk",
                 2, phase2_upgrades, timeline_days * 2 // 5
             ))
-        
+
         # Phase 3: High-risk and major updates (final 30% of timeline)
-        phase3_upgrades = [u for u in sorted_upgrades if 
+        phase3_upgrades = [u for u in sorted_upgrades if
                           u.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL]][:5]
         if phase3_upgrades:
             plans.append(self._create_upgrade_plan(
@@ -765,14 +765,14 @@ class UpgradePlanner:
                 "High-risk upgrades requiring careful planning",
                 3, phase3_upgrades, timeline_days // 3
             ))
-        
+
         return plans
-    
+
     def _create_upgrade_plan(self, name: str, description: str, phase: int,
                             upgrades: List[DependencyUpgrade], duration_days: int) -> UpgradePlan:
         """Create a detailed upgrade plan for a phase."""
         dependency_names = [u.name for u in upgrades]
-        
+
         # Generate migration steps
         migration_steps = []
         migration_steps.append("1. Create feature branch for upgrades")
@@ -783,28 +783,28 @@ class UpgradePlanner:
         migration_steps.append("6. Run comprehensive test suite")
         migration_steps.append("7. Update documentation and changelog")
         migration_steps.append("8. Create pull request for review")
-        
+
         # Add phase-specific steps
         if phase == 1:
             migration_steps.insert(3, "3a. Verify security fixes are applied")
         elif phase == 3:
             migration_steps.insert(5, "5a. Perform extensive integration testing")
             migration_steps.insert(6, "6a. Test with production-like data")
-        
+
         # Generate testing requirements
         testing_requirements = [
             "Unit test suite passes 100%",
             "Integration tests cover upgrade scenarios",
             "Performance benchmarks within acceptable range"
         ]
-        
+
         if any(u.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL] for u in upgrades):
             testing_requirements.extend([
                 "Manual testing of critical user flows",
                 "Load testing for performance regression",
                 "Security scanning for new vulnerabilities"
             ])
-        
+
         # Generate rollback plan
         rollback_plan = [
             "1. Revert dependency versions in manifest files",
@@ -813,7 +813,7 @@ class UpgradePlanner:
             "4. Run smoke tests to verify rollback success",
             "5. Monitor system health metrics"
         ]
-        
+
         # Success criteria
         success_criteria = [
             "All tests pass in CI/CD pipeline",
@@ -821,7 +821,7 @@ class UpgradePlanner:
             "Performance metrics within acceptable thresholds",
             "No critical user workflows broken"
         ]
-        
+
         return UpgradePlan(
             name=name,
             description=description,
@@ -834,7 +834,7 @@ class UpgradePlanner:
             rollback_plan=rollback_plan,
             success_criteria=success_criteria
         )
-    
+
     def _generate_prerequisites(self, upgrades: List[DependencyUpgrade]) -> List[str]:
         """Generate prerequisites for upgrade phase."""
         prerequisites = [
@@ -842,45 +842,45 @@ class UpgradePlanner:
             "Backup of current working state",
             "Development environment setup"
         ]
-        
+
         if any(u.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL] for u in upgrades):
             prerequisites.extend([
                 "Staging environment for testing",
                 "Rollback procedure documented and tested",
                 "Team availability for issue resolution"
             ])
-        
+
         if any(u.security_updates for u in upgrades):
             prerequisites.append("Security team notification for validation")
-        
+
         return prerequisites
-    
+
     def _generate_upgrade_recommendations(self, analysis_results: Dict[str, Any]) -> List[str]:
         """Generate actionable upgrade recommendations."""
         recommendations = []
-        
+
         security_count = analysis_results['upgrade_statistics'].get('security_updates', 0)
         if security_count > 0:
             recommendations.append(f"URGENT: {security_count} security updates available - prioritize immediately")
-        
+
         safe_count = analysis_results['upgrade_statistics']['by_risk'].get('safe', 0)
         if safe_count > 0:
             recommendations.append(f"Quick wins: {safe_count} safe updates can be applied with minimal risk")
-        
+
         critical_count = analysis_results['risk_assessment']['high_risk_count']
         if critical_count > 0:
             recommendations.append(f"Plan carefully: {critical_count} high-risk upgrades need thorough testing")
-        
+
         major_count = analysis_results['upgrade_statistics']['by_type'].get('major', 0)
         if major_count > 3:
             recommendations.append("Consider phasing major upgrades across multiple releases")
-        
+
         overall_risk = analysis_results['risk_assessment']['overall_risk']
         if overall_risk in ['HIGH', 'CRITICAL']:
             recommendations.append("Overall upgrade risk is high - recommend gradual approach")
-        
+
         return recommendations
-    
+
     def generate_report(self, analysis_results: Dict[str, Any], format: str = 'text') -> str:
         """Generate upgrade plan report in specified format."""
         if format == 'json':
@@ -889,7 +889,7 @@ class UpgradePlanner:
             serializable_results['available_upgrades'] = [asdict(upgrade) for upgrade in analysis_results['available_upgrades']]
             serializable_results['upgrade_plans'] = [asdict(plan) for plan in analysis_results['upgrade_plans']]
             return json.dumps(serializable_results, indent=2, default=str)
-        
+
         # Text format report
         report = []
         report.append("=" * 60)
@@ -898,7 +898,7 @@ class UpgradePlanner:
         report.append(f"Generated: {analysis_results['timestamp']}")
         report.append(f"Timeline: {analysis_results['timeline_days']} days")
         report.append("")
-        
+
         # Statistics
         stats = analysis_results['upgrade_statistics']
         report.append("UPGRADE SUMMARY:")
@@ -907,7 +907,7 @@ class UpgradePlanner:
         report.append(f"  Major Version Updates: {stats['by_type'].get('major', 0)}")
         report.append(f"  High Risk Updates: {stats['by_risk'].get('high', 0)}")
         report.append("")
-        
+
         # Risk Assessment
         risk = analysis_results['risk_assessment']
         report.append("RISK ASSESSMENT:")
@@ -917,11 +917,11 @@ class UpgradePlanner:
             for factor in risk['risk_factors'][:3]:
                 report.append(f"    • {factor}")
         report.append("")
-        
+
         # High Priority Upgrades
-        high_priority = sorted([u for u in analysis_results['available_upgrades']], 
+        high_priority = sorted([u for u in analysis_results['available_upgrades']],
                               key=lambda x: x.priority_score, reverse=True)[:10]
-        
+
         if high_priority:
             report.append("TOP PRIORITY UPGRADES:")
             report.append("-" * 30)
@@ -929,18 +929,18 @@ class UpgradePlanner:
                 risk_indicator = "🔴" if upgrade.risk_level in [UpgradeRisk.HIGH, UpgradeRisk.CRITICAL] else \
                                "🟡" if upgrade.risk_level == UpgradeRisk.MEDIUM else "🟢"
                 security_indicator = " 🔒" if upgrade.security_updates else ""
-                
+
                 report.append(f"{risk_indicator} {upgrade.name}: {upgrade.current_version} → {upgrade.latest_version}{security_indicator}")
                 report.append(f"   Type: {upgrade.update_type.value.title()} | Risk: {upgrade.risk_level.value.title()} | Priority: {upgrade.priority_score:.1f}")
                 if upgrade.security_updates:
                     report.append(f"   Security: {upgrade.security_updates[0]}")
                 report.append("")
-        
+
         # Upgrade Plans
         if analysis_results['upgrade_plans']:
             report.append("PHASED UPGRADE PLANS:")
             report.append("-" * 30)
-            
+
             for plan in analysis_results['upgrade_plans']:
                 report.append(f"{plan.name} ({plan.estimated_duration})")
                 report.append(f"  Dependencies: {', '.join(plan.dependencies[:5])}")
@@ -948,7 +948,7 @@ class UpgradePlanner:
                     report.append(f"  ... and {len(plan.dependencies) - 5} more")
                 report.append(f"  Key Steps: {'; '.join(plan.migration_steps[:3])}")
                 report.append("")
-        
+
         # Recommendations
         if analysis_results['recommendations']:
             report.append("RECOMMENDATIONS:")
@@ -956,7 +956,7 @@ class UpgradePlanner:
             for i, rec in enumerate(analysis_results['recommendations'], 1):
                 report.append(f"{i}. {rec}")
             report.append("")
-        
+
         report.append("=" * 60)
         return '\n'.join(report)
 
@@ -972,7 +972,7 @@ Examples:
   python upgrade_planner.py deps.json --risk-threshold medium --output plan.txt
         """
     )
-    
+
     parser.add_argument('inventory_file',
                        help='Path to dependency inventory JSON file')
     parser.add_argument('--timeline', type=int, default=90,
@@ -981,46 +981,46 @@ Examples:
                        help='Output format (default: text)')
     parser.add_argument('--output', '-o',
                        help='Output file path (default: stdout)')
-    parser.add_argument('--risk-threshold', 
+    parser.add_argument('--risk-threshold',
                        choices=['safe', 'low', 'medium', 'high', 'critical'],
                        default='high',
                        help='Maximum risk level to include (default: high)')
     parser.add_argument('--security-only', action='store_true',
                        help='Only plan upgrades with security fixes')
-    
+
     args = parser.parse_args()
-    
+
     try:
         planner = UpgradePlanner()
         results = planner.analyze_upgrades(args.inventory_file, args.timeline)
-        
+
         # Filter by risk threshold if specified
         if args.risk_threshold != 'critical':
             risk_levels = ['safe', 'low', 'medium', 'high', 'critical']
             max_index = risk_levels.index(args.risk_threshold)
             allowed_risks = set(risk_levels[:max_index + 1])
-            
+
             results['available_upgrades'] = [
                 u for u in results['available_upgrades']
                 if u.risk_level.value in allowed_risks
             ]
-        
+
         # Filter for security-only if specified
         if args.security_only:
             results['available_upgrades'] = [
                 u for u in results['available_upgrades']
                 if u.security_updates
             ]
-        
+
         report = planner.generate_report(results, args.format)
-        
+
         if args.output:
             with open(args.output, 'w') as f:
                 f.write(report)
             print(f"Upgrade plan saved to {args.output}")
         else:
             print(report)
-    
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

@@ -27,14 +27,14 @@ class IncidentClassifier:
     Classifies incidents based on description, impact metrics, and business context.
     Provides severity assessment, team recommendations, and response templates.
     """
-    
+
     def __init__(self):
         """Initialize the classifier with rules and templates."""
         self.severity_rules = self._load_severity_rules()
         self.team_mappings = self._load_team_mappings()
         self.communication_templates = self._load_communication_templates()
         self.action_templates = self._load_action_templates()
-    
+
     def _load_severity_rules(self) -> Dict[str, Dict]:
         """Load severity classification rules and keywords."""
         return {
@@ -99,7 +99,7 @@ class IncidentClassifier:
                 "description": "Minimal impact, cosmetic issues, or planned maintenance"
             }
         }
-    
+
     def _load_team_mappings(self) -> Dict[str, List[str]]:
         """Load team assignment rules based on service/component keywords."""
         return {
@@ -116,7 +116,7 @@ class IncidentClassifier:
             "deployment": ["DevOps", "Release Engineering", "SRE"],
             "data": ["Data Engineering", "Analytics Team", "Backend Engineering"]
         }
-    
+
     def _load_communication_templates(self) -> Dict[str, Dict]:
         """Load communication templates for each severity level."""
         return {
@@ -221,7 +221,7 @@ Target Resolution: {target_date}
 {standard_contact}"""
             }
         }
-    
+
     def _load_action_templates(self) -> Dict[str, List[Dict]]:
         """Load initial action templates for each severity level."""
         return {
@@ -354,15 +354,15 @@ Target Resolution: {target_date}
                 }
             ]
         }
-    
+
     def classify_incident(self, incident_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Main classification method that analyzes incident data and returns
         comprehensive response recommendations.
-        
+
         Args:
             incident_data: Dictionary containing incident information
-            
+
         Returns:
             Dictionary with classification results and recommendations
         """
@@ -372,25 +372,25 @@ Target Resolution: {target_date}
         business_impact = incident_data.get('business_impact', 'unknown')
         service = incident_data.get('service', 'unknown service')
         duration = incident_data.get('duration_minutes', 0)
-        
+
         # Classify severity
         severity = self._classify_severity(description, affected_users, business_impact, duration)
-        
+
         # Determine response teams
         response_teams = self._determine_teams(description, service)
-        
+
         # Generate initial actions
         initial_actions = self._generate_initial_actions(severity, incident_data)
-        
+
         # Create communication template
         communication = self._generate_communication(severity, incident_data)
-        
+
         # Calculate response timeline
         timeline = self._generate_timeline(severity)
-        
+
         # Determine escalation path
         escalation = self._determine_escalation(severity, business_impact)
-        
+
         return {
             "classification": {
                 "severity": severity.upper(),
@@ -416,22 +416,22 @@ Target Resolution: {target_date}
                 "duration_minutes": duration
             }
         }
-    
-    def _classify_severity(self, description: str, affected_users: str, 
+
+    def _classify_severity(self, description: str, affected_users: str,
                           business_impact: str, duration: int) -> str:
         """Classify incident severity based on multiple factors."""
         scores = {"sev1": 0, "sev2": 0, "sev3": 0, "sev4": 0}
-        
+
         # Keyword analysis
         for severity, rules in self.severity_rules.items():
             for keyword in rules["keywords"]:
                 if keyword in description:
                     scores[severity] += 2
-            
+
             for indicator in rules["impact_indicators"]:
                 if indicator.lower() in description or indicator.lower() in affected_users.lower():
                     scores[severity] += 3
-        
+
         # Business impact weighting
         if business_impact.lower() in ['critical', 'high', 'severe']:
             scores["sev1"] += 5
@@ -442,7 +442,7 @@ Target Resolution: {target_date}
         elif business_impact.lower() in ['low', 'minimal']:
             scores["sev3"] += 2
             scores["sev4"] += 3
-        
+
         # User impact analysis
         if '%' in affected_users:
             try:
@@ -457,7 +457,7 @@ Target Resolution: {target_date}
                     scores["sev4"] += 2
             except (IndexError, ValueError):
                 pass
-        
+
         # Duration consideration
         if duration > 0:
             if duration >= 3600:  # 1 hour
@@ -466,47 +466,47 @@ Target Resolution: {target_date}
             elif duration >= 1800:  # 30 minutes
                 scores["sev2"] += 2
                 scores["sev3"] += 1
-        
+
         # Return highest scoring severity
         return max(scores, key=scores.get)
-    
+
     def _determine_teams(self, description: str, service: str) -> List[str]:
         """Determine which teams should respond based on affected systems."""
         teams = set()
         text_to_analyze = f"{description} {service}".lower()
-        
+
         for component, team_list in self.team_mappings.items():
             if component in text_to_analyze:
                 teams.update(team_list)
-        
+
         # Default teams if no specific match
         if not teams:
             teams = {"General Engineering", "SRE"}
-        
+
         return list(teams)
-    
+
     def _generate_initial_actions(self, severity: str, incident_data: Dict) -> List[Dict]:
         """Generate prioritized initial actions based on severity."""
         base_actions = self.action_templates[severity].copy()
-        
+
         # Customize actions based on incident details
         for action in base_actions:
             if severity in ["sev1", "sev2"]:
                 action["urgency"] = "immediate" if severity == "sev1" else "high"
             else:
                 action["urgency"] = "normal" if severity == "sev3" else "low"
-        
+
         return base_actions
-    
+
     def _generate_communication(self, severity: str, incident_data: Dict) -> Dict:
         """Generate communication template filled with incident data."""
         template = self.communication_templates[severity]
-        
+
         # Fill template with incident data
         now = datetime.now(timezone.utc)
         service = incident_data.get('service', 'Unknown Service')
         description = incident_data.get('description', 'Incident detected')
-        
+
         communication = {
             "subject": template["subject"].format(
                 service=service,
@@ -518,14 +518,14 @@ Target Resolution: {target_date}
             "channels": self._determine_channels(severity),
             "frequency_minutes": self._get_update_frequency(severity)
         }
-        
+
         return communication
-    
+
     def _generate_timeline(self, severity: str) -> Dict:
         """Generate expected response timeline."""
         rules = self.severity_rules[severity]
         now = datetime.now(timezone.utc)
-        
+
         milestones = []
         if severity == "sev1":
             milestones = [
@@ -553,13 +553,13 @@ Target Resolution: {target_date}
                 {"milestone": "Backlog creation", "minutes": 1440},
                 {"milestone": "Priority assessment", "minutes": 2880}
             ]
-        
+
         return {
             "response_time_minutes": rules["response_time"] // 60,
             "milestones": milestones,
             "update_frequency_minutes": self._get_update_frequency(severity)
         }
-    
+
     def _determine_escalation(self, severity: str, business_impact: str) -> Dict:
         """Determine escalation requirements and triggers."""
         escalation_rules = {
@@ -586,9 +586,9 @@ Target Resolution: {target_date}
                 "triggers": ["Customer request", "Stakeholder priority"]
             }
         }
-        
+
         return escalation_rules.get(severity, escalation_rules["sev4"])
-    
+
     def _determine_recipients(self, severity: str) -> List[str]:
         """Determine who should receive notifications."""
         recipients = {
@@ -598,7 +598,7 @@ Target Resolution: {target_date}
             "sev4": ["assigned-engineer"]
         }
         return recipients.get(severity, recipients["sev4"])
-    
+
     def _determine_channels(self, severity: str) -> List[str]:
         """Determine communication channels to use."""
         channels = {
@@ -608,49 +608,49 @@ Target Resolution: {target_date}
             "sev4": ["ticket-system"]
         }
         return channels.get(severity, channels["sev4"])
-    
+
     def _get_update_frequency(self, severity: str) -> int:
         """Get recommended update frequency in minutes."""
         frequencies = {"sev1": 15, "sev2": 30, "sev3": 240, "sev4": 0}
         return frequencies.get(severity, 0)
-    
+
     def _calculate_confidence(self, description: str, affected_users: str, business_impact: str) -> float:
         """Calculate confidence score for the classification."""
         confidence = 0.5  # Base confidence
-        
+
         # Higher confidence with more specific information
         if '%' in affected_users and any(char.isdigit() for char in affected_users):
             confidence += 0.2
-        
+
         if business_impact.lower() in ['critical', 'high', 'medium', 'low']:
             confidence += 0.15
-        
+
         if len(description.split()) > 5:  # Detailed description
             confidence += 0.15
-        
+
         return min(confidence, 1.0)
-    
+
     def _explain_classification(self, severity: str, description: str, affected_users: str) -> str:
         """Provide explanation for the classification decision."""
         rules = self.severity_rules[severity]
-        
+
         matched_keywords = []
         for keyword in rules["keywords"]:
             if keyword in description.lower():
                 matched_keywords.append(keyword)
-        
+
         explanation = f"Classified as {severity.upper()} based on: "
         reasons = []
-        
+
         if matched_keywords:
             reasons.append(f"keywords: {', '.join(matched_keywords[:3])}")
-        
+
         if '%' in affected_users:
             reasons.append(f"user impact: {affected_users}")
-        
+
         if not reasons:
             reasons.append("default classification based on available information")
-        
+
         return explanation + "; ".join(reasons)
 
 
@@ -665,13 +665,13 @@ def format_text_output(result: Dict) -> str:
     response = result["response"]
     actions = result["initial_actions"]
     communication = result["communication"]
-    
+
     output = []
     output.append("=" * 60)
     output.append("INCIDENT CLASSIFICATION REPORT")
     output.append("=" * 60)
     output.append("")
-    
+
     # Classification section
     output.append("CLASSIFICATION:")
     output.append(f"  Severity: {classification['severity']}")
@@ -679,7 +679,7 @@ def format_text_output(result: Dict) -> str:
     output.append(f"  Reasoning: {classification['reasoning']}")
     output.append(f"  Timestamp: {classification['timestamp']}")
     output.append("")
-    
+
     # Response section
     output.append("RECOMMENDED RESPONSE:")
     output.append(f"  Primary Team: {response['primary_team']}")
@@ -687,7 +687,7 @@ def format_text_output(result: Dict) -> str:
         output.append(f"  Supporting Teams: {', '.join(response['supporting_teams'])}")
     output.append(f"  Response Time: {response['response_time_minutes']} minutes")
     output.append("")
-    
+
     # Actions section
     output.append("INITIAL ACTIONS:")
     for i, action in enumerate(actions[:5], 1):  # Show first 5 actions
@@ -695,7 +695,7 @@ def format_text_output(result: Dict) -> str:
         output.append(f"     Timeout: {action['timeout_minutes']} minutes")
         output.append(f"     {action['description']}")
         output.append("")
-    
+
     # Communication section
     output.append("COMMUNICATION:")
     output.append(f"  Subject: {communication['subject']}")
@@ -705,9 +705,9 @@ def format_text_output(result: Dict) -> str:
     if communication['frequency_minutes'] > 0:
         output.append(f"  Update Frequency: Every {communication['frequency_minutes']} minutes")
     output.append("")
-    
+
     output.append("=" * 60)
-    
+
     return "\n".join(output)
 
 
@@ -720,33 +720,33 @@ def parse_input_text(text: str) -> Dict[str, Any]:
         "affected_users": "unknown",
         "business_impact": "unknown"
     }
-    
+
     # Try to extract service name
     service_patterns = [
         r'(?:service|api|database|server|application)\s+(\w+)',
         r'(\w+)(?:\s+(?:is|has|service|api|database))',
         r'(?:^|\s)(\w+)\s+(?:down|failed|broken)'
     ]
-    
+
     for pattern in service_patterns:
         match = re.search(pattern, text.lower())
         if match:
             incident_data["service"] = match.group(1)
             break
-    
+
     # Try to extract user impact
     impact_patterns = [
         r'(\d+%)\s+(?:of\s+)?(?:users?|customers?)',
         r'(?:all|every|100%)\s+(?:users?|customers?)',
         r'(?:some|many|several)\s+(?:users?|customers?)'
     ]
-    
+
     for pattern in impact_patterns:
         match = re.search(pattern, text.lower())
         if match:
             incident_data["affected_users"] = match.group(1) if match.group(1) else match.group(0)
             break
-    
+
     # Try to infer business impact
     if any(word in text.lower() for word in ['critical', 'urgent', 'emergency', 'down', 'outage']):
         incident_data["business_impact"] = "high"
@@ -754,46 +754,46 @@ def parse_input_text(text: str) -> Dict[str, Any]:
         incident_data["business_impact"] = "medium"
     elif any(word in text.lower() for word in ['minor', 'cosmetic', 'small']):
         incident_data["business_impact"] = "low"
-    
+
     return incident_data
 
 
 def interactive_mode():
     """Run in interactive mode, prompting user for input."""
     classifier = IncidentClassifier()
-    
+
     print("🚨 Incident Classifier - Interactive Mode")
     print("=" * 50)
     print("Enter incident details (or 'quit' to exit):")
     print()
-    
+
     while True:
         try:
             description = input("Incident description: ").strip()
             if description.lower() in ['quit', 'exit', 'q']:
                 break
-            
+
             if not description:
                 print("Please provide an incident description.")
                 continue
-            
+
             service = input("Affected service (optional): ").strip() or "unknown"
             affected_users = input("Affected users (e.g., '50%', 'all users'): ").strip() or "unknown"
             business_impact = input("Business impact (high/medium/low): ").strip() or "unknown"
-            
+
             incident_data = {
                 "description": description,
                 "service": service,
                 "affected_users": affected_users,
                 "business_impact": business_impact
             }
-            
+
             result = classifier.classify_incident(incident_data)
             print("\n" + "=" * 50)
             print(format_text_output(result))
             print("=" * 50)
             print()
-            
+
         except KeyboardInterrupt:
             print("\n\nExiting...")
             break
@@ -811,7 +811,7 @@ Examples:
   python incident_classifier.py --input incident.json
   echo "Database is down" | python incident_classifier.py --format text
   python incident_classifier.py --interactive
-  
+
 Input JSON format:
   {
     "description": "Database connection timeouts",
@@ -821,39 +821,39 @@ Input JSON format:
   }
         """
     )
-    
+
     parser.add_argument(
         "--input", "-i",
         help="Input file path (JSON format) or '-' for stdin"
     )
-    
+
     parser.add_argument(
         "--format", "-f",
         choices=["json", "text"],
         default="json",
         help="Output format (default: json)"
     )
-    
+
     parser.add_argument(
         "--interactive",
         action="store_true",
         help="Run in interactive mode"
     )
-    
+
     parser.add_argument(
         "--output", "-o",
         help="Output file path (default: stdout)"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Interactive mode
     if args.interactive:
         interactive_mode()
         return
-    
+
     classifier = IncidentClassifier()
-    
+
     try:
         # Read input
         if args.input == "-" or (not args.input and not sys.stdin.isatty()):
@@ -861,36 +861,36 @@ Input JSON format:
             input_text = sys.stdin.read().strip()
             if not input_text:
                 parser.error("No input provided")
-            
+
             # Try to parse as JSON first, then as text
             try:
                 incident_data = json.loads(input_text)
             except json.JSONDecodeError:
                 incident_data = parse_input_text(input_text)
-                
+
         elif args.input:
             # Read from file
             with open(args.input, 'r') as f:
                 incident_data = json.load(f)
         else:
             parser.error("No input specified. Use --input, --interactive, or pipe data to stdin.")
-        
+
         # Validate required fields
         if not isinstance(incident_data, dict):
             parser.error("Input must be a JSON object")
-        
+
         if "description" not in incident_data:
             parser.error("Input must contain 'description' field")
-        
+
         # Classify incident
         result = classifier.classify_incident(incident_data)
-        
+
         # Format output
         if args.format == "json":
             output = format_json_output(result)
         else:
             output = format_text_output(result)
-        
+
         # Write output
         if args.output:
             with open(args.output, 'w') as f:
@@ -898,7 +898,7 @@ Input JSON format:
                 f.write('\n')
         else:
             print(output)
-    
+
     except FileNotFoundError as e:
         print(f"Error: File not found - {e}", file=sys.stderr)
         sys.exit(1)

@@ -28,7 +28,7 @@ Generates complete interview loops tailored to specific roles, levels, and teams
 # Basic usage
 python3 loop_designer.py --role "Senior Software Engineer" --level senior
 
-# With team and custom competencies  
+# With team and custom competencies
 python3 loop_designer.py --role "Product Manager" --level mid --team growth --competencies leadership,strategy,analytics
 
 # Using JSON input file
@@ -61,7 +61,7 @@ Duration: 45 minutes
 Format: Virtual
 Focus Areas: Coding Fundamentals, Problem Solving
 
-Round 2: System Design  
+Round 2: System Design
 Duration: 75 minutes
 Format: Collaborative Whitboard
 Focus Areas: System Thinking, Architectural Reasoning
@@ -74,7 +74,7 @@ Creates comprehensive interview question banks organized by competency area.
 
 **Features:**
 - Competency-based question organization
-- Level-appropriate difficulty progression  
+- Level-appropriate difficulty progression
 - Multiple question types (technical, behavioral, situational)
 - Detailed scoring rubrics with calibration examples
 - Follow-up probes and conversation guides
@@ -103,7 +103,7 @@ python3 question_bank_generator.py --role "DevOps Engineer" --levels junior,mid,
 
 **Question Types:**
 - **Technical**: Coding problems, system design, domain-specific challenges
-- **Behavioral**: STAR method questions focusing on past experiences  
+- **Behavioral**: STAR method questions focusing on past experiences
 - **Situational**: Hypothetical scenarios testing decision-making
 
 ### 3. Hiring Calibrator (`hiring_calibrator.py`)
@@ -151,7 +151,7 @@ python3 hiring_calibrator.py --input historical_data.json --trend-analysis --per
 ```json
 {
   "role": "Senior Software Engineer",
-  "level": "senior", 
+  "level": "senior",
   "team": "platform",
   "competencies": ["system_design", "technical_leadership", "mentoring"],
   "requirements": {
@@ -168,7 +168,7 @@ python3 hiring_calibrator.py --input historical_data.json --trend-analysis --per
   {
     "candidate_id": "candidate_001",
     "role": "Senior Software Engineer",
-    "interviewer_id": "interviewer_alice", 
+    "interviewer_id": "interviewer_alice",
     "date": "2024-01-15T09:00:00Z",
     "scores": {
       "coding_fundamentals": 3.5,
@@ -229,7 +229,7 @@ The `expected_outputs/` directory contains examples of tool outputs:
 3. **Time Optimization**: Balance thoroughness with candidate experience
 4. **Interviewer Training**: Ensure interviewers are qualified and calibrated
 
-### Question Bank Development  
+### Question Bank Development
 1. **Evidence-Based**: Focus on observable behaviors and concrete examples
 2. **Bias Mitigation**: Use structured questions that minimize subjective interpretation
 3. **Calibration**: Include examples of different quality responses for consistency
@@ -254,7 +254,7 @@ chmod +x *.py
 
 # Test with sample data
 python3 loop_designer.py --role "Senior Software Engineer" --level senior
-python3 question_bank_generator.py --role "Product Manager" --level mid  
+python3 question_bank_generator.py --role "Product Manager" --level mid
 python3 hiring_calibrator.py --input assets/sample_interview_results.json
 ```
 
@@ -290,7 +290,7 @@ python3 hiring_calibrator.py --input assets/sample_interview_results.json
 ### Performance Considerations
 
 - Interview loop generation: < 1 second
-- Question bank generation: 1-3 seconds for 20 questions  
+- Question bank generation: 1-3 seconds for 20 questions
 - Calibration analysis: 1-5 seconds for 50 interviews, scales linearly
 
 ## Contributing
