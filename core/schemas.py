@@ -169,7 +169,14 @@ class QueryRunRequest(OpenChimeraSchema):
     query: str = ""
     messages: list[dict[str, Any]] | None = None
     session_id: str | None = None
-    permission_scope: Literal["user", "admin"] = "user"
+    permission_scope: Literal["user", "admin"] = Field(
+        default="user",
+        deprecated=True,
+        description=(
+            "Ignored. The effective permission scope is derived from the "
+            "authenticated session token, not the request body."
+        ),
+    )
     max_tokens: int = Field(default=512, ge=1, le=32768)
     allow_tool_planning: bool = True
     execute_tools: bool = False
@@ -181,7 +188,14 @@ class QueryRunRequest(OpenChimeraSchema):
 class ToolExecuteRequest(OpenChimeraSchema):
     tool_id: str = Field(min_length=1)
     arguments: dict[str, Any] = Field(default_factory=dict)
-    permission_scope: Literal["user", "admin"] = "user"
+    permission_scope: Literal["user", "admin"] = Field(
+        default="user",
+        deprecated=True,
+        description=(
+            "Ignored. The effective permission scope is derived from the "
+            "authenticated session token, not the request body."
+        ),
+    )
 
 
 class AutonomyToolRunRequest(OpenChimeraFlexibleSchema):
@@ -196,7 +210,14 @@ class QuerySessionGetRequest(OpenChimeraSchema):
 class SessionResumeRequest(OpenChimeraSchema):
     session_id: str = Field(min_length=1)
     query: str = Field(default="", description="New query to run in the resumed session context")
-    permission_scope: Literal["user", "admin"] = "user"
+    permission_scope: Literal["user", "admin"] = Field(
+        default="user",
+        deprecated=True,
+        description=(
+            "Ignored. The effective permission scope is derived from the "
+            "authenticated session token, not the request body."
+        ),
+    )
     max_tokens: int = Field(default=512, ge=1, le=32768)
 
 
