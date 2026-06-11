@@ -319,7 +319,7 @@ Based on Martin Fowler's framework:
 - "We don't have time for design"
 - Highest priority for remediation
 
-**Quadrant 2: Prudent & Deliberate**  
+**Quadrant 2: Prudent & Deliberate**
 - "We must ship now and deal with consequences"
 - Schedule for near-term resolution
 
@@ -408,7 +408,7 @@ Maintain healthy balance between new features and debt reduction:
 - Focus on removing major blockers
 
 **Team Velocity 70-85% of capacity:**
-- 30% tech debt, 70% features  
+- 30% tech debt, 70% features
 - Balanced maintenance approach
 
 **Team Velocity > 85% of capacity:**

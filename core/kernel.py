@@ -326,10 +326,10 @@ class OpenChimeraKernel:
     def status_snapshot(self, provider_status: dict | None = None) -> dict:
         provider_status = provider_status or self.provider.status()
         agi_status: dict = {}
-        
+
         # Improved error handling with structured logging
         subsystem_health = {}
-        
+
         try:
             agi_status["self_model"] = self.self_model.self_assessment()
             subsystem_health["self_model"] = "ok"
@@ -337,7 +337,7 @@ class OpenChimeraKernel:
             LOGGER.warning("self_model subsystem unavailable: %s", exc, exc_info=False)
             agi_status["self_model"] = {"error": "unavailable"}
             subsystem_health["self_model"] = "failed"
-            
+
         try:
             agi_status["transfer_learning"] = {
                 "domains": self.transfer_learning.list_domains(),
@@ -348,7 +348,7 @@ class OpenChimeraKernel:
             LOGGER.warning("transfer_learning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["transfer_learning"] = {"error": "unavailable"}
             subsystem_health["transfer_learning"] = "failed"
-            
+
         try:
             agi_status["meta_learning"] = self.meta_learning.status()
             subsystem_health["meta_learning"] = "ok"
@@ -356,7 +356,7 @@ class OpenChimeraKernel:
             LOGGER.warning("meta_learning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["meta_learning"] = {"error": "unavailable"}
             subsystem_health["meta_learning"] = "failed"
-            
+
         try:
             agi_status["ethical_reasoning"] = self.ethical_reasoning.status()
             subsystem_health["ethical_reasoning"] = "ok"
@@ -364,7 +364,7 @@ class OpenChimeraKernel:
             LOGGER.warning("ethical_reasoning subsystem unavailable: %s", exc, exc_info=False)
             agi_status["ethical_reasoning"] = {"error": "unavailable"}
             subsystem_health["ethical_reasoning"] = "failed"
-            
+
         try:
             agi_status["social_cognition"] = self.social_cognition.snapshot()
             subsystem_health["social_cognition"] = "ok"
@@ -372,7 +372,7 @@ class OpenChimeraKernel:
             LOGGER.warning("social_cognition subsystem unavailable: %s", exc, exc_info=False)
             agi_status["social_cognition"] = {"error": "unavailable"}
             subsystem_health["social_cognition"] = "failed"
-            
+
         try:
             agi_status["embodied_interaction"] = self.embodied_interaction.snapshot()
             subsystem_health["embodied_interaction"] = "ok"
@@ -380,7 +380,7 @@ class OpenChimeraKernel:
             LOGGER.warning("embodied_interaction subsystem unavailable: %s", exc, exc_info=False)
             agi_status["embodied_interaction"] = {"error": "unavailable"}
             subsystem_health["embodied_interaction"] = "failed"
-            
+
         return {
             "aether": self.aether.status(),
             "wraith": self.wraith.status(),
@@ -405,7 +405,7 @@ class OpenChimeraKernel:
 
     def boot_report(self) -> dict[str, Any]:
         """Generate a boot status report showing which subsystems initialized successfully.
-        
+
         Returns:
             dict with:
                 - subsystems: dict mapping subsystem name to status ("ok"|"degraded"|"failed")
@@ -417,16 +417,16 @@ class OpenChimeraKernel:
             "subsystems": {},
             "status": BootStatus.FULL.value,
         }
-        
+
         # Check core services
         report["subsystems"]["aether"] = "ok" if self.aether.status().get("running") else "degraded"
         report["subsystems"]["wraith"] = "ok" if self.wraith.status().get("running") else "degraded"
         report["subsystems"]["evo"] = "ok" if self.evo.status().get("running") else "degraded"
         report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "failed"
         report["subsystems"]["api_server"] = "ok" if self.api_server else "failed"
-        
+
         # Check AGI modules
-        for module_name in ["self_model", "transfer_learning", "meta_learning", 
+        for module_name in ["self_model", "transfer_learning", "meta_learning",
                            "ethical_reasoning", "social_cognition", "embodied_interaction"]:
             try:
                 module = getattr(self, module_name, None)
@@ -444,18 +444,18 @@ class OpenChimeraKernel:
             except Exception as exc:
                 LOGGER.debug("Boot check failed for %s: %s", module_name, exc)
                 report["subsystems"][module_name] = "degraded"
-        
+
         # Determine overall status
         failed_count = sum(1 for s in report["subsystems"].values() if s == "failed")
         degraded_count = sum(1 for s in report["subsystems"].values() if s == "degraded")
-        
+
         if failed_count > 0 and "provider" in [k for k, v in report["subsystems"].items() if v == "failed"]:
             report["status"] = BootStatus.FAILED.value
         elif failed_count > 0 or degraded_count > 2:
             report["status"] = BootStatus.DEGRADED.value
         else:
             report["status"] = BootStatus.FULL.value
-        
+
         return report
 
     def _swarm_status(self) -> dict:

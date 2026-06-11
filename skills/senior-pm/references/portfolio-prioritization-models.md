@@ -17,7 +17,7 @@ START: What is your primary prioritization objective?
 │   ├── Clear quantitative metrics available? → RICE Model
 │   └── Mix of quantitative/qualitative factors? → Weighted Scoring Matrix
 │
-├── Optimize Resource Utilization  
+├── Optimize Resource Utilization
 │   ├── Agile/SAFe environment? → WSJF (Weighted Shortest Job First)
 │   └── Traditional PM environment? → Resource-Constraint Optimization
 │
@@ -80,7 +80,7 @@ Project A: Mobile App Enhancement
 - Job Size: 14 (3-month project, $750K, 7 people)
 WSJF = (15 + 12 + 8) ÷ 14 = 2.5
 
-Project B: Infrastructure Security Upgrade  
+Project B: Infrastructure Security Upgrade
 - User Value: 8 (minimal user-facing impact)
 - Time Criticality: 18 (regulatory compliance deadline)
 - Risk Reduction: 17 (critical security vulnerability mitigation)
@@ -184,7 +184,7 @@ Each dimension scored 1-10:
 
 **Categories:**
 - **Must Have:** Non-negotiable requirements, project fails without these
-- **Should Have:** Important but not critical, can be delayed if necessary  
+- **Should Have:** Important but not critical, can be delayed if necessary
 - **Could Have:** Nice to have, include if resources permit
 - **Won't Have:** Explicitly out of scope for current timeframe
 
@@ -219,7 +219,7 @@ Each dimension scored 1-10:
 ```
 Priority Distribution Guidelines:
 - Must Have: 60% of budget/effort (ensures core delivery)
-- Should Have: 20% of budget/effort (key value delivery)  
+- Should Have: 20% of budget/effort (key value delivery)
 - Could Have: 20% of budget/effort (buffer for scope adjustment)
 - Won't Have: Document for future consideration
 
@@ -288,7 +288,7 @@ Risk Management:
 ```
 Strategic Criteria (40% weight):
 - Strategic Alignment (15%)
-- Market Opportunity (10%) 
+- Market Opportunity (10%)
 - Competitive Advantage (15%)
 
 Financial Criteria (35% weight):
@@ -337,7 +337,7 @@ Total Score: 3.70
 
 **Horizon 2: Emerging Opportunities (20% of portfolio)**
 - **Focus:** Extend core capabilities into new areas
-- **Timeline:** 2-5 years  
+- **Timeline:** 2-5 years
 - **Risk Level:** Medium
 - **ROI Expectation:** Medium certainty, high returns
 - **Examples:** New markets, adjacent products, platform extensions

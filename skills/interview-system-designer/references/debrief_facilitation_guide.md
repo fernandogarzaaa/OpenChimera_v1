@@ -113,7 +113,7 @@ This guide provides a comprehensive framework for conducting effective, unbiased
 
 ### Creating Psychological Safety
 - **Encourage honest feedback** without fear of judgment
-- **Validate different perspectives** and assessment approaches  
+- **Validate different perspectives** and assessment approaches
 - **Address power dynamics** - ensure junior voices are heard
 - **Model vulnerability** - admit when evidence changes your mind
 - **Focus on learning** and calibration, not winning arguments
@@ -139,7 +139,7 @@ This guide provides a comprehensive framework for conducting effective, unbiased
 
 #### When the Discussion Gets Off Track
 - **Redirect to competencies**: "Let's focus on the technical skills demonstrated"
-- **Ask for evidence**: "What specific example supports that assessment?"  
+- **Ask for evidence**: "What specific example supports that assessment?"
 - **Reference rubrics**: "How does this align with our level 3 definition?"
 - **Manage time**: "We have 5 minutes left on this competency"
 - **Table unrelated issues**: "That's important but separate from this hire decision"
@@ -231,7 +231,7 @@ This guide provides a comprehensive framework for conducting effective, unbiased
 ## Common Debrief Challenges and Solutions
 
 ### Challenge: "I just don't think they'd fit our culture"
-**Solution**: 
+**Solution**:
 - Ask for specific, observable evidence
 - Define what "culture fit" means in job-relevant terms
 - Challenge assumptions about cultural requirements
@@ -306,7 +306,7 @@ This guide provides a comprehensive framework for conducting effective, unbiased
 
 ### Regular Review Process
 - **Monthly**: Review debrief facilitation effectiveness and interviewer feedback
-- **Quarterly**: Analyze decision patterns and potential bias indicators  
+- **Quarterly**: Analyze decision patterns and potential bias indicators
 - **Semi-annually**: Update debrief processes based on hiring outcome data
 - **Annually**: Comprehensive review of debrief framework and training needs
 

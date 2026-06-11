@@ -20,20 +20,20 @@ import argparse
 def calculate_quick_ratio(new_mrr, expansion_mrr, churned_mrr, contraction_mrr):
     """
     Calculate Quick Ratio and provide interpretation.
-    
+
     Args:
         new_mrr: New MRR from new customers
         expansion_mrr: Expansion MRR from existing customers (upsells)
         churned_mrr: MRR lost from churned customers
         contraction_mrr: MRR lost from downgrades
-    
+
     Returns:
         dict with quick ratio and analysis
     """
     # Calculate components
     growth_mrr = new_mrr + expansion_mrr
     lost_mrr = churned_mrr + contraction_mrr
-    
+
     # Quick Ratio
     if lost_mrr == 0:
         quick_ratio = float('inf') if growth_mrr > 0 else 0
@@ -41,7 +41,7 @@ def calculate_quick_ratio(new_mrr, expansion_mrr, churned_mrr, contraction_mrr):
     else:
         quick_ratio = growth_mrr / lost_mrr
         quick_ratio_display = f"{quick_ratio:.2f}"
-    
+
     # Status assessment
     if lost_mrr == 0 and growth_mrr > 0:
         status = "EXCELLENT"
@@ -58,20 +58,20 @@ def calculate_quick_ratio(new_mrr, expansion_mrr, churned_mrr, contraction_mrr):
     else:
         status = "CRITICAL"
         interpretation = "Losing revenue faster than gaining - growth is unsustainable"
-    
+
     # Breakdown percentages
     if growth_mrr > 0:
         new_pct = (new_mrr / growth_mrr) * 100
         expansion_pct = (expansion_mrr / growth_mrr) * 100
     else:
         new_pct = expansion_pct = 0
-    
+
     if lost_mrr > 0:
         churned_pct = (churned_mrr / lost_mrr) * 100
         contraction_pct = (contraction_mrr / lost_mrr) * 100
     else:
         churned_pct = contraction_pct = 0
-    
+
     results = {
         "quick_ratio": quick_ratio if quick_ratio != float('inf') else None,
         "quick_ratio_display": quick_ratio_display,
@@ -92,7 +92,7 @@ def calculate_quick_ratio(new_mrr, expansion_mrr, churned_mrr, contraction_mrr):
             "contraction_mrr_pct": round(contraction_pct, 1),
         },
     }
-    
+
     return results
 
 
@@ -102,12 +102,12 @@ def format_report(results):
     lines.append("\n" + "=" * 70)
     lines.append("QUICK RATIO ANALYSIS")
     lines.append("=" * 70)
-    
+
     # Quick Ratio
     lines.append(f"\n⚡ QUICK RATIO: {results['quick_ratio_display']}")
     lines.append(f"   Status: {results['status']}")
     lines.append(f"   {results['interpretation']}")
-    
+
     # Components
     comp = results["components"]
     lines.append("\n📊 COMPONENTS")
@@ -117,26 +117,26 @@ def format_report(results):
     lines.append(f"  Lost MRR (Churned + Contraction): ${comp['lost_mrr']:,.2f}")
     lines.append(f"    • Churned MRR: ${comp['churned_mrr']:,.2f}")
     lines.append(f"    • Contraction MRR: ${comp['contraction_mrr']:,.2f}")
-    
+
     # Breakdown
     bd = results["breakdown"]
     lines.append("\n📈 GROWTH BREAKDOWN")
     lines.append(f"  New customers: {bd['new_mrr_pct']:.1f}%")
     lines.append(f"  Expansion: {bd['expansion_mrr_pct']:.1f}%")
-    
+
     lines.append("\n📉 LOSS BREAKDOWN")
     lines.append(f"  Churn: {bd['churned_mrr_pct']:.1f}%")
     lines.append(f"  Contraction: {bd['contraction_mrr_pct']:.1f}%")
-    
+
     # Benchmarks
     lines.append("\n🎯 BENCHMARKS")
     lines.append("  < 1.0  = CRITICAL (losing revenue faster than gaining)")
     lines.append("  1-2    = WATCH (marginal growth)")
     lines.append("  2-4    = HEALTHY (good growth efficiency)")
     lines.append("  > 4    = EXCELLENT (strong, efficient growth)")
-    
+
     lines.append("\n" + "=" * 70 + "\n")
-    
+
     return "\n".join(lines)
 
 
@@ -157,16 +157,16 @@ if __name__ == "__main__":
         "--contraction", type=float, default=0, help="Contraction MRR from downgrades (default: 0)"
     )
     parser.add_argument("--json", action="store_true", help="Output JSON format")
-    
+
     args = parser.parse_args()
-    
+
     results = calculate_quick_ratio(
         new_mrr=args.new_mrr,
         expansion_mrr=args.expansion,
         churned_mrr=args.churned,
         contraction_mrr=args.contraction,
     )
-    
+
     if args.json:
         print(json.dumps(results, indent=2))
     else:

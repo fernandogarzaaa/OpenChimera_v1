@@ -138,7 +138,7 @@ Different error response structures across endpoints.
 # Endpoint 1
 {"error": "Invalid email"}
 
-# Endpoint 2  
+# Endpoint 2
 {"success": false, "msg": "User not found", "code": 404}
 
 # Endpoint 3
@@ -264,7 +264,7 @@ POST /api/user-actions
   "userData": {...}
 }
 
-POST /api/user-actions  
+POST /api/user-actions
 {
   "action": "delete_user",
   "userId": 123
@@ -288,7 +288,7 @@ POST /api/user-actions
 ```
 ✅ Good Examples:
 POST   /api/users              # Create user
-DELETE /api/users/123         # Delete user  
+DELETE /api/users/123         # Delete user
 POST   /api/users/123/emails   # Send email to user
 ```
 
@@ -308,7 +308,7 @@ Making breaking changes without version management.
 # Later (breaking change with no versioning)
 {
   "firstName": "John",
-  "lastName": "Doe", 
+  "lastName": "Doe",
   "birthDate": "1994-02-16"
 }
 ```

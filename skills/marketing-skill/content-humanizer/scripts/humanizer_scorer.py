@@ -9,7 +9,7 @@ from collections import Counter
 
 # ── Sample content for zero-config demo ──────────────────────────────────────
 SAMPLE_HUMAN = """
-We tried to fix our churn problem the wrong way for about a year. 
+We tried to fix our churn problem the wrong way for about a year.
 
 We threw money at marketing, assumed acquisition would outpace loss, and avoided looking at the actual numbers. It didn't work. Churn stayed flat at 8% monthly, which sounds manageable until you realize that's 65% annual churn. We were filling a leaky bucket with a garden hose.
 

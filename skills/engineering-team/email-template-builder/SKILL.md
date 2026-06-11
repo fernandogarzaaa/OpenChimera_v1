@@ -5,8 +5,8 @@ description: "Email Template Builder"
 
 # Email Template Builder
 
-**Tier:** POWERFUL  
-**Category:** Engineering Team  
+**Tier:** POWERFUL
+**Category:** Engineering Team
 **Domain:** Transactional Email / Communications Infrastructure
 
 ---
@@ -116,12 +116,12 @@ export function EmailLayout({ preview, children }: EmailLayoutProps) {
           <Section style={styles.header}>
             <Img src="https://yourapp.com/logo.png" width={120} height={40} alt="MyApp" />
           </Section>
-          
+
           {/* Content */}
           <Section style={styles.content}>
             {children}
           </Section>
-          
+
           {/* Footer */}
           <Hr style={styles.divider} />
           <Section style={styles.footer}>

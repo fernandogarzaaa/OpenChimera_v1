@@ -29,7 +29,7 @@ Handoffs: → Scrum Master, Jira Expert, Confluence Expert
 
 ### 2️⃣ **Scrum Master Expert** (`scrum-master.zip`)
 ```
-Role: Agile Facilitator for Development Teams  
+Role: Agile Facilitator for Development Teams
 Size: 5.9 KB
 Status: ✅ Validated & Packaged
 
@@ -309,4 +309,3 @@ Your world-class Project Management team skills are **production-ready** and wai
 **Skills Version**: 1.0
 **Quality**: Production-Ready
 **Integration**: Atlassian MCP Server
-

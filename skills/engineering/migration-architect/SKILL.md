@@ -5,8 +5,8 @@ description: "Migration Architect"
 
 # Migration Architect
 
-**Tier:** POWERFUL  
-**Category:** Engineering - Migration Strategy  
+**Tier:** POWERFUL
+**Category:** Engineering - Migration Strategy
 **Purpose:** Zero-downtime migration planning, compatibility validation, and rollback strategy generation
 
 ## Overview
@@ -144,11 +144,11 @@ class MigrationFeatureFlag:
     def __init__(self, flag_name, rollout_percentage=0):
         self.flag_name = flag_name
         self.rollout_percentage = rollout_percentage
-    
+
     def is_enabled_for_user(self, user_id):
         hash_value = hash(f"{self.flag_name}:{user_id}")
         return (hash_value % 100) < self.rollout_percentage
-    
+
     def gradual_rollout(self, target_percentage, step_size=10):
         while self.rollout_percentage < target_percentage:
             self.rollout_percentage = min(
@@ -169,14 +169,14 @@ class MigrationCircuitBreaker:
         self.timeout = timeout
         self.last_failure_time = None
         self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
-    
+
     def call_new_service(self, request):
         if self.state == 'OPEN':
             if self.should_attempt_reset():
                 self.state = 'HALF_OPEN'
             else:
                 return self.fallback_to_legacy(request)
-        
+
         try:
             response = self.new_service.process(request)
             self.on_success()
@@ -211,14 +211,14 @@ class MigrationCircuitBreaker:
    SELECT 'missing_in_target' as issue_type, source_id
    FROM source_table s
    WHERE NOT EXISTS (
-       SELECT 1 FROM target_table t 
+       SELECT 1 FROM target_table t
        WHERE t.id = s.id
    )
    UNION ALL
    SELECT 'extra_in_target' as issue_type, target_id
    FROM target_table t
    WHERE NOT EXISTS (
-       SELECT 1 FROM source_table s 
+       SELECT 1 FROM source_table s
        WHERE s.id = t.id
    );
    ```

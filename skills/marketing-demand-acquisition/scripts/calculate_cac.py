@@ -18,38 +18,38 @@ def calculate_cac(total_spend: float, customers_acquired: int) -> float:
 def calculate_channel_cac(channel_data: List[Dict]) -> Dict:
     """
     Calculate CAC per channel
-    
+
     Args:
         channel_data: List of dicts with 'channel', 'spend', 'customers' keys
-        
+
     Returns:
         Dict with channel CAC breakdown and blended CAC
     """
     results = {}
     total_spend = 0
     total_customers = 0
-    
+
     for channel in channel_data:
         name = channel['channel']
         spend = channel['spend']
         customers = channel['customers']
-        
+
         cac = calculate_cac(spend, customers)
         results[name] = {
             'spend': spend,
             'customers': customers,
             'cac': cac
         }
-        
+
         total_spend += spend
         total_customers += customers
-    
+
     results['blended'] = {
         'total_spend': total_spend,
         'total_customers': total_customers,
         'blended_cac': calculate_cac(total_spend, total_customers)
     }
-    
+
     return results
 
 def print_results(results: Dict):
@@ -57,7 +57,7 @@ def print_results(results: Dict):
     print("\n" + "="*60)
     print("CAC CALCULATION RESULTS")
     print("="*60 + "\n")
-    
+
     for channel, data in results.items():
         if channel == 'blended':
             print("-"*60)
@@ -80,13 +80,13 @@ def main():
         {'channel': 'SEO/Organic', 'spend': 5000, 'customers': 15},
         {'channel': 'Partnerships', 'spend': 3000, 'customers': 5},
     ]
-    
+
     print("Marketing CAC Calculator")
     print("Edit the script to input your actual channel data\n")
-    
+
     results = calculate_channel_cac(example_data)
     print_results(results)
-    
+
     # CAC benchmarks
     print("\n" + "="*60)
     print("B2B SAAS BENCHMARKS (Series A)")

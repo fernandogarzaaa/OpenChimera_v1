@@ -83,7 +83,7 @@ Ask these before any framework:
 | CAC Payback | < 18 months | > 24 months |
 | Quota Attainment % | 60-70% of reps | < 50% (calibration problem) |
 
-**Magic Number:** Net New ARR × 4 ÷ Prior Quarter S&M Spend  
+**Magic Number:** Net New ARR × 4 ÷ Prior Quarter S&M Spend
 **CAC Payback:** S&M Spend ÷ New Logo ARR × (1 / Gross Margin %)
 
 ### Revenue Waterfall

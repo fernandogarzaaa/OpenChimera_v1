@@ -91,7 +91,7 @@ New Dependency Workflow:
 
 ##### Risk Classification
 - **Low Risk**: Well-known libraries, permissive licenses, stable APIs
-- **Medium Risk**: Less common libraries, weak copyleft licenses, evolving APIs  
+- **Medium Risk**: Less common libraries, weak copyleft licenses, evolving APIs
 - **High Risk**: New/experimental libraries, strong copyleft licenses, breaking changes
 
 #### Dependency Policies
@@ -105,19 +105,19 @@ licensing_policy:
     - BSD-3-Clause
     - BSD-2-Clause
     - ISC
-  
+
   conditional_licenses:
     - LGPL-2.1  # Library linking only
     - LGPL-3.0  # With legal review
     - MPL-2.0   # File-level copyleft acceptable
-  
+
   prohibited_licenses:
     - GPL-2.0   # Strong copyleft
     - GPL-3.0   # Strong copyleft
     - AGPL-3.0  # Network copyleft
     - SSPL      # Server-side public license
     - Custom    # Unknown/proprietary licenses
-  
+
   exceptions:
     process: "Legal and executive approval required"
     documentation: "Risk assessment and mitigation plan"
@@ -131,12 +131,12 @@ security_policy:
     high: "1 week"
     medium: "1 month"
     low: "Next release cycle"
-  
+
   scanning_requirements:
     frequency: "Daily automated scans"
     tools: ["Snyk", "OWASP Dependency Check"]
     ci_cd_integration: "Mandatory security gates"
-  
+
   approval_thresholds:
     known_vulnerabilities: "Zero tolerance for high/critical"
     maintenance_status: "Must be actively maintained"
@@ -153,21 +153,21 @@ security_policy:
    # Example evaluation script
    #!/bin/bash
    PACKAGE=$1
-   
+
    echo "=== Package Analysis: $PACKAGE ==="
-   
+
    # Check package stats
    npm view $PACKAGE
-   
+
    # Security audit
    npm audit $PACKAGE
-   
+
    # License check
    npm view $PACKAGE license
-   
+
    # Dependency tree
    npm ls $PACKAGE
-   
+
    # Recent activity
    npm view $PACKAGE --json | jq '.time'
    ```
@@ -218,12 +218,12 @@ update_workflow:
         - tests_pass: true
         - security_scan_clean: true
         - no_breaking_changes: true
-    
+
     minor_updates:
       enabled: true
       auto_merge: false
       requires: "Manual review and testing"
-    
+
     major_updates:
       enabled: false
       requires: "Full impact assessment and planning"
@@ -270,12 +270,12 @@ version_pinning:
     strategy: "Exact pinning"
     example: "react: 18.2.0"
     rationale: "Predictable builds, security control"
-  
+
   development_dependencies:
     strategy: "Compatible range"
     example: "eslint: ^8.0.0"
     rationale: "Allow bug fixes and improvements"
-  
+
   internal_libraries:
     strategy: "Compatible range"
     example: "^1.2.0"
@@ -326,12 +326,12 @@ monitoring_stack:
       scope: "All ecosystems"
       frequency: "Daily"
       integration: "CI/CD + IDE"
-    
+
     - name: "GitHub Dependabot"
       scope: "GitHub repositories"
       frequency: "Real-time"
       integration: "Pull requests"
-    
+
     - name: "OWASP Dependency Check"
       scope: "Java/.NET focus"
       frequency: "Build pipeline"
@@ -400,7 +400,7 @@ provenance_tracking:
     - maintainer: "Package maintainer info"
     - license: "License verification"
     - checksum: "Content verification"
-  
+
   verification_process:
     - signature_check: "GPG signature validation"
     - reputation_check: "Maintainer history review"
@@ -444,12 +444,12 @@ python_practices:
     requirements-dev.txt: "Development dependencies"
     setup.py: "Package distribution metadata"
     pyproject.toml: "Modern Python packaging"
-  
+
   virtual_environments:
     purpose: "Isolate project dependencies"
     tools: ["venv", "virtualenv", "conda", "poetry"]
     best_practice: "One environment per project"
-  
+
   security:
     tools: ["safety", "pip-audit", "bandit"]
     practices: ["Pin versions", "Use private PyPI if needed"]
@@ -525,11 +525,11 @@ cache_strategy:
   node_modules:
     key: "npm-{{ checksum 'package-lock.json' }}"
     paths: ["~/.npm", "node_modules"]
-  
+
   pip_cache:
     key: "pip-{{ checksum 'requirements.txt' }}"
     paths: ["~/.cache/pip"]
-  
+
   maven_cache:
     key: "maven-{{ checksum 'pom.xml' }}"
     paths: ["~/.m2/repository"]
@@ -552,7 +552,7 @@ security_kpis:
     - mean_time_to_patch: "Average time to fix vulnerabilities"
     - vulnerability_density: "Vulnerabilities per 1000 dependencies"
     - false_positive_rate: "Percentage of false vulnerability reports"
-  
+
   compliance_metrics:
     - license_compliance_rate: "Percentage of compliant dependencies"
     - policy_violation_rate: "Rate of policy violations"
@@ -566,7 +566,7 @@ operational_kpis:
     - dependency_freshness: "Average age of dependencies"
     - update_frequency: "Rate of dependency updates"
     - technical_debt: "Number of outdated dependencies"
-  
+
   performance_metrics:
     - build_time: "Time to install/build dependencies"
     - bundle_size: "Final application size"

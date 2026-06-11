@@ -77,7 +77,7 @@
           "unique": true
         },
         {
-          "name": "idx_users_username", 
+          "name": "idx_users_username",
           "columns": ["username"],
           "unique": true
         },

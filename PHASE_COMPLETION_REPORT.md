@@ -377,8 +377,8 @@ python -m bandit -r core/ -ll
 2467 passed, 2 skipped, 5 warnings in 40.12s
 ```
 
-**Growth:** +18 tests (0.7% increase)  
-**Quality:** 100% pass rate maintained  
+**Growth:** +18 tests (0.7% increase)
+**Quality:** 100% pass rate maintained
 **Coverage:** All new functionality validated
 
 ---

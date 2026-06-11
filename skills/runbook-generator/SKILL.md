@@ -5,9 +5,9 @@ description: "Runbook Generator"
 
 # Runbook Generator
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
-**Domain:** DevOps / Site Reliability Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
+**Domain:** DevOps / Site Reliability Engineering
 
 ---
 
@@ -94,11 +94,11 @@ Map detected stack → runbook templates. A Next.js + PostgreSQL + Vercel + GitH
 
 ```markdown
 # Deployment Runbook — [App Name]
-**Stack:** Next.js 14 + PostgreSQL 15 + Vercel  
-**Last verified:** 2025-03-01  
-**Source configs:** vercel.json (modified: git log -1 --format=%ci -- vercel.json)  
-**Owner:** Platform Team  
-**Est. total time:** 15–25 min  
+**Stack:** Next.js 14 + PostgreSQL 15 + Vercel
+**Last verified:** 2025-03-01
+**Source configs:** vercel.json (modified: git log -1 --format=%ci -- vercel.json)
+**Owner:** Platform Team
+**Est. total time:** 15–25 min
 
 ---
 
@@ -187,8 +187,8 @@ DATABASE_URL=$PROD_DATABASE_URL npx prisma migrate reset --skip-seed
 
 ```markdown
 # Incident Response Runbook
-**Severity levels:** P1 (down), P2 (degraded), P3 (minor)  
-**Est. total time:** P1: 30–60 min, P2: 1–4 hours  
+**Severity levels:** P1 (down), P2 (degraded), P3 (minor)
+**Est. total time:** P1: 30–60 min, P2: 1–4 hours
 
 ## Phase 1 — Triage (5 min)
 
@@ -278,7 +278,7 @@ After incident is resolved, within 24 hours:
 
 ```markdown
 # Database Maintenance Runbook — PostgreSQL
-**Schedule:** Weekly vacuum (automated), monthly manual review  
+**Schedule:** Weekly vacuum (automated), monthly manual review
 
 ## Backup
 
@@ -315,7 +315,7 @@ DATABASE_URL=$PROD_DATABASE_URL npx prisma migrate deploy
 ```bash
 # Check bloat before deciding
 psql $DATABASE_URL -c "
-SELECT schemaname, tablename, 
+SELECT schemaname, tablename,
        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
        n_dead_tup, n_live_tup,
        ROUND(n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup, 0) * 100, 1) AS dead_ratio

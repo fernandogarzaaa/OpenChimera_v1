@@ -170,7 +170,7 @@ Owner: CFO (weekly cash report to CEO)
 
 **Customer Health:**
 ```
-Trigger: Any customer >10% ARR shows 3 of: [sponsor gone dark, usage -25%, 
+Trigger: Any customer >10% ARR shows 3 of: [sponsor gone dark, usage -25%,
          no renewal discussion by 90 days before contract end, missed QBR]
 Pre-committed response:
   - CRO: executive escalation call within 48 hours

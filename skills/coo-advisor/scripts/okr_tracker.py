@@ -51,7 +51,7 @@ RISK_LABELS = {
 def calculate_kr_score(kr: dict) -> float:
     """
     Calculate a Key Result's progress score (0.0–1.0).
-    
+
     Supports multiple KR types:
     - numeric: current_value / target_value
     - percentage: current_pct / target_pct
@@ -102,7 +102,7 @@ def calculate_kr_score(kr: dict) -> float:
 def get_kr_status(score: float, quarter_progress: float, kr: dict) -> str:
     """
     Determine KR status based on score, time elapsed in quarter, and trend.
-    
+
     A KR is at-risk if its score is significantly behind the time elapsed.
     E.g., if we're 70% through the quarter but KR is at 30%, it's at risk.
     """

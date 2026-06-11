@@ -186,7 +186,7 @@ Using conventional commits enables:
 
 ### Automatic Version Bumping
 - `fix` commits trigger PATCH version bump (1.0.0 → 1.0.1)
-- `feat` commits trigger MINOR version bump (1.0.0 → 1.1.0)  
+- `feat` commits trigger MINOR version bump (1.0.0 → 1.1.0)
 - `BREAKING CHANGE` triggers MAJOR version bump (1.0.0 → 2.0.0)
 
 ### Changelog Generation
@@ -292,7 +292,7 @@ feat: add login page and fix CSS bug and update dependencies
 
 # Good: Separate commits
 feat(auth): add login page
-fix(ui): resolve CSS styling issue  
+fix(ui): resolve CSS styling issue
 build(deps): update React to version 18
 ```
 

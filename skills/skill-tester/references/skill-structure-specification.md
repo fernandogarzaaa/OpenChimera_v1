@@ -1,8 +1,8 @@
 # Skill Structure Specification
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-16  
-**Authority**: Claude Skills Engineering Team  
+**Version**: 1.0.0
+**Last Updated**: 2026-02-16
+**Authority**: Claude Skills Engineering Team
 
 ## Overview
 
@@ -48,7 +48,7 @@ skill-name/
 skill-name/
 ├── [mandatory and recommended components]
 ├── tests/                # Unit tests and validation scripts
-├── examples/             # Extended examples and tutorials  
+├── examples/             # Extended examples and tutorials
 ├── docs/                 # Additional documentation
 ├── config/               # Configuration files
 └── templates/            # Template files for code generation
@@ -89,7 +89,7 @@ Last Updated: [YYYY-MM-DD]
 
 #### Content Requirements by Tier
 - **BASIC**: Minimum 100 lines of substantial content
-- **STANDARD**: Minimum 200 lines of substantial content  
+- **STANDARD**: Minimum 200 lines of substantial content
 - **POWERFUL**: Minimum 300 lines of substantial content
 
 ### README.md Requirements
@@ -296,7 +296,7 @@ Skills are validated against the following criteria:
 ### Existing Skills
 Skills created before this specification should be updated to comply within:
 - **POWERFUL tier**: 30 days
-- **STANDARD tier**: 60 days  
+- **STANDARD tier**: 60 days
 - **BASIC tier**: 90 days
 
 ### Specification Updates
@@ -309,7 +309,7 @@ Skills created before this specification should be updated to comply within:
 
 ### Validation Tools
 - `skill_validator.py` - Validates structure and content compliance
-- `script_tester.py` - Tests script functionality and quality  
+- `script_tester.py` - Tests script functionality and quality
 - `quality_scorer.py` - Provides comprehensive quality assessment
 
 ### Integration Points
@@ -325,7 +325,7 @@ Skills created before this specification should be updated to comply within:
 basic-skill/
 ├── SKILL.md              # 100+ lines
 ├── README.md             # Basic usage instructions
-└── scripts/              
+└── scripts/
     └── main.py           # 100-300 lines with argparse
 ```
 

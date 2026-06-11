@@ -1176,15 +1176,15 @@ class OpenChimeraProvider:
         """Return health status from HealthMonitor if available."""
         if not hasattr(self, "_health_monitor") or self._health_monitor is None:
             return {"status": "unavailable", "message": "HealthMonitor not initialized"}
-        
+
         # Aggregate current health from all subsystems
         from core.health_monitor import HealthMonitor
         monitor: HealthMonitor = self._health_monitor
-        
+
         # Collect health data for all known subsystems
         subsystems = []
         all_healthy = True
-        
+
         # Check a few key subsystems
         for subsystem_name in ["provider", "bus", "database", "memory", "router"]:
             current = monitor.get_current_health(subsystem_name)
@@ -1197,9 +1197,9 @@ class OpenChimeraProvider:
                 })
                 if current.status not in ("healthy", "unknown"):
                     all_healthy = False
-        
+
         overall_status = "healthy" if all_healthy and subsystems else "degraded"
-        
+
         return {
             "status": overall_status,
             "subsystems": subsystems,

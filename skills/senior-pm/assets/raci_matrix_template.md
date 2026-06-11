@@ -1,8 +1,8 @@
 # RACI Matrix Template
 
-**Project:** [Project Name]  
-**Version:** [Version Number]  
-**Date:** [Creation/Update Date]  
+**Project:** [Project Name]
+**Version:** [Version Number]
+**Date:** [Creation/Update Date]
 **Owner:** [Project Manager Name]
 
 ---
@@ -162,14 +162,14 @@
    - **Timeline:** 24 hours
    - **Documentation:** Brief note in project log
 
-2. **Mediated Resolution** (Level 2)  
+2. **Mediated Resolution** (Level 2)
    - **Who:** Project Manager facilitates discussion
    - **Timeline:** 48 hours from escalation
    - **Documentation:** Decision recorded with rationale
 
 3. **Executive Resolution** (Level 3)
    - **Who:** Executive Sponsor makes binding decision
-   - **Timeline:** 72 hours from escalation  
+   - **Timeline:** 72 hours from escalation
    - **Documentation:** Formal decision memo to all stakeholders
 
 4. **Steering Committee** (Level 4)
@@ -230,7 +230,7 @@
 
 ### Validation Checklist
 - [ ] Every activity has exactly one "A" (Accountable)
-- [ ] Every activity has at least one "R" (Responsible) 
+- [ ] Every activity has at least one "R" (Responsible)
 - [ ] "C" (Consulted) roles are minimized to essential stakeholders
 - [ ] "I" (Informed) includes only those who truly need updates
 - [ ] No person is assigned "A" for more tasks than they can handle
@@ -256,7 +256,7 @@
 **Document Control:**
 - **Version:** [Version Number]
 - **Last Updated:** [Date]
-- **Next Review:** [Date]  
+- **Next Review:** [Date]
 - **Approved By:** [Executive Sponsor Name]
 
 **Distribution List:**

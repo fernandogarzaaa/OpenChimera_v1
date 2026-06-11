@@ -5,8 +5,8 @@ description: "Git Worktree Manager"
 
 # Git Worktree Manager
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Domain:** Parallel Development & Branch Isolation
 
 ## Overview

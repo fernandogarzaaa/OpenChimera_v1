@@ -469,8 +469,8 @@ This file contains ONLY founder-approved decisions.
 - [ ] Finalize Madrid pilot customer contracts — Owner: CRO — Due: {(date.today() - timedelta(days=3)).strftime('%Y-%m-%d')} — Review: 2026-04-01
 - [ ] Translate app to Spanish (ES-ES) — Owner: CTO — Due: {(date.today() + timedelta(days=5)).strftime('%Y-%m-%d')} — Review: 2026-04-15
 
-**Supersedes:** 
-**Superseded by:** 
+**Supersedes:**
+**Superseded by:**
 **Raw transcript:** memory/board-meetings/2026-02-15-raw.md
 
 ---
@@ -483,7 +483,7 @@ This file contains ONLY founder-approved decisions.
 **Review:** 2026-05-01
 **Rationale:** Usage-based aligns with customer value. Three enterprise customers requested it explicitly.
 
-**User Override:** 
+**User Override:**
 
 **Rejected:**
 - Freemium tier — not appropriate for enterprise healthcare segment [DO_NOT_RESURFACE]
@@ -494,8 +494,8 @@ This file contains ONLY founder-approved decisions.
 - [ ] Customer interviews on usage patterns (n=10) — Owner: CMO — Due: {(date.today() + timedelta(days=10)).strftime('%Y-%m-%d')} — Review: 2026-04-01
 - [ ] Update billing infrastructure for usage tracking — Owner: CTO — Due: 2026-04-01 — Review: 2026-04-15
 
-**Supersedes:** 
-**Superseded by:** 
+**Supersedes:**
+**Superseded by:**
 **Raw transcript:** memory/board-meetings/2026-02-28-raw.md
 
 ---
@@ -519,8 +519,8 @@ This file contains ONLY founder-approved decisions.
 - [ ] Post backend engineer JD — Owner: CHRO — Due: {(date.today() + timedelta(days=2)).strftime('%Y-%m-%d')} — Review: 2026-03-20
 - [ ] Define ML role requirements with healthcare AI spec — Owner: CTO — Due: {(date.today() + timedelta(days=1)).strftime('%Y-%m-%d')} — Review: 2026-03-15
 
-**Supersedes:** 
-**Superseded by:** 
+**Supersedes:**
+**Superseded by:**
 **Raw transcript:** memory/board-meetings/2026-03-04-raw.md
 """
 

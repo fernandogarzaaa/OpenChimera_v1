@@ -269,4 +269,3 @@ class ChannelManager:
         if not preview:
             preview["keys"] = sorted(str(item) for item in payload.keys())[:8]
         return preview
-

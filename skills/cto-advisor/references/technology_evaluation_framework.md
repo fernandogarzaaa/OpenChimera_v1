@@ -138,7 +138,7 @@
 | **Total** | **$** | **$** | **$** | **$** |
 
 #### ROI Calculation
-- **Cost Savings**: 
+- **Cost Savings**:
   - Reduced manual work: $/year
   - Efficiency gains: $/year
   - Error reduction: $/year

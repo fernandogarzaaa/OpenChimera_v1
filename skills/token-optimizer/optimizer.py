@@ -17,10 +17,10 @@ def optimize_text(text, target_ratio=0.02):
     # 1. Structural Code Extraction (Signatures)
     # Match class definitions, function definitions, interface, const/let declarations
     structural_patterns = re.findall(r'^(?:def|class|interface|type|const|let|var|public|private|protected)\s+[\w\s\(:\,<>.=\)]+[{;:]', text, re.MULTILINE)
-    
+
     # 2. Key Entities (Capitalized words, constants)
     entities = re.findall(r'\b[A-Z][a-zA-Z0-9_]+\b|\b[A-Z_]{3,}\b', text)
-    
+
     # 3. Frequent significant words (Nouns/Keywords > 5 chars)
     words = [w.lower() for w in re.findall(r'\b[A-Za-z]{5,}\b', text)]
     stopwords = {'return', 'import', 'export', 'public', 'private', 'static', 'function', 'class', 'extends', 'implements', 'which', 'their', 'there', 'about'}
@@ -32,7 +32,7 @@ def optimize_text(text, target_ratio=0.02):
     if structural_patterns:
         summary_parts.append("--- [STRUCTURAL LOGIC] ---")
         summary_parts.append("\n".join(structural_patterns[:20])) # Cap it
-    
+
     if entities:
         summary_parts.append("--- [KEY ENTITIES] ---")
         summary_parts.append(" ".join(list(set(entities))[:30]))
@@ -42,7 +42,7 @@ def optimize_text(text, target_ratio=0.02):
         summary_parts.append(" ".join(common_words))
 
     extracted = "\n".join(summary_parts)
-    
+
     # If we somehow exceeded the 2% target, aggressively truncate.
     if len(extracted) > target_len:
         extracted = extracted[:target_len] + "..."
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         else:
             # Read from stdin
             input_text = sys.stdin.read()
-            
+
         optimized = optimize_text(input_text)
         print(optimized)
     except Exception as e:

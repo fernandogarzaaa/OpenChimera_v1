@@ -22,16 +22,16 @@ class ToolExecutionError(RuntimeError):
 
 class ToolExecutor:
     """Shared helper for executing tools with permission gating, timing, and events.
-    
+
     Parameters
     ----------
     bus:
         Optional event bus for publishing execution events.
     """
-    
+
     def __init__(self, bus: Any | None = None) -> None:
         self._bus = bus
-    
+
     def execute_with_gating(
         self,
         tool_id: str,
@@ -43,7 +43,7 @@ class ToolExecutor:
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
         """Execute a tool handler with permission gating, timing, and event emission.
-        
+
         Parameters
         ----------
         tool_id:
@@ -58,11 +58,11 @@ class ToolExecutor:
             Current permission scope ("user" or "admin").
         tags:
             Optional tags for metadata.
-        
+
         Returns
         -------
         dict with keys: tool_id, status, permission_scope, arguments, result, error, latency_ms
-        
+
         Raises
         ------
         ToolPermissionError:
@@ -74,23 +74,23 @@ class ToolExecutor:
             raise ToolPermissionError(
                 f"Tool '{tool_id}' requires admin permission scope"
             )
-        
+
         # Execute with timing
         args = dict(arguments or {})
         started = time.perf_counter()
         error = None
         result = None
         status = "ok"
-        
+
         try:
             result = handler(args)
         except Exception as exc:
             error = str(exc)
             status = "error"
             log.warning("[ToolExecutor] %s execution failed: %s", tool_id, exc)
-        
+
         latency_ms = (time.perf_counter() - started) * 1000.0
-        
+
         # Emit event
         self._publish_event("system/tools", {
             "action": "execute",
@@ -99,7 +99,7 @@ class ToolExecutor:
             "latency_ms": round(latency_ms, 3),
             "tags": tags or [],
         })
-        
+
         return {
             "tool_id": tool_id,
             "status": status,
@@ -109,7 +109,7 @@ class ToolExecutor:
             "error": error,
             "latency_ms": round(latency_ms, 3),
         }
-    
+
     def _publish_event(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish event to bus if available."""
         if self._bus is None:

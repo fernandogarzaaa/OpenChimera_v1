@@ -228,7 +228,7 @@ For events triggered by UI elements without app-level hooks.
 GTM Trigger:
   Type: Click - All Elements
   Conditions: Click Element matches CSS selector [data-track="demo-cta"]
-  
+
 GTM Tag: GA4 Event
   Event Name: demo_requested
   Parameters:

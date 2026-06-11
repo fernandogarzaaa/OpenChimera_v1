@@ -5,8 +5,8 @@ description: "Contract & Proposal Writer"
 
 # Contract & Proposal Writer
 
-**Tier:** POWERFUL  
-**Category:** Business Growth  
+**Tier:** POWERFUL
+**Category:** Business Growth
 **Domain:** Legal Documents, Business Development, Client Relations
 
 ---

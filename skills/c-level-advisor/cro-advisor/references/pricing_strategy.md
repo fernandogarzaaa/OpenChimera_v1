@@ -18,7 +18,7 @@ Pricing is not a one-time decision. It's an ongoing hypothesis about value and w
 **Pricing structure:**
 ```
 Starter: $15/user/month (1-10 users)
-Professional: $30/user/month (11-100 users)  
+Professional: $30/user/month (11-100 users)
 Enterprise: Custom (100+ users, negotiated)
 ```
 
@@ -192,7 +192,7 @@ Example: Data entry automation product
   Manual data entry: 4 hours/person/week
   Hours saved with product: 2.4 hours/person/week (60% reduction)
   Fully loaded cost of finance analyst: $75/hour
-  
+
   Weekly savings: 50 employees × 2.4 hours × $75 = $9,000
   Annual savings: $9,000 × 52 weeks = $468,000
 ```

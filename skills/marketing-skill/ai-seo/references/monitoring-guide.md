@@ -101,7 +101,7 @@ Access at copilot.microsoft.com or via Edge sidebar.
 
 Same protocol as ChatGPT. Look for source cards that appear with citations. Copilot integrates Bing's index, so if your Bing presence is strong, Copilot citations follow.
 
-**Bing indexing check:** 
+**Bing indexing check:**
 - Submit sitemap to Bing Webmaster Tools
 - Run URL inspection to verify pages are indexed
 - Check Bing Webmaster Tools for crawl errors on key pages

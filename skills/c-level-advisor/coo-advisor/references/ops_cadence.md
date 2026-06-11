@@ -19,9 +19,9 @@
 ### Daily Operations
 
 #### Daily Standup (Engineering / Product Teams)
-**Format:** Async-first (Slack/Loom); sync only if blocked  
-**Sync duration:** 15 minutes max  
-**Participants:** Team (5–10 people)  
+**Format:** Async-first (Slack/Loom); sync only if blocked
+**Sync duration:** 15 minutes max
+**Participants:** Team (5–10 people)
 **Facilitator:** Team lead or rotating
 
 ```
@@ -38,7 +38,7 @@ Blocked: [Anything blocking me — tag the person who can unblock]
 - Kill standup if the team consistently has nothing blocked; replace with async
 
 #### Daily Leadership Check-in (COO)
-**Format:** Async only — read, don't meet  
+**Format:** Async only — read, don't meet
 **Time:** 8:00–8:30 AM
 
 **COO morning read:**
@@ -52,9 +52,9 @@ Blocked: [Anything blocking me — tag the person who can unblock]
 ### Weekly Cadence
 
 #### Leadership Sync (Weekly)
-**Duration:** 60–90 minutes  
-**Participants:** C-suite + VP level  
-**Owner:** COO (or CEO)  
+**Duration:** 60–90 minutes
+**Participants:** C-suite + VP level
+**Owner:** COO (or CEO)
 **Day/Time:** Monday or Tuesday, morning
 
 ```
@@ -84,8 +84,8 @@ AGENDA TEMPLATE:
 **Output:** Decision log updated with outcomes, action items assigned in tracking system
 
 #### 1:1 (Manager ↔ Direct Report)
-**Duration:** 30–45 minutes  
-**Frequency:** Weekly (skip-levels: bi-weekly)  
+**Duration:** 30–45 minutes
+**Frequency:** Weekly (skip-levels: bi-weekly)
 **Owner:** Report (the direct report sets agenda)
 
 ```
@@ -105,8 +105,8 @@ AGENDA TEMPLATE:
 **Private 1:1 doc:** Every manager/report pair maintains a shared doc with running notes, action items, and career development thread.
 
 #### Cross-Functional Weekly Sync
-**Duration:** 45 minutes  
-**Participants:** 2–4 team leads with shared dependencies  
+**Duration:** 45 minutes
+**Participants:** 2–4 team leads with shared dependencies
 **Examples:** Product + Engineering, Sales + CS, Marketing + Sales
 
 ```
@@ -122,9 +122,9 @@ AGENDA:
 ### Monthly Cadence
 
 #### All-Hands / Town Hall
-**Duration:** 60–90 minutes  
-**Participants:** Entire company  
-**Owner:** CEO + functional heads  
+**Duration:** 60–90 minutes
+**Participants:** Entire company
+**Owner:** CEO + functional heads
 **Format:** In-person preferred; video if distributed
 
 ```
@@ -151,8 +151,8 @@ ALL-HANDS PREP CHECKLIST:
 ```
 
 #### Monthly Business Review (MBR)
-**Duration:** 2 hours  
-**Participants:** Leadership team  
+**Duration:** 2 hours
+**Participants:** Leadership team
 **Owner:** COO
 
 ```
@@ -221,8 +221,8 @@ NEXT 30 DAYS (top 3 priorities):
 ### Quarterly Cadence
 
 #### Quarterly Business Review (QBR)
-**Duration:** Half day (4 hours)  
-**Participants:** Leadership team + key functional leads  
+**Duration:** Half day (4 hours)
+**Participants:** Leadership team + key functional leads
 **Owner:** CEO + COO
 
 ```
@@ -250,8 +250,8 @@ PART 4: OKR setting for next quarter (30 min)
 ```
 
 #### Quarterly Leadership Off-site
-**Duration:** 1–2 days (Series B+)  
-**Participants:** C-suite + VPs  
+**Duration:** 1–2 days (Series B+)
+**Participants:** C-suite + VPs
 **Purpose:** Strategy alignment, relationship building, hard conversations
 
 **Off-site agenda principles:**
@@ -282,8 +282,8 @@ Week 0:   Year kick-off all-hands
 ```
 
 #### Year Kick-off All-Hands
-**Duration:** 2–4 hours  
-**Participants:** Entire company  
+**Duration:** 2–4 hours
+**Participants:** Entire company
 **Purpose:** Align entire company on year strategy and goals
 
 ```

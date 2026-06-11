@@ -1,10 +1,10 @@
 # Project Charter Template
 
-**Project Name:** [Project Name]  
-**Project ID:** [Unique Identifier]  
-**Prepared By:** [Project Manager Name]  
-**Date:** [Charter Date]  
-**Version:** [Version Number]  
+**Project Name:** [Project Name]
+**Project ID:** [Unique Identifier]
+**Prepared By:** [Project Manager Name]
+**Date:** [Charter Date]
+**Version:** [Version Number]
 
 ---
 

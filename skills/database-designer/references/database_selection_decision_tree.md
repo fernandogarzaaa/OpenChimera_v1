@@ -10,7 +10,7 @@ Choosing the right database technology is crucial for application success. This 
 
 1. **What is your primary use case?**
    - OLTP (Online Transaction Processing)
-   - OLAP (Online Analytical Processing)  
+   - OLAP (Online Analytical Processing)
    - Real-time analytics
    - Content management
    - Search and discovery

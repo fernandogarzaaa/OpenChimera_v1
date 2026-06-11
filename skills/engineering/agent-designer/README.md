@@ -1,7 +1,7 @@
 # Agent Designer - Multi-Agent System Architecture Toolkit
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Tags:** AI agents, architecture, system design, orchestration, multi-agent systems
 
 A comprehensive toolkit for designing, architecting, and evaluating multi-agent systems. Provides structured approaches to agent architecture patterns, tool design principles, communication strategies, and performance evaluation frameworks.
@@ -196,7 +196,7 @@ Create a JSON file with execution logs:
   "execution_logs": [
     {
       "task_id": "unique_task_identifier",
-      "agent_id": "agent_identifier", 
+      "agent_id": "agent_identifier",
       "task_type": "task_category",
       "start_time": "2024-01-15T09:00:00Z",
       "end_time": "2024-01-15T09:02:34Z",
@@ -262,7 +262,7 @@ Options:
 
 **Bottleneck Analysis**:
 - Agent performance bottlenecks
-- Tool usage inefficiencies  
+- Tool usage inefficiencies
 - Communication overhead
 - Resource constraints
 
@@ -278,7 +278,7 @@ Options:
 
 #### Supervisor
 - **Best for**: Hierarchical task decomposition with quality control
-- **Team size**: 2-8 agents  
+- **Team size**: 2-8 agents
 - **Complexity**: Medium
 - **Examples**: Research coordinator with specialists, content review workflow
 
@@ -288,7 +288,7 @@ Options:
 - **Complexity**: High
 - **Examples**: Parallel data processing, distributed research, competitive analysis
 
-#### Hierarchical  
+#### Hierarchical
 - **Best for**: Large-scale operations with organizational structure
 - **Team size**: 5-50 agents
 - **Complexity**: Very High

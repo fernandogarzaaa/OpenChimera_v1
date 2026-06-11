@@ -3,8 +3,8 @@
 Tool Schema Generator - Generate structured tool schemas for AI agents
 
 Given a description of desired tools (name, purpose, inputs, outputs), generates
-structured tool schemas compatible with OpenAI function calling format and 
-Anthropic tool use format. Includes: input validation rules, error response 
+structured tool schemas compatible with OpenAI function calling format and
+Anthropic tool use format. Includes: input validation rules, error response
 formats, example calls, rate limit suggestions.
 
 Input: tool descriptions JSON
@@ -113,12 +113,12 @@ class ToolSchema:
 
 class ToolSchemaGenerator:
     """Generate structured tool schemas from descriptions"""
-    
+
     def __init__(self):
         self.common_patterns = self._define_common_patterns()
         self.format_validators = self._define_format_validators()
         self.security_templates = self._define_security_templates()
-    
+
     def _define_common_patterns(self) -> Dict[str, str]:
         """Define common regex patterns for validation"""
         return {
@@ -132,7 +132,7 @@ class ToolSchemaGenerator:
             "slug": r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
             "semantic_version": r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$"
         }
-    
+
     def _define_format_validators(self) -> Dict[str, Dict[str, Any]]:
         """Define format validators for common data types"""
         return {
@@ -178,7 +178,7 @@ class ToolSchemaGenerator:
                 "pattern": r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]"
             }
         }
-    
+
     def _define_security_templates(self) -> Dict[str, Dict[str, Any]]:
         """Define security requirement templates"""
         return {
@@ -205,24 +205,24 @@ class ToolSchemaGenerator:
                 "content_type_validation": True
             }
         }
-    
+
     def parse_tool_description(self, description: ToolDescription) -> ParameterSpec:
         """Parse tool description into structured parameters"""
         input_params = []
         output_params = []
-        
+
         # Parse input parameters
         for input_spec in description.inputs:
             param = self._parse_parameter_spec(input_spec)
             input_params.append(param)
-        
+
         # Parse output parameters
         for output_spec in description.outputs:
             param = self._parse_parameter_spec(output_spec)
             output_params.append(param)
-        
+
         return input_params, output_params
-    
+
     def _parse_parameter_spec(self, param_spec: Dict[str, Any]) -> ParameterSpec:
         """Parse individual parameter specification"""
         name = param_spec.get("name", "")
@@ -231,13 +231,13 @@ class ToolSchemaGenerator:
         required = param_spec.get("required", False)
         default = param_spec.get("default")
         examples = param_spec.get("examples", [])
-        
+
         # Parse parameter type
         param_type = self._parse_parameter_type(type_str)
-        
+
         # Generate validation rules
         validation_rules = self._generate_validation_rules(param_spec, param_type)
-        
+
         return ParameterSpec(
             name=name,
             type=param_type,
@@ -247,7 +247,7 @@ class ToolSchemaGenerator:
             validation_rules=validation_rules,
             examples=examples
         )
-    
+
     def _parse_parameter_type(self, type_str: str) -> ParameterType:
         """Parse parameter type from string"""
         type_mapping = {
@@ -267,13 +267,13 @@ class ToolSchemaGenerator:
             "null": ParameterType.NULL,
             "none": ParameterType.NULL
         }
-        
+
         return type_mapping.get(type_str.lower(), ParameterType.STRING)
-    
+
     def _generate_validation_rules(self, param_spec: Dict[str, Any], param_type: ParameterType) -> Dict[str, Any]:
         """Generate validation rules for a parameter"""
         rules = {}
-        
+
         # Type-specific validation
         if param_type == ParameterType.STRING:
             rules.update(self._generate_string_validation(param_spec))
@@ -285,27 +285,27 @@ class ToolSchemaGenerator:
             rules.update(self._generate_array_validation(param_spec))
         elif param_type == ParameterType.OBJECT:
             rules.update(self._generate_object_validation(param_spec))
-        
+
         # Common validation rules
         if param_spec.get("required", False):
             rules["required"] = True
-        
+
         if "enum" in param_spec:
             rules["enum"] = param_spec["enum"]
-        
+
         if "pattern" in param_spec:
             rules["pattern"] = param_spec["pattern"]
         elif self._detect_format(param_spec.get("name", ""), param_spec.get("description", "")):
             format_name = self._detect_format(param_spec.get("name", ""), param_spec.get("description", ""))
             if format_name in self.format_validators:
                 rules.update(self.format_validators[format_name])
-        
+
         return rules
-    
+
     def _generate_string_validation(self, param_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Generate string-specific validation rules"""
         rules = {}
-        
+
         if "min_length" in param_spec:
             rules["minLength"] = param_spec["min_length"]
         elif "min_len" in param_spec:
@@ -319,7 +319,7 @@ class ToolSchemaGenerator:
                 rules["minLength"] = 5
             elif "name" in desc:
                 rules["minLength"] = 1
-        
+
         if "max_length" in param_spec:
             rules["maxLength"] = param_spec["max_length"]
         elif "max_len" in param_spec:
@@ -337,13 +337,13 @@ class ToolSchemaGenerator:
                 rules["maxLength"] = 255
             else:
                 rules["maxLength"] = 1000
-        
+
         return rules
-    
+
     def _generate_integer_validation(self, param_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Generate integer-specific validation rules"""
         rules = {}
-        
+
         if "minimum" in param_spec:
             rules["minimum"] = param_spec["minimum"]
         elif "min" in param_spec:
@@ -359,18 +359,18 @@ class ToolSchemaGenerator:
             elif "port" in name + desc:
                 rules["minimum"] = 1
                 rules["maximum"] = 65535
-        
+
         if "maximum" in param_spec:
             rules["maximum"] = param_spec["maximum"]
         elif "max" in param_spec:
             rules["maximum"] = param_spec["max"]
-        
+
         return rules
-    
+
     def _generate_number_validation(self, param_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Generate number-specific validation rules"""
         rules = {}
-        
+
         if "minimum" in param_spec:
             rules["minimum"] = param_spec["minimum"]
         if "maximum" in param_spec:
@@ -381,62 +381,62 @@ class ToolSchemaGenerator:
             rules["exclusiveMaximum"] = param_spec["exclusive_maximum"]
         if "multiple_of" in param_spec:
             rules["multipleOf"] = param_spec["multiple_of"]
-        
+
         return rules
-    
+
     def _generate_array_validation(self, param_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Generate array-specific validation rules"""
         rules = {}
-        
+
         if "min_items" in param_spec:
             rules["minItems"] = param_spec["min_items"]
         elif "min_length" in param_spec:
             rules["minItems"] = param_spec["min_length"]
         else:
             rules["minItems"] = 0
-        
+
         if "max_items" in param_spec:
             rules["maxItems"] = param_spec["max_items"]
         elif "max_length" in param_spec:
             rules["maxItems"] = param_spec["max_length"]
         else:
             rules["maxItems"] = 1000  # Reasonable default
-        
+
         if param_spec.get("unique_items", False):
             rules["uniqueItems"] = True
-        
+
         if "item_type" in param_spec:
             rules["items"] = {"type": param_spec["item_type"]}
-        
+
         return rules
-    
+
     def _generate_object_validation(self, param_spec: Dict[str, Any]) -> Dict[str, Any]:
         """Generate object-specific validation rules"""
         rules = {}
-        
+
         if "properties" in param_spec:
             rules["properties"] = param_spec["properties"]
-        
+
         if "required_properties" in param_spec:
             rules["required"] = param_spec["required_properties"]
-        
+
         if "additional_properties" in param_spec:
             rules["additionalProperties"] = param_spec["additional_properties"]
         else:
             rules["additionalProperties"] = False
-        
+
         if "min_properties" in param_spec:
             rules["minProperties"] = param_spec["min_properties"]
-        
+
         if "max_properties" in param_spec:
             rules["maxProperties"] = param_spec["max_properties"]
-        
+
         return rules
-    
+
     def _detect_format(self, name: str, description: str) -> Optional[str]:
         """Detect parameter format from name and description"""
         combined = (name + " " + description).lower()
-        
+
         format_indicators = {
             "email": ["email", "e-mail", "email_address"],
             "url": ["url", "uri", "link", "website", "endpoint"],
@@ -445,41 +445,41 @@ class ToolSchemaGenerator:
             "datetime": ["datetime", "timestamp", "created_at", "updated_at"],
             "password": ["password", "secret", "token", "api_key"]
         }
-        
+
         for format_name, indicators in format_indicators.items():
             if any(indicator in combined for indicator in indicators):
                 return format_name
-        
+
         return None
-    
+
     def generate_openai_schema(self, description: ToolDescription, input_params: List[ParameterSpec]) -> Dict[str, Any]:
         """Generate OpenAI function calling schema"""
         properties = {}
         required = []
-        
+
         for param in input_params:
             prop_def = {
                 "type": param.type.value,
                 "description": param.description
             }
-            
+
             # Add validation rules
             if param.validation_rules:
                 prop_def.update(param.validation_rules)
-            
+
             # Add examples
             if param.examples:
                 prop_def["examples"] = param.examples
-            
+
             # Add default value
             if param.default is not None:
                 prop_def["default"] = param.default
-            
+
             properties[param.name] = prop_def
-            
+
             if param.required:
                 required.append(param.name)
-        
+
         schema = {
             "name": description.name,
             "description": description.purpose,
@@ -490,9 +490,9 @@ class ToolSchemaGenerator:
                 "additionalProperties": False
             }
         }
-        
+
         return schema
-    
+
     def generate_anthropic_schema(self, description: ToolDescription, input_params: List[ParameterSpec]) -> Dict[str, Any]:
         """Generate Anthropic tool use schema"""
         input_schema = {
@@ -500,13 +500,13 @@ class ToolSchemaGenerator:
             "properties": {},
             "required": []
         }
-        
+
         for param in input_params:
             prop_def = {
                 "type": param.type.value,
                 "description": param.description
             }
-            
+
             # Add validation rules (Anthropic uses subset of JSON Schema)
             if param.validation_rules:
                 # Filter to supported validation rules
@@ -514,24 +514,24 @@ class ToolSchemaGenerator:
                 for rule, value in param.validation_rules.items():
                     if rule in supported_rules:
                         prop_def[rule] = value
-            
+
             input_schema["properties"][param.name] = prop_def
-            
+
             if param.required:
                 input_schema["required"].append(param.name)
-        
+
         schema = {
             "name": description.name,
             "description": description.purpose,
             "input_schema": input_schema
         }
-        
+
         return schema
-    
+
     def generate_error_responses(self, description: ToolDescription) -> List[ErrorSpec]:
         """Generate error response specifications"""
         error_specs = []
-        
+
         # Common errors
         common_errors = [
             {
@@ -568,11 +568,11 @@ class ToolSchemaGenerator:
                 "retry_after": 300
             }
         ]
-        
+
         # Add common errors
         for error in common_errors:
             error_specs.append(ErrorSpec(**error))
-        
+
         # Add tool-specific errors based on error conditions
         for condition in description.error_conditions:
             if "not found" in condition.lower():
@@ -601,13 +601,13 @@ class ToolSchemaGenerator:
                     error_message=f"Dependency service failure: {condition}",
                     http_status=502
                 ))
-        
+
         return error_specs
-    
+
     def generate_rate_limits(self, description: ToolDescription) -> RateLimitSpec:
         """Generate rate limiting specification"""
         rate_limits = description.rate_limits
-        
+
         # Default rate limits based on tool category
         defaults = {
             "search": {"rpm": 60, "rph": 1000, "rpd": 10000, "burst": 10},
@@ -617,9 +617,9 @@ class ToolSchemaGenerator:
             "compute": {"rpm": 10, "rph": 100, "rpd": 1000, "burst": 3},
             "communication": {"rpm": 30, "rph": 300, "rpd": 3000, "burst": 5}
         }
-        
+
         category_defaults = defaults.get(description.category.lower(), defaults["api"])
-        
+
         return RateLimitSpec(
             requests_per_minute=rate_limits.get("requests_per_minute", category_defaults["rpm"]),
             requests_per_hour=rate_limits.get("requests_per_hour", category_defaults["rph"]),
@@ -628,35 +628,35 @@ class ToolSchemaGenerator:
             cooldown_period=rate_limits.get("cooldown_period", 60),
             rate_limit_key=rate_limits.get("rate_limit_key", "user_id")
         )
-    
+
     def generate_examples(self, description: ToolDescription, input_params: List[ParameterSpec]) -> List[Dict[str, Any]]:
         """Generate usage examples"""
         examples = []
-        
+
         # Use provided examples if available
         if description.examples:
             for example in description.examples:
                 examples.append(example)
-        
+
         # Generate synthetic examples
         if len(examples) == 0:
             synthetic_example = self._generate_synthetic_example(description, input_params)
             if synthetic_example:
                 examples.append(synthetic_example)
-        
+
         # Ensure we have multiple examples showing different scenarios
         if len(examples) == 1 and len(input_params) > 1:
             # Generate minimal example
             minimal_example = self._generate_minimal_example(description, input_params)
             if minimal_example and minimal_example != examples[0]:
                 examples.append(minimal_example)
-        
+
         return examples
-    
+
     def _generate_synthetic_example(self, description: ToolDescription, input_params: List[ParameterSpec]) -> Dict[str, Any]:
         """Generate a synthetic example based on parameter specifications"""
         example_input = {}
-        
+
         for param in input_params:
             if param.examples:
                 example_input[param.name] = param.examples[0]
@@ -664,38 +664,38 @@ class ToolSchemaGenerator:
                 example_input[param.name] = param.default
             else:
                 example_input[param.name] = self._generate_example_value(param)
-        
+
         # Generate expected output based on tool purpose
         expected_output = self._generate_example_output(description)
-        
+
         return {
             "description": f"Example usage of {description.name}",
             "input": example_input,
             "expected_output": expected_output
         }
-    
+
     def _generate_minimal_example(self, description: ToolDescription, input_params: List[ParameterSpec]) -> Dict[str, Any]:
         """Generate minimal example with only required parameters"""
         example_input = {}
-        
+
         for param in input_params:
             if param.required:
                 if param.examples:
                     example_input[param.name] = param.examples[0]
                 else:
                     example_input[param.name] = self._generate_example_value(param)
-        
+
         if not example_input:
             return None
-        
+
         expected_output = self._generate_example_output(description)
-        
+
         return {
             "description": f"Minimal example of {description.name} with required parameters only",
             "input": example_input,
             "expected_output": expected_output
         }
-    
+
     def _generate_example_value(self, param: ParameterSpec) -> Any:
         """Generate example value for a parameter"""
         if param.type == ParameterType.STRING:
@@ -706,18 +706,18 @@ class ToolSchemaGenerator:
                 "date": "2024-01-15",
                 "datetime": "2024-01-15T10:30:00Z"
             }
-            
+
             # Check for format in validation rules
             if param.validation_rules and "format" in param.validation_rules:
                 format_type = param.validation_rules["format"]
                 if format_type in format_examples:
                     return format_examples[format_type]
-            
+
             # Check for patterns or enum
             if param.validation_rules:
                 if "enum" in param.validation_rules:
                     return param.validation_rules["enum"][0]
-            
+
             # Generate based on name/description
             name_lower = param.name.lower()
             if "name" in name_lower:
@@ -730,37 +730,37 @@ class ToolSchemaGenerator:
                 return "Example message"
             else:
                 return "example_value"
-        
+
         elif param.type == ParameterType.INTEGER:
             if param.validation_rules:
                 min_val = param.validation_rules.get("minimum", 0)
                 max_val = param.validation_rules.get("maximum", 100)
                 return min(max(42, min_val), max_val)
             return 42
-        
+
         elif param.type == ParameterType.NUMBER:
             if param.validation_rules:
                 min_val = param.validation_rules.get("minimum", 0.0)
                 max_val = param.validation_rules.get("maximum", 100.0)
                 return min(max(42.5, min_val), max_val)
             return 42.5
-        
+
         elif param.type == ParameterType.BOOLEAN:
             return True
-        
+
         elif param.type == ParameterType.ARRAY:
             return ["item1", "item2"]
-        
+
         elif param.type == ParameterType.OBJECT:
             return {"key": "value"}
-        
+
         else:
             return None
-    
+
     def _generate_example_output(self, description: ToolDescription) -> Dict[str, Any]:
         """Generate example output based on tool description"""
         category = description.category.lower()
-        
+
         if category == "search":
             return {
                 "results": [
@@ -793,16 +793,16 @@ class ToolSchemaGenerator:
                 "message": f"{description.name} executed successfully",
                 "result": "example result"
             }
-    
+
     def generate_tool_schema(self, description: ToolDescription) -> ToolSchema:
         """Generate complete tool schema"""
         # Parse parameters
         input_params, output_params = self.parse_tool_description(description)
-        
+
         # Generate schemas
         openai_schema = self.generate_openai_schema(description, input_params)
         anthropic_schema = self.generate_anthropic_schema(description, input_params)
-        
+
         # Generate validation rules
         validation_rules = []
         for param in input_params:
@@ -811,16 +811,16 @@ class ToolSchemaGenerator:
                     "parameter": param.name,
                     "rules": param.validation_rules
                 })
-        
+
         # Generate error responses
         error_responses = self.generate_error_responses(description)
-        
+
         # Generate rate limits
         rate_limits = self.generate_rate_limits(description)
-        
+
         # Generate examples
         examples = self.generate_examples(description, input_params)
-        
+
         # Generate metadata
         metadata = {
             "category": description.category,
@@ -835,7 +835,7 @@ class ToolSchemaGenerator:
             "required_parameters": sum(1 for p in input_params if p.required),
             "optional_parameters": sum(1 for p in input_params if not p.required)
         }
-        
+
         return ToolSchema(
             name=description.name,
             description=description.purpose,
@@ -853,33 +853,33 @@ def main():
     parser = argparse.ArgumentParser(description="Tool Schema Generator for AI Agents")
     parser.add_argument("input_file", help="JSON file with tool descriptions")
     parser.add_argument("-o", "--output", help="Output file prefix (default: tool_schemas)")
-    parser.add_argument("--format", choices=["json", "both"], default="both", 
+    parser.add_argument("--format", choices=["json", "both"], default="both",
                        help="Output format")
-    parser.add_argument("--validate", action="store_true", 
+    parser.add_argument("--validate", action="store_true",
                        help="Validate generated schemas")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load tool descriptions
         with open(args.input_file, 'r') as f:
             tools_data = json.load(f)
-        
+
         # Parse tool descriptions
         tool_descriptions = []
         for tool_data in tools_data.get("tools", []):
             tool_desc = ToolDescription(**tool_data)
             tool_descriptions.append(tool_desc)
-        
+
         # Generate schemas
         generator = ToolSchemaGenerator()
         schemas = []
-        
+
         for description in tool_descriptions:
             schema = generator.generate_tool_schema(description)
             schemas.append(schema)
             print(f"Generated schema for: {schema.name}")
-        
+
         # Prepare output
         output_data = {
             "tool_schemas": [asdict(schema) for schema in schemas],
@@ -897,18 +897,18 @@ def main():
                 "total_examples": sum(len(schema.examples) for schema in schemas)
             }
         }
-        
+
         # Output files
         output_prefix = args.output or "tool_schemas"
-        
+
         if args.format in ["json", "both"]:
             with open(f"{output_prefix}.json", 'w') as f:
                 json.dump(output_data, f, indent=2, default=str)
             print(f"JSON output written to {output_prefix}.json")
-        
+
         if args.format == "both":
             # Generate separate files for different formats
-            
+
             # OpenAI format
             openai_schemas = {
                 "functions": [schema.openai_schema for schema in schemas]
@@ -916,7 +916,7 @@ def main():
             with open(f"{output_prefix}_openai.json", 'w') as f:
                 json.dump(openai_schemas, f, indent=2)
             print(f"OpenAI schemas written to {output_prefix}_openai.json")
-            
+
             # Anthropic format
             anthropic_schemas = {
                 "tools": [schema.anthropic_schema for schema in schemas]
@@ -924,7 +924,7 @@ def main():
             with open(f"{output_prefix}_anthropic.json", 'w') as f:
                 json.dump(anthropic_schemas, f, indent=2)
             print(f"Anthropic schemas written to {output_prefix}_anthropic.json")
-            
+
             # Validation rules
             validation_data = {
                 "validation_rules": {schema.name: schema.validation_rules for schema in schemas}
@@ -932,7 +932,7 @@ def main():
             with open(f"{output_prefix}_validation.json", 'w') as f:
                 json.dump(validation_data, f, indent=2)
             print(f"Validation rules written to {output_prefix}_validation.json")
-            
+
             # Usage examples
             examples_data = {
                 "examples": {schema.name: schema.examples for schema in schemas}
@@ -940,35 +940,35 @@ def main():
             with open(f"{output_prefix}_examples.json", 'w') as f:
                 json.dump(examples_data, f, indent=2)
             print(f"Usage examples written to {output_prefix}_examples.json")
-        
+
         # Print summary
         print(f"\nSchema Generation Summary:")
         print(f"Tools processed: {len(schemas)}")
         print(f"Total input parameters: {sum(schema.metadata['input_parameters'] for schema in schemas)}")
         print(f"Total validation rules: {sum(len(schema.validation_rules) for schema in schemas)}")
         print(f"Total examples generated: {sum(len(schema.examples) for schema in schemas)}")
-        
+
         # Validation if requested
         if args.validate:
             print("\nValidation Results:")
             for schema in schemas:
                 validation_errors = []
-                
+
                 # Basic validation checks
                 if not schema.openai_schema.get("parameters", {}).get("properties"):
                     validation_errors.append("Missing input parameters")
-                
+
                 if not schema.examples:
                     validation_errors.append("No usage examples")
-                
+
                 if not schema.validation_rules:
                     validation_errors.append("No validation rules defined")
-                
+
                 if validation_errors:
                     print(f"  {schema.name}: {', '.join(validation_errors)}")
                 else:
                     print(f"  {schema.name}: ✓ Valid")
-        
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

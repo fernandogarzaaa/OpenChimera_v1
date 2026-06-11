@@ -26,7 +26,7 @@ This framework provides senior project managers with quantitative risk analysis 
 - Performance bottlenecks (Impact: Quality -20-40%, Cost +5-15%)
 - Technology obsolescence (Impact: Long-term maintenance +50-100%)
 
-#### 2. Resource Risk (Weight: 1.1x)  
+#### 2. Resource Risk (Weight: 1.1x)
 **Definition:** Human capital availability, skills, and retention risks
 
 **Quantification Approach:**
@@ -48,7 +48,7 @@ This framework provides senior project managers with quantitative risk analysis 
 ```
 Three-Point Estimation:
 - Optimistic (O): Best case scenario (10% probability)
-- Most Likely (M): Realistic estimate (50% probability)  
+- Most Likely (M): Realistic estimate (50% probability)
 - Pessimistic (P): Worst case scenario (90% probability)
 
 Expected Duration = (O + 4M + P) / 6
@@ -99,7 +99,7 @@ Risk: Third-party API failure requiring alternative implementation
 
 Probability Scenarios:
 - Minor disruption (60% chance): $50K additional cost
-- Major redesign (30% chance): $200K additional cost  
+- Major redesign (30% chance): $200K additional cost
 - Complete platform change (10% chance): $500K additional cost
 
 EMV = (0.6 × $50K) + (0.3 × $200K) + (0.1 × $500K)
@@ -146,7 +146,7 @@ If P50 = 6 months, P80 = 7.5 months:
 **Moderate (Risk Score Target: 8-15)**
 - **Philosophy:** Balanced risk-return approach, selective risk taking
 - **Suitable Projects:** Process improvements, technology upgrades, market expansion
-- **Contingency Reserves:** 15-20% of project budget  
+- **Contingency Reserves:** 15-20% of project budget
 - **Decision Criteria:** 70-80% confidence levels acceptable
 
 **Aggressive (Risk Score Target: 15+)**
@@ -309,7 +309,7 @@ Cost of Risk Management = Total Risk Management Spend / Project Budget
 
 **Leading Indicators (Predictive):**
 - Resource utilization trends
-- Stakeholder satisfaction scores  
+- Stakeholder satisfaction scores
 - Technical debt accumulation
 - Team velocity variance
 - Budget burn rate vs. planned
@@ -361,7 +361,7 @@ Risk Adjustment Factor = 1 - (Project Risk Score × Risk Penalty Rate)
 
 Where Risk Penalty Rate reflects organization's risk aversion:
 - Conservative: 0.8% per risk score point
-- Moderate: 0.5% per risk score point  
+- Moderate: 0.5% per risk score point
 - Aggressive: 0.2% per risk score point
 ```
 

@@ -5,9 +5,9 @@ description: "Monorepo Navigator"
 
 # Monorepo Navigator
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
-**Domain:** Monorepo Architecture / Build Systems  
+**Tier:** POWERFUL
+**Category:** Engineering
+**Domain:** Monorepo Architecture / Build Systems
 
 ---
 

@@ -46,7 +46,7 @@ Discount offer                        Match to reason category
 **Copy template:**
 ```
 Headline: Before you go, we want to understand
-Body: Your feedback helps us improve. Take 30 seconds to tell us why 
+Body: Your feedback helps us improve. Take 30 seconds to tell us why
       you're cancelling — and we might have a solution you haven't tried.
 CTA: Continue to cancellation →
 ```
@@ -115,7 +115,7 @@ CTA (decline): No thanks, continue cancelling →
 
 [For not using it enough:]
 Headline: No charge for 60 days — pause your account
-Body: Life gets busy. Put [Product] on hold for up to 60 days. 
+Body: Life gets busy. Put [Product] on hold for up to 60 days.
       Your data stays intact, and you can resume any time. No charge during pause.
 CTA (accept): Pause my account →
 CTA (decline): No thanks, continue cancelling →
@@ -183,7 +183,7 @@ Subject: Your [Product] account is still here
 
 Hi [Name],
 
-It's been a week since you cancelled. Your account and data are still intact 
+It's been a week since you cancelled. Your account and data are still intact
 until [date].
 
 If anything changed, you can reactivate in one click — no re-setup required.

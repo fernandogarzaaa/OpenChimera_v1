@@ -11,7 +11,7 @@ This document compares the three most popular branching and release workflows: G
 main (production)
   ↑
 release/1.2.0 ← develop (integration) ← feature/user-auth
-                    ↑                ← feature/payment-api  
+                    ↑                ← feature/payment-api
                  hotfix/critical-fix
 ```
 
@@ -76,7 +76,7 @@ git commit -am "Bump version to 1.2.0"
 git checkout main
 git merge --no-ff release/1.2.0
 git tag -a v1.2.0 -m "Release version 1.2.0"
-git checkout develop  
+git checkout develop
 git merge --no-ff release/1.2.0
 git branch -d release/1.2.0
 
@@ -139,7 +139,7 @@ main ← feature/user-auth
 
 ### Example Commands
 ```bash
-# Start new feature  
+# Start new feature
 git checkout main
 git pull origin main
 git checkout -b feature/user-authentication
@@ -236,7 +236,7 @@ git branch -d payment-integration
 if (featureFlags.enabled('stripe_payments', userId)) {
     return renderStripePayment();
 } else {
-    return renderLegacyPayment();  
+    return renderLegacyPayment();
 }
 ```
 
@@ -315,7 +315,7 @@ git push origin main
 curl -X POST api/feature-flags/payment-v2/rollout/25  # 25% of users
 # Monitor metrics...
 curl -X POST api/feature-flags/payment-v2/rollout/50  # 50% of users
-# Monitor metrics...  
+# Monitor metrics...
 curl -X POST api/feature-flags/payment-v2/rollout/100 # Full rollout
 
 # Remove flag after successful rollout

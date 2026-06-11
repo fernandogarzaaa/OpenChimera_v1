@@ -1,7 +1,7 @@
 # Building OpenChimera (Rust/Python Hybrid)
 
 OpenChimera contains a native Rust extension (`chimera-core`) that is compiled
-via [PyO3](https://pyo3.rs/) and [Maturin](https://www.maturin.rs/).  
+via [PyO3](https://pyo3.rs/) and [Maturin](https://www.maturin.rs/).
 The four modules compiled to native code are:
 
 | Module | Python import | Replaces |
