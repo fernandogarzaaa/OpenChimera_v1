@@ -213,9 +213,55 @@ class OpenChimeraKernel:
         )
 
         if run_forever:
+            self._print_ready_banner(boot_status_report)
             while True:
                 time.sleep(1)
         return status
+
+    def _print_ready_banner(self, boot_status_report: dict[str, Any]) -> None:
+        """Print a concise, human-friendly readiness summary for interactive runs.
+
+        Suppressed when stdout is not a TTY (pipes, CI, background) so logs stay
+        the machine-readable interface there. Never raises.
+        """
+        try:
+            import sys
+
+            if not sys.stdout.isatty():
+                return
+            from core.config import get_provider_base_url, is_api_auth_enabled
+
+            url = get_provider_base_url()
+            status = str(boot_status_report.get("status", "?")).lower()
+            auth_on = is_api_auth_enabled()
+            try:
+                online = bool(self.provider.status().get("online"))
+            except Exception:
+                online = False
+
+            def c(text: str, code: str) -> str:
+                return f"\033[{code}m{text}\033[0m"
+
+            dim = lambda s: c(s, "2")
+            dot = c("●", "32") if status == "full" else c("●", "33")
+
+            lines = [
+                "",
+                f"  {c('OpenChimera', '1;36')}  {dot} {status}",
+                f"  {c('API', '1')}    {c(url, '36')}  {dim('(OpenAI-compatible)')}",
+                f"  {c('Docs', '1')}   {c(url + '/docs', '36')}",
+                f"  {c('Auth', '1')}   {'enabled' if auth_on else dim('disabled — loopback only')}",
+            ]
+            if not online:
+                lines.append(
+                    f"  {c('Model', '1')}  {dim('none loaded —')} "
+                    f"openchimera onboard --register-local-model-path <model.gguf>"
+                )
+            lines.append(dim("  Ctrl+C to stop  ·  openchimera status  ·  openchimera doctor"))
+            lines.append("")
+            print("\n".join(lines), flush=True)
+        except Exception:
+            pass
 
     def _start_local_runtime(self) -> None:
         LOGGER.info("AETHER unavailable; starting local OpenChimera runtime fallback.")
