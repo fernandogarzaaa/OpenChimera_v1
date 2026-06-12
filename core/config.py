@@ -332,6 +332,38 @@ def save_runtime_profile(profile: dict[str, Any]) -> None:
     load_runtime_profile.cache_clear()
 
 
+def _runtime_profile_delta(profile: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
+    """Return the keys of *profile* that differ from *base*, recursively."""
+    delta: dict[str, Any] = {}
+    for key, value in profile.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            sub = _runtime_profile_delta(value, base[key])
+            if sub:
+                delta[key] = sub
+        elif base.get(key) != value:
+            delta[key] = value
+    return delta
+
+
+def save_runtime_profile_override(profile: dict[str, Any]) -> None:
+    """Persist machine/user-specific settings to the git-ignored local override.
+
+    Writes only the delta of *profile* versus the committed
+    ``runtime_profile.json`` into ``runtime_profile.local.json`` (merged with any
+    existing override), so the committed profile stays the pristine sanitized
+    default and normal runs never produce a spurious git diff. The override is
+    layered back on top of the committed profile by ``load_runtime_profile``.
+    """
+    base, _ = normalize_runtime_profile(_load_profile_file(get_runtime_profile_path()))
+    delta = _runtime_profile_delta(profile, base)
+    override_path = get_runtime_profile_override_path()
+    existing = _load_profile_file(override_path) if override_path.exists() else {}
+    merged = _merge_profile_overrides(existing, delta) if existing else delta
+    override_path.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_json(override_path, merged)
+    load_runtime_profile.cache_clear()
+
+
 def is_supported_harness_repo_root(candidate: Path) -> bool:
     src_root = candidate / "src"
     required_files = [

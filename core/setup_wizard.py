@@ -44,7 +44,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from core.config import ROOT, load_runtime_profile, save_runtime_profile
+from core.config import ROOT, load_runtime_profile, save_runtime_profile_override
 
 LOGGER = logging.getLogger(__name__)
 
@@ -329,7 +329,7 @@ def _step_hardware_detection(profile: dict[str, Any], results: dict[str, Any]) -
         "vram_gb": gpu_data.get("vram_gb", 0.0),
         "device_count": gpu_data.get("device_count", 0),
     }
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
     print()
     print(f"  {_dim('Hardware profile saved to runtime_profile.json')}")
 
@@ -468,7 +468,7 @@ def _step_optimization(
         if recommended_models:
             lr["preferred_local_models"] = recommended_models[:3]
 
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
         results["optimization"] = {
             "applied": True,
             "cpu_threads": optimal_threads,
@@ -562,7 +562,7 @@ def _step_cloud_api_keys(profile: dict[str, Any], results: dict[str, Any]) -> No
 
     results["cloud_keys_configured"] = configured
     if configured:
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
         print()
         print(f"  {_green('✓')} Configured {len(configured)} cloud provider(s): {', '.join(configured)}")
     else:
@@ -653,7 +653,7 @@ def _step_feature_selection(profile: dict[str, Any], results: dict[str, Any]) ->
         features[fid] = True
     for fid in disabled:
         features[fid] = False
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
 
     print(f"  {_green('✓')} Features saved: {len(enabled)} enabled, {len(disabled)} disabled")
 
@@ -751,7 +751,7 @@ def _step_channel_integrations(profile: dict[str, Any], results: dict[str, Any])
 
     results["channels_configured"] = configured_channels
     if configured_channels:
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
         print()
         print(f"  {_green('✓')} Configured {len(configured_channels)} channel(s): {', '.join(configured_channels)}")
 
@@ -775,7 +775,7 @@ def _step_failover_chain(profile: dict[str, Any], results: dict[str, Any]) -> No
         providers["failover_chain"] = keys
         if keys:
             providers["preferred_cloud_provider"] = keys[0]
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
         print(f"  {_dim('Using default order: ' + ' → '.join(keys))}")
         results["failover_chain"] = keys
         return
@@ -804,7 +804,7 @@ def _step_failover_chain(profile: dict[str, Any], results: dict[str, Any]) -> No
     providers = profile.setdefault("providers", {})
     providers["failover_chain"] = chain
     providers["preferred_cloud_provider"] = chain[0] if chain else ""
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
 
     results["failover_chain"] = chain
     print(f"  {_green('✓')} Failover chain: {' → '.join(chain)}")
@@ -848,7 +848,7 @@ def _step_external_roots(profile: dict[str, Any], results: dict[str, Any]) -> No
                     print(f"    {_yellow('!')} Path doesn't exist — keeping original")
 
     if fixed:
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
 
     print()
     print(f"  {_green('✓')} Found: {found}  {_yellow('Missing:')} {missing}  Fixed: {len(fixed)}")
@@ -925,7 +925,7 @@ def _step_api_security(profile: dict[str, Any], results: dict[str, Any]) -> None
             auth = api.setdefault("auth", {})
             auth["enabled"] = True
             auth["token"] = token
-            save_runtime_profile(profile)
+            save_runtime_profile_override(profile)
             print(f"  {_green('✓')} Auth token generated: {_cyan(token[:12])}...")
             print(f"    Use header: {_dim('Authorization: Bearer <token>')}")
             results["api_auth"] = True
@@ -936,7 +936,7 @@ def _step_api_security(profile: dict[str, Any], results: dict[str, Any]) -> None
                 auth = api.setdefault("auth", {})
                 auth["enabled"] = True
                 auth["token"] = custom
-                save_runtime_profile(profile)
+                save_runtime_profile_override(profile)
                 print(f"  {_green('✓')} Custom token saved")
                 results["api_auth"] = True
             else:
@@ -951,7 +951,7 @@ def _step_api_security(profile: dict[str, Any], results: dict[str, Any]) -> None
             api = profile.setdefault("api", {})
             auth = api.setdefault("auth", {})
             auth["admin_token"] = admin_token
-            save_runtime_profile(profile)
+            save_runtime_profile_override(profile)
             print(f"  {_green('✓')} Admin token: {_cyan(admin_token[:12])}...")
 
     # ── TLS ──────────────────────────────────────────────────────────────
@@ -1141,7 +1141,7 @@ def _step_autonomy_tuning(profile: dict[str, Any], results: dict[str, Any]) -> N
         print()
 
     if changed:
-        save_runtime_profile(profile)
+        save_runtime_profile_override(profile)
         print(f"  {_green('✓')} Updated {changed} job(s)")
 
     results["autonomy_tuned"] = changed
@@ -1287,7 +1287,7 @@ def _step_logging_observability(profile: dict[str, Any], results: dict[str, Any]
     except ValueError:
         pass
 
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
     print()
     print(f"  {_green('✓')} Log level: {new_level}, structured: {logging_section.get('structured', {}).get('enabled', False)}")
 
@@ -1356,7 +1356,7 @@ def _step_minimind_config(
         except ValueError:
             pass
 
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
     print()
     print(f"  {_green('✓')} MiniMind: device={config['device']}, auto_start={config.get('auto_start_server', False)}")
 
@@ -1394,7 +1394,7 @@ def _step_sandbox_retention(profile: dict[str, Any], results: dict[str, Any]) ->
     except ValueError:
         pass
 
-    save_runtime_profile(profile)
+    save_runtime_profile_override(profile)
     print(f"  {_green('✓')} Retention: {ret.get('max_history_entries', max_entries)} entries, {ret.get('max_age_days', max_age)} days")
 
     results["sandbox_retention_configured"] = True
