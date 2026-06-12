@@ -9,6 +9,8 @@
 
 **Local-first orchestration for models, operator jobs, browser tasks, and optional external runtimes.**
 
+> **New here?** Start with the **[Quickstart guide](docs/QUICKSTART.md)** — a short, verified walkthrough of what OpenChimera is, how to install it, add a model, start the server, and call the OpenAI-compatible API.
+
 ## Quick Start (One-Liner Install)
 
 **Windows (PowerShell):**
