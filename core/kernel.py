@@ -422,7 +422,13 @@ class OpenChimeraKernel:
         report["subsystems"]["aether"] = "ok" if self.aether.status().get("running") else "degraded"
         report["subsystems"]["wraith"] = "ok" if self.wraith.status().get("running") else "degraded"
         report["subsystems"]["evo"] = "ok" if self.evo.status().get("running") else "degraded"
-        report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "failed"
+        # A provider that is reachable but has no healthy model (e.g. no local
+        # model installed yet) is degraded, not failed — the gateway is still
+        # operational. "failed" is reserved for a provider that cannot be queried.
+        try:
+            report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "degraded"
+        except Exception:
+            report["subsystems"]["provider"] = "failed"
         report["subsystems"]["api_server"] = "ok" if self.api_server else "failed"
 
         # Check AGI modules
@@ -449,9 +455,13 @@ class OpenChimeraKernel:
         failed_count = sum(1 for s in report["subsystems"].values() if s == "failed")
         degraded_count = sum(1 for s in report["subsystems"].values() if s == "degraded")
 
-        if failed_count > 0 and "provider" in [k for k, v in report["subsystems"].items() if v == "failed"]:
+        # The runtime is "not operational" (FAILED) only when the API server
+        # itself did not come up. Anything else that failed/degraded while the
+        # server is serving (no model, an optional subsystem down, ...) is a
+        # DEGRADED boot, not a FAILED one.
+        if report["subsystems"].get("api_server") == "failed":
             report["status"] = BootStatus.FAILED.value
-        elif failed_count > 0 or degraded_count > 2:
+        elif failed_count > 0 or degraded_count > 0:
             report["status"] = BootStatus.DEGRADED.value
         else:
             report["status"] = BootStatus.FULL.value
