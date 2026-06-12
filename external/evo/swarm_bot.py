@@ -41,7 +41,9 @@ class SwarmBot:
             self._orchestrator = SwarmOrchestrator()
             self.logger.info("Project Evo SDK loaded from: %s", _EVO_PROJECT_ROOT)
         except Exception as exc:
-            self.logger.warning(
+            # Optional SDK: stub mode is a supported, graceful fallback, so this
+            # is informational rather than a warning.
+            self.logger.info(
                 "Project Evo SDK unavailable (%s) — running in stub mode.", exc
             )
             self._stub_mode = True
