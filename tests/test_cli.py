@@ -35,6 +35,32 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(exit_code, 2)
         self.assertIn("Provide a query", err.getvalue())
 
+    def test_tools_accepts_positional_id(self) -> None:
+        parser = run._build_parser()
+        self.assertEqual(parser.parse_args(["tools", "ascension.deliberate"]).tool_id_pos, "ascension.deliberate")
+        self.assertEqual(parser.parse_args(["tools", "--id", "x"]).id, "x")
+
+    def test_skill_description_extracts_frontmatter_and_heading(self) -> None:
+        frontmatter = '---\nname: "demo"\ndescription: "A demo skill"\n---\n# Demo\nbody'
+        self.assertEqual(run._skill_description(frontmatter, "demo"), "A demo skill")
+        heading_only = "# Just A Heading\n\ntext"
+        self.assertEqual(run._skill_description(heading_only, "fallback"), "Just A Heading")
+        self.assertEqual(run._skill_description("", "fallback"), "fallback")
+
+    def test_skills_inspect_single_and_unknown(self) -> None:
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = run.main(["skills", "ai-seo"])
+        self.assertEqual(code, 0)
+        self.assertIn("Skill:", out.getvalue())
+        self.assertIn("ai-seo", out.getvalue())
+
+        err = io.StringIO()
+        with patch.object(sys, "stderr", err):
+            code = run.main(["skills", "definitely-not-a-real-skill"])
+        self.assertEqual(code, 2)
+        self.assertIn("No skill named", err.getvalue())
+
     def test_bootstrap_command_emits_json(self) -> None:
         with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "fake/openchimera", "created_directories": [], "created_files": [], "normalized_files": []}):
             output = io.StringIO()

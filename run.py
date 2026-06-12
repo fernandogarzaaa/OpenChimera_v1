@@ -295,7 +295,8 @@ def _build_parser() -> argparse.ArgumentParser:
     query_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     tools_parser = subparsers.add_parser("tools", help="Inspect or execute runtime tools.")
-    tools_parser.add_argument("--id", default="", help="Tool id to inspect or execute.")
+    tools_parser.add_argument("tool_id_pos", nargs="?", default="", help="Tool id to inspect or execute (positional, e.g. openchimera tools ascension.deliberate).")
+    tools_parser.add_argument("--id", default="", help="Tool id to inspect or execute (alternative to the positional form).")
     tools_parser.add_argument("--arguments-json", default="", help="JSON object of tool arguments when executing a tool.")
     tools_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
     tools_parser.add_argument("--execute", action="store_true", help="Execute the selected tool instead of listing metadata.")
@@ -359,7 +360,9 @@ def _build_parser() -> argparse.ArgumentParser:
     roles_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     skills_parser = subparsers.add_parser("skills", help="Discover or inspect registered skills.")
+    skills_parser.add_argument("name", nargs="?", default="", help="Inspect a single skill by name (omit to list all).")
     skills_parser.add_argument("--discover", action="store_true", help="Discover available skills.")
+    skills_parser.add_argument("--limit", type=int, default=40, help="Max skills to print when listing (default 40; use --json for all).")
     skills_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     setup_parser = subparsers.add_parser("setup", help="One-step first-time setup: bootstrap workspace, run diagnostics, and show next steps.")
@@ -2002,43 +2005,73 @@ def _roles_command(assign_args: list[str] | None, list_roles: bool, as_json: boo
     return 0
 
 
-def _skills_discover_command(as_json: bool) -> int:
-    """Discover available skills from the skills/ directory and capability registry."""
-    provider = _build_provider()
+def _skill_description(content: str, fallback: str) -> str:
+    """Best-effort one-line summary from a SKILL.md (YAML frontmatter or heading)."""
+    lines = content.splitlines()
+    if lines and lines[0].strip() == "---":
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            if line.strip().lower().startswith("description:"):
+                return line.split(":", 1)[1].strip().strip('"').strip("'") or fallback
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            return stripped.lstrip("#").strip() or fallback
+        if stripped and stripped != "---":
+            return stripped
+    return fallback
+
+
+def _skills_discover_command(as_json: bool, name: str = "", limit: int = 40) -> int:
+    """Discover skills from the skills/ directory; optionally inspect one by name."""
     skills_dir = Path(__file__).resolve().parent / "skills"
     discovered: list[dict[str, Any]] = []
 
-    # Walk skills directory for SKILL.md descriptors
     if skills_dir.exists():
-        for skill_md in skills_dir.rglob("SKILL.md"):
+        for skill_md in sorted(skills_dir.rglob("SKILL.md")):
             skill_name = skill_md.parent.name
             try:
                 content = skill_md.read_text(encoding="utf-8")
-                first_line = content.splitlines()[0].lstrip("#").strip() if content else skill_name
             except Exception:
-                first_line = skill_name
+                content = ""
             discovered.append({
                 "name": skill_name,
                 "path": str(skill_md.relative_to(skills_dir)),
-                "description": first_line,
-                "source": "filesystem",
+                "description": _skill_description(content, fallback=skill_name),
             })
 
-    # Also pull from capability registry
-    try:
-        cap_skills = provider.capability_plane.list_capabilities("skills") if hasattr(provider, "capability_plane") else []
-        for item in cap_skills:
-            discovered.append({"source": "registry", **item})
-    except Exception:
-        pass
+    # Inspect a single skill by name.
+    needle = name.strip().lower()
+    if needle:
+        match = next((s for s in discovered if s["name"].lower() == needle), None)
+        if match is None:
+            suggestions = [s["name"] for s in discovered if needle in s["name"].lower()][:8]
+            if as_json:
+                _print_payload({"error": "unknown_skill", "name": name, "suggestions": suggestions}, as_json=True)
+            else:
+                print(f"No skill named '{name}'.", file=sys.stderr)
+                if suggestions:
+                    print("Did you mean: " + ", ".join(suggestions), file=sys.stderr)
+            return 2
+        if as_json:
+            _print_payload(match, as_json=True)
+            return 0
+        print(f"Skill:       {match['name']}")
+        print(f"Path:        skills/{match['path']}")
+        print(f"Description: {match['description']}")
+        return 0
 
     payload = {"count": len(discovered), "skills": discovered}
     if as_json:
         _print_payload(payload, as_json=True)
         return 0
-    print(f"Discovered skills: {len(discovered)}")
-    for item in discovered[:30]:
-        print(f"  [{item.get('source', '?')}] {item.get('name', '?')}: {item.get('description', '')[:80]}")
+    print(f"Registered skills: {len(discovered)}")
+    shown = discovered if limit <= 0 else discovered[:limit]
+    for item in shown:
+        print(f"  {item.get('name', '?')}: {item.get('description', '')[:80]}")
+    if len(shown) < len(discovered):
+        print(f"  … and {len(discovered) - len(shown)} more — inspect one with 'openchimera skills <name>' or use --json.")
     return 0
 
 
@@ -2172,7 +2205,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     if command == "tools":
         return _tools_command(
-            tool_id=str(getattr(args, "id", "")).strip(),
+            tool_id=str(getattr(args, "tool_id_pos", "") or getattr(args, "id", "")).strip(),
             arguments_json=str(getattr(args, "arguments_json", "")),
             permission_scope=str(getattr(args, "permission_scope", "user")),
             execute=bool(getattr(args, "execute", False)),
@@ -2238,9 +2271,11 @@ def main(argv: list[str] | None = None) -> int:
             as_json=bool(args.json),
         )
     if command == "skills":
-        if bool(getattr(args, "discover", False)):
-            return _skills_discover_command(as_json=bool(args.json))
-        return _skills_discover_command(as_json=bool(args.json))
+        return _skills_discover_command(
+            as_json=bool(args.json),
+            name=str(getattr(args, "name", "")).strip(),
+            limit=int(getattr(args, "limit", 40)),
+        )
     parser.error(f"Unknown command: {command}")
     return 2
 
