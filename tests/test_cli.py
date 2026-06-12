@@ -18,6 +18,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OpenChimeraCLITests(unittest.TestCase):
+    def test_query_accepts_positional_text_and_flag(self) -> None:
+        parser = run._build_parser()
+        positional = parser.parse_args(["query", "hello there"])
+        self.assertEqual(positional.text_pos, ["hello there"])
+        multiword = parser.parse_args(["query", "hello", "there"])
+        self.assertEqual(multiword.text_pos, ["hello", "there"])
+        flag = parser.parse_args(["query", "--text", "hi"])
+        self.assertEqual(flag.text, "hi")
+        self.assertEqual(flag.text_pos, [])
+
+    def test_query_command_rejects_empty_text(self) -> None:
+        err = io.StringIO()
+        with patch.object(sys, "stderr", err):
+            exit_code = run.main(["query"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Provide a query", err.getvalue())
+
     def test_bootstrap_command_emits_json(self) -> None:
         with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "fake/openchimera", "created_directories": [], "created_files": [], "normalized_files": []}):
             output = io.StringIO()

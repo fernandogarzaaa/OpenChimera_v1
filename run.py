@@ -286,7 +286,8 @@ def _build_parser() -> argparse.ArgumentParser:
     capabilities_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     query_parser = subparsers.add_parser("query", help="Run a query through the OpenChimera query engine.")
-    query_parser.add_argument("--text", default="", help="User query text.")
+    query_parser.add_argument("text_pos", nargs="*", default=[], help="User query text (positional, e.g. openchimera query \"hello\").")
+    query_parser.add_argument("--text", default="", help="User query text (alternative to the positional form).")
     query_parser.add_argument("--session-id", default="", help="Resume an existing query session.")
     query_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
     query_parser.add_argument("--execute-tools", action="store_true", help="Execute the supplied tool requests before model completion.")
@@ -1438,6 +1439,9 @@ def _query_command(
     tool_request_items: list[str],
     as_json: bool,
 ) -> int:
+    if not text.strip():
+        print('Provide a query, e.g.  openchimera query "summarize the runtime status"', file=sys.stderr)
+        return 2
     provider = _build_provider()
     try:
         tool_requests = [_parse_json_object(item, label="tool-request-json") for item in tool_request_items if str(item).strip()]
@@ -2157,8 +2161,9 @@ def main(argv: list[str] | None = None) -> int:
     if command == "capabilities":
         return _capabilities_command(kind=getattr(args, "kind", None), as_json=bool(args.json))
     if command == "query":
+        positional_text = " ".join(getattr(args, "text_pos", []) or []).strip()
         return _query_command(
-            text=str(getattr(args, "text", "")),
+            text=positional_text or str(getattr(args, "text", "")),
             session_id=str(getattr(args, "session_id", "")).strip() or None,
             permission_scope=str(getattr(args, "permission_scope", "user")),
             execute_tools=bool(getattr(args, "execute_tools", False)),
