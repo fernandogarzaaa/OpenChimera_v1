@@ -54,7 +54,9 @@ class SwarmBot:
         if self._orchestrator is not None:
             asyncio.run(self._orchestrator.run_parallel_evolution("."))
         else:
-            self.logger.warning(
+            # Stub mode is an expected, supported fallback when the optional
+            # Evo SDK is absent — informational, not a warning.
+            self.logger.info(
                 "Orchestrator not available (stub mode); evolution loop skipped."
             )
         self.logger.info("Evolution loop completed.")
