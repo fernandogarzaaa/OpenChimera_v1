@@ -181,7 +181,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==5.4.1
+sentence-transformers==5.5.1
     # via -r requirements.in
 shellingham==1.5.4
     # via typer
