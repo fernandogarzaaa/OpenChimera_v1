@@ -2077,6 +2077,14 @@ def _skills_discover_command(as_json: bool, name: str = "", limit: int = 40) -> 
 
 def _serve_command(verbose: bool) -> int:
     _setup_logging(verbose=verbose)
+    # On an interactive (TTY) boot, keep the console quiet (WARNING+) so the
+    # per-subsystem INFO init wall doesn't bury the readiness banner. The
+    # structured log file (if configured) still records full INFO, and
+    # `--verbose` or a piped/CI run (non-TTY) keep the detailed console output.
+    if sys.stdout.isatty() and not verbose:
+        for handler in logging.getLogger().handlers:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+                handler.setLevel(logging.WARNING)
     workspace_root = _configure_workspace()
     logging.info("Starting OpenChimera from %s", workspace_root)
     bootstrap_report = bootstrap_workspace()
