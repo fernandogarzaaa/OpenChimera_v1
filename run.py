@@ -2115,7 +2115,7 @@ def _serve_command(verbose: bool) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def _run_cli(argv: list[str] | None = None) -> int:
     _configure_workspace()
     parser = _build_parser()
     args = parser.parse_args(argv if argv is not None else (["serve"] if len(sys.argv) == 1 else None))
@@ -2298,6 +2298,28 @@ def main(argv: list[str] | None = None) -> int:
         )
     parser.error(f"Unknown command: {command}")
     return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point.
+
+    Turns expected user-input / runtime conditions (bad ids, missing files,
+    malformed JSON, insufficient permissions) into a concise one-line error and
+    a non-zero exit instead of a raw Python traceback. Unexpected errors
+    (programming bugs) still propagate so they remain visible.
+    """
+    try:
+        return _run_cli(argv)
+    except ToolPermissionError as exc:
+        print(
+            f"{exc}\nHint: re-run with --permission-scope admin "
+            "(and a valid admin token when API auth is enabled).",
+            file=sys.stderr,
+        )
+        return 2
+    except (ToolExecutionError, ValueError, KeyError, FileNotFoundError, json.JSONDecodeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

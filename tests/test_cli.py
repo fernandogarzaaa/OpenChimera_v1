@@ -61,6 +61,19 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("No skill named", err.getvalue())
 
+    def test_main_converts_user_errors_to_clean_message(self) -> None:
+        err = io.StringIO()
+        with patch.object(run, "_run_cli", side_effect=ValueError("bad subsystem id")), patch.object(sys, "stderr", err):
+            code = run.main(["status"])
+        self.assertEqual(code, 2)
+        self.assertIn("Error: bad subsystem id", err.getvalue())
+
+    def test_main_lets_unexpected_errors_propagate(self) -> None:
+        # Programming bugs (e.g. TypeError) must still surface as a traceback.
+        with patch.object(run, "_run_cli", side_effect=TypeError("internal bug")):
+            with self.assertRaises(TypeError):
+                run.main(["status"])
+
     def test_tools_execute_reports_permission_error_gracefully(self) -> None:
         from core.tool_executor import ToolPermissionError
         fake_provider = MagicMock()
