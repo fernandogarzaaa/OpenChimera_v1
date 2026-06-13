@@ -230,6 +230,11 @@ class _FakeProvider:
         raise ValueError(f"Unknown tool: {tool_id}")
 
     def execute_tool(self, tool_id: str, arguments: dict[str, object] | None = None, permission_scope: str = "user") -> dict[str, object]:
+        # Mirror the real gating: admin-only tools raise when scope is not admin.
+        admin_tools = {item["id"] for item in self.tool_status()["tools"] if item.get("requires_admin")}
+        if tool_id in admin_tools and str(permission_scope).strip().lower() != "admin":
+            from core.tool_executor import ToolPermissionError
+            raise ToolPermissionError(f"Tool '{tool_id}' requires admin permission scope")
         payload = {
             "tool_id": tool_id,
             "status": "ok",
@@ -1469,10 +1474,12 @@ class ApiContractTests(unittest.TestCase):
         os.environ["OPENCHIMERA_ADMIN_TOKEN"] = "admin-token"
         self._restart_server()
 
-        # User token + forged admin scope in body -> server forces "user".
+        # User token + forged admin scope in body -> server forces "user"
+        # (uses a non-admin tool so the scope binding, not admin gating, is what
+        # is under test; the admin-gating 403 path has its own test).
         escalation = self._post(
             "/v1/tools/execute",
-            {"tool_id": "browser.fetch", "permission_scope": "admin", "arguments": {"url": "http://169.254.169.254/"}},
+            {"tool_id": "ascension.deliberate", "permission_scope": "admin", "arguments": {"prompt": "x"}},
             headers={"Authorization": "Bearer user-token"},
         )
         self.assertEqual(escalation["permission_scope"], "user")
@@ -1480,10 +1487,31 @@ class ApiContractTests(unittest.TestCase):
         # Admin token -> session-derived "admin" scope regardless of body value.
         privileged = self._post(
             "/v1/tools/execute",
-            {"tool_id": "browser.fetch", "permission_scope": "user", "arguments": {"url": "https://example.com"}},
+            {"tool_id": "ascension.deliberate", "permission_scope": "user", "arguments": {"prompt": "x"}},
             headers={"Authorization": "Bearer admin-token"},
         )
         self.assertEqual(privileged["permission_scope"], "admin")
+
+    def test_tools_execute_returns_403_for_admin_tool_with_user_token(self) -> None:
+        """An under-privileged token running an admin tool gets a clean 403, not a 503."""
+        os.environ["OPENCHIMERA_API_TOKEN"] = "user-token"
+        os.environ["OPENCHIMERA_ADMIN_TOKEN"] = "admin-token"
+        self._restart_server()
+
+        status, payload = self._post_raw(
+            "/v1/tools/execute",
+            json.dumps({"tool_id": "browser.fetch", "arguments": {"url": "https://example.com"}}).encode("utf-8"),
+            headers={"Authorization": "Bearer user-token"},
+        )
+        self.assertEqual(status, 403)
+        self.assertIn("requires admin", str(payload.get("error", "")))
+
+        ok_status, _ = self._post_raw(
+            "/v1/tools/execute",
+            json.dumps({"tool_id": "browser.fetch", "arguments": {"url": "https://example.com"}}).encode("utf-8"),
+            headers={"Authorization": "Bearer admin-token"},
+        )
+        self.assertEqual(ok_status, 200)
 
     def test_query_run_binds_permission_scope_to_session(self) -> None:
         """query/run (admin-gated) derives the tool scope from the session token, not the body."""

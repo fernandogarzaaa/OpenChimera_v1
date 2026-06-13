@@ -32,6 +32,7 @@ from core.mcp_server import OpenChimeraMCPServer
 from core.logging_utils import clear_request_context, set_request_context
 from core.observability import ObservabilityStore
 from core.provider import OpenChimeraProvider
+from core.tool_executor import ToolPermissionError
 from core.rate_limiter import RateLimiter
 from core.schemas import GET_QUERY_SCHEMAS, POST_BODY_SCHEMAS, HealthResponse, ReadinessResponse
 
@@ -1035,6 +1036,8 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             self._write_json(self._validation_error_payload(exc), status=HTTPStatus.UNPROCESSABLE_ENTITY)
         except RequestValidationFailure as exc:
             self._write_json(self._validation_error_payload(exc), status=exc.status)
+        except ToolPermissionError as exc:
+            self._write_json({"error": str(exc), "required_permission": "admin"}, status=HTTPStatus.FORBIDDEN)
         except ValueError as exc:
             self._write_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
         except NotImplementedError as exc:
