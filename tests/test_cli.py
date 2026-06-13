@@ -61,6 +61,17 @@ class OpenChimeraCLITests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("No skill named", err.getvalue())
 
+    def test_tools_execute_reports_permission_error_gracefully(self) -> None:
+        from core.tool_executor import ToolPermissionError
+        fake_provider = MagicMock()
+        fake_provider.execute_tool.side_effect = ToolPermissionError("Tool 'jobs.create' requires admin permission scope")
+        err = io.StringIO()
+        with patch.object(run, "_build_provider", return_value=fake_provider), patch.object(sys, "stderr", err):
+            exit_code = run.main(["tools", "jobs.create", "--execute"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("requires admin permission scope", err.getvalue())
+        self.assertIn("--permission-scope admin", err.getvalue())
+
     def test_bootstrap_command_emits_json(self) -> None:
         with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "fake/openchimera", "created_directories": [], "created_files": [], "normalized_files": []}):
             output = io.StringIO()

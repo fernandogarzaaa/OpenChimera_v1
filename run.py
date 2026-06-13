@@ -45,6 +45,7 @@ from core.logging_utils import configure_runtime_logging
 from core.mcp_registry import delete_mcp_registry_entry, list_mcp_registry_with_health, probe_all_mcp_registry_entries, probe_mcp_registry_entry, upsert_mcp_registry_entry
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
+from core.tool_executor import ToolExecutionError, ToolPermissionError
 from core.wraith_service import WraithService
 
 
@@ -1538,7 +1539,18 @@ def _tools_command(
         except (ValueError, json.JSONDecodeError) as exc:
             print(str(exc), file=sys.stderr)
             return 2
-        payload = provider.execute_tool(str(tool_id).strip(), arguments, permission_scope=permission_scope)
+        try:
+            payload = provider.execute_tool(str(tool_id).strip(), arguments, permission_scope=permission_scope)
+        except ToolPermissionError as exc:
+            print(
+                f"{exc}\nHint: re-run with --permission-scope admin "
+                "(and a valid admin token when API auth is enabled).",
+                file=sys.stderr,
+            )
+            return 2
+        except (ToolExecutionError, ValueError) as exc:
+            print(f"Tool execution failed: {exc}", file=sys.stderr)
+            return 2
         if as_json:
             _print_payload(payload, as_json=True)
             return 0
