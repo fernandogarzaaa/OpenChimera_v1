@@ -16,7 +16,7 @@ anyio==4.13.0
     #   openai
     #   starlette
     #   watchfiles
-build==1.4.3
+build==1.5.0
     # via
     #   -r requirements-dev.in
     #   pip-tools
@@ -171,7 +171,7 @@ platformdirs==4.9.4
     # via
     #   python-discovery
     #   virtualenv
-pre-commit==4.5.1
+pre-commit==4.6.0
     # via -r requirements-dev.in
 psutil==7.2.2
     # via -r requirements.in
@@ -292,7 +292,7 @@ watchfiles==1.1.1
     # via uvicorn
 websockets==16.0
     # via uvicorn
-wheel==0.46.3
+wheel==0.47.0
     # via
     #   -r requirements-dev.in
     #   pip-tools
