@@ -1,0 +1,10 @@
+[package]
+name = "chimera-bridge"
+version = "2.0.0"
+edition = "2021"
+
+[dependencies]
+chimera-core = { path = "../chimera-core" }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
