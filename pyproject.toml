@@ -1,58 +1,85 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "openchimera"
-version = "0.1.0"
-description = "Local-first LLM orchestration runtime with multi-model routing, autonomy scheduling, and MCP integration"
+version = "2.0.0"
+description = "OpenChimera v2 — Agentic orchestration runtime with Rust TUI, modern AI providers, and cognitive stack integration"
 readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Fernando Garza" },
+]
+keywords = ["agent", "orchestration", "llm", "mcp", "cognitive"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
-	"networkx>=3.0,<4",
-	"numpy>=1.24,<3",
-	"psutil>=5.9,<8",
-	"pydantic>=2.12,<3",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.34,<1",
+    "pydantic>=2.10,<3",
+    "pydantic-settings>=2.7,<3",
+    "httpx>=0.28,<1",
+    "python-dotenv>=1.0,<2",
+    "pyyaml>=6.0,<7",
+    "structlog>=25.1,<26",
+    "rich>=13.9,<14",
+    "click>=8.1,<9",
+    "httpx-sse>=0.4,<1",
+    "openai>=1.60,<2",
+    "anthropic>=0.42,<1",
+    "google-generativeai>=0.8,<1",
+    "groq>=0.18,<1",
+    "ollama>=0.4,<1",
+    "mcp>=1.6,<2",
+    "tiktoken>=0.8,<1",
+    "psutil>=6.0,<7",
 ]
 
 [project.optional-dependencies]
-redis = [
-	"redis[hiredis]>=5.0,<8",
+rag = [
+    "chromadb>=0.6,<1",
+    "sentence-transformers>=3.4,<4",
+    "faiss-cpu>=1.10,<2",
 ]
 dev = [
-	"build>=1.2,<2",
-	"pytest>=7,<10",
-	"pytest-asyncio>=0.21,<2",
-	"pytest-cov>=4,<8",
-	"wheel>=0.45,<1",
-	"pip-tools>=7.5,<8",
+    "pytest>=8.0,<9",
+    "pytest-asyncio>=0.25,<1",
+    "pytest-cov>=6.0,<7",
+    "ruff>=0.9,<1",
+    "mypy>=1.14,<2",
+    "types-pyyaml>=6.0,<7",
 ]
 
 [project.scripts]
-openchimera = "run:main"
+openchimera = "openchimera.cli:main"
 
-[tool.setuptools]
-include-package-data = false
-py-modules = ["run"]
-
-[tool.setuptools.package-data]
-core = ["migrations/*.sql"]
-
-[tool.setuptools.packages.find]
-include = ["core*", "openchimera*", "sandbox*", "services*"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-timeout = 90
-python_classes = ["Test*"]
-python_files = ["test_*.py", "*_test.py"]
-python_functions = ["test_*"]
-filterwarnings = ["ignore::pytest.PytestCollectionWarning"]
+[tool.hatch.build.targets.wheel]
+packages = ["python/openchimera"]
 
 [tool.ruff]
 line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
 ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["python/tests"]

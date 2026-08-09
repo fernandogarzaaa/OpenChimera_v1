@@ -1,8 +1,6 @@
 [workspace]
+members = ["crates/chimera-core", "crates/chimera-tui", "crates/chimera-bridge"]
 resolver = "2"
-members = [
-    "chimera-core",
-]
 
 [profile.release]
 opt-level = 3
