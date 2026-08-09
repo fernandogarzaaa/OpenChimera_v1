@@ -1,0 +1,111 @@
+# Default OpenChimera v2 Configuration
+# Override via config/local.yaml or env vars prefixed with OPENCHIMERA_
+
+server:
+  host: "127.0.0.1"
+  port: 7870
+  workers: 1
+  reload: false
+
+api:
+  auth:
+    enabled: false
+    token: ""           # OPENCHIMERA_API_TOKEN
+    admin_token: ""     # OPENCHIMERA_ADMIN_TOKEN
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:3000"
+      - "http://127.0.0.1:3000"
+  tls:
+    enabled: false
+    certfile: ""
+    keyfile: ""
+
+providers:
+  default: "openai"
+  timeout: 60
+  retry_count: 2
+  
+  openai:
+    enabled: true
+    api_key: ""         # OPENAI_API_KEY
+    base_url: "https://api.openai.com/v1"
+    default_model: "gpt-4o"
+    models:
+      - gpt-4o
+      - gpt-4o-mini
+      - o3-mini
+  
+  anthropic:
+    enabled: true
+    api_key: ""         # ANTHROPIC_API_KEY
+    base_url: "https://api.anthropic.com/v1"
+    default_model: "claude-3-5-sonnet-20241022"
+    models:
+      - claude-3-5-sonnet-20241022
+      - claude-3-5-haiku-20241022
+      - claude-3-opus-20240229
+  
+  google:
+    enabled: true
+    api_key: ""         # GOOGLE_API_KEY
+    default_model: "gemini-2.0-flash-exp"
+    models:
+      - gemini-2.0-flash-exp
+      - gemini-1.5-pro
+  
+  groq:
+    enabled: true
+    api_key: ""         # GROQ_API_KEY
+    base_url: "https://api.groq.com/openai/v1"
+    default_model: "llama-3.3-70b-versatile"
+    models:
+      - llama-3.3-70b-versatile
+      - mixtral-8x7b-32768
+  
+  ollama:
+    enabled: true
+    base_url: "http://localhost:11434"
+    default_model: "llama3.2"
+    models:
+      - llama3.2
+      - mistral
+      - codellama
+
+mcp:
+  enabled: true
+  registry_path: "data/mcp_registry.json"
+  health_check_interval: 300
+  default_timeout: 30
+
+rag:
+  enabled: true
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  vector_store: "chroma"   # chroma | faiss
+  chunk_size: 512
+  chunk_overlap: 64
+  top_k: 5
+
+cognitive:
+  axiom:
+    enabled: true
+    checkpoints_dir: "D:\AXIOM-AETHER\checkpoints"
+  eve:
+    enabled: true
+    personas: ["general", "developer", "researcher"]
+  adam:
+    enabled: true
+    memory_db: "D:\ADAM\adam_memory.db"
+    genome_path: "D:\ADAM\adam_genome.json"
+
+logging:
+  level: "INFO"
+  structured: true
+  path: "logs/openchimera.jsonl"
+
+paths:
+  data: "data"
+  logs: "logs"
+  skills: "skills"
+  plugins: "plugins"
