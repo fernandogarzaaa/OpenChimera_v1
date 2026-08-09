@@ -1,547 +1,197 @@
-# OpenChimera
+# OpenChimera v2
 
-![OpenChimera](assets/openchimera-logo.jpg)
+> **Agentic orchestration runtime** — Rust TUI, 17+ modern AI providers, computer use, cognitive stack (AXIOM/EVE/ADAM), and one-liner install.
 
-[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![CI](https://img.shields.io/github/actions/workflow/status/fernandogarzaaa/OpenChimera_v1/python-ci.yml?branch=main&label=CI&logo=github)](https://github.com/fernandogarzaaa/OpenChimera_v1/actions/workflows/python-ci.yml)
-[![PyPI](https://img.shields.io/badge/pypi-openchimera-orange?logo=pypi&logoColor=white)](https://pypi.org/project/openchimera/)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
+[![Rust](https://img.shields.io/badge/rust-1.80%2B-orange)](https://rust-lang.org)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**Local-first orchestration for models, operator jobs, browser tasks, and optional external runtimes.**
+---
 
-> **New here?** Start with the **[Quickstart guide](docs/QUICKSTART.md)** — a short, verified walkthrough of what OpenChimera is, how to install it, add a model, start the server, and call the OpenAI-compatible API.
+## 🚀 One-Liner Install
 
-## Quick Start (One-Liner Install)
-
-**Windows (PowerShell):**
-
+### Windows (PowerShell)
 ```powershell
-irm https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.ps1 | iex
 ```
 
-**Linux/macOS (bash):**
-
+### macOS / Linux / WSL
 ```bash
 curl -fsSL https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.sh | bash
 ```
 
-This will install Python dependencies, set up a virtual environment, and print next steps. To run OpenChimera after install:
-
+### Manual (Python)
 ```bash
-# Activate your environment (Linux/macOS)
-source .venv/bin/activate
-# or (Windows)
-.\.venv\Scripts\Activate.ps1
-
-# Start OpenChimera
-python run.py
-```
-
-For onboarding:
-
-```bash
-python run.py onboard
+git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git
+cd OpenChimera_v1
+pip install -e ".[all]"
+openchimera onboard
 ```
 
 ---
 
-OpenChimera is an open-source orchestration runtime that keeps the control plane local. It gives you one Python-native gateway for local models, reasoning services, retrieval, browser interaction, operator channels, onboarding, and supervised background jobs.
-
-The project is designed to be safe to publish and safe to run from source: the committed runtime profile is sanitized, secrets stay out of the repository, and machine-specific overrides belong in local-only files.
-
-## Highlights
-
-- Local-first OpenAI-compatible provider on `http://127.0.0.1:7870`
-- Managed local model routing with adaptive prompt strategy learning
-- **Recursive Intelligence Loop** — ten interlocking subsystems for self-improving AGI (memory, deliberation, goal planning, evolution, metacognition, self-model, transfer learning, causal reasoning, embodied interaction, social cognition)
-- **Quantum Consensus Engine** — async-first weighted multi-agent voting with speculative gather, destructive interference, domain-aware reputation, embedding similarity, and optional persistence
-- Scheduled autonomy jobs for discovery, learned fallback ranking, self-audit, degradation detection, repair previews, and dataset refresh
-- MiniMind lifecycle management for reasoning and training workflows
-- RAG-backed fallback answers with weighted runtime-aware retrieval
-- Operator jobs, event channels, onboarding, integration audit, and browser actions
-- Safe local config overrides through `config/runtime_profile.local.json`
-- Structured JSONL runtime logs at `logs/openchimera-runtime.jsonl` with request correlation
-- Operator CLI surface for bootstrap, onboarding, status, query sessions, memory, model roles, plugins, subsystems, MCP, and serving
-
-## Architecture
-
-### Recursive Intelligence Loop
-
-Five interlocking subsystems that form the self-improving core:
-
-| Subsystem | Module | Purpose |
-| ----------- | -------- | --------- |
-| **Memory System** | `core/memory/` | Episodic (SQL + embeddings), semantic (NetworkX graph), and working (LRU) memory with a unified facade |
-| **Deliberation Engine** | `core/deliberation.py` | Hypothesis/contradiction graph with max-flow consensus and Jaccard cross-check |
-| **HTN Goal Planner** | `core/goal_planner.py` | CRUD goals with decomposition, dependencies, and Kahn topological sort for execution ordering |
-| **Evolution Engine** | `core/evolution.py` | DPO training pair generation with 0.85 cosine similarity gate and domain fitness tracking |
-| **Metacognition Engine** | `core/metacognition.py` | Expected Calibration Error (ECE), overconfidence ratio, and domain drift detection |
-| **Self-Model** | `core/self_model.py` | Capability snapshots, health heartbeats, and self-assessment for introspective monitoring |
-| **Transfer Learning** | `core/transfer_learning.py` | Cross-domain pattern registry, keyword overlap matching, and domain profile analytics |
-| **Causal Reasoning** | `core/causal_reasoning.py` | Directed causal graph, do-calculus interventions, and counterfactual simulation |
-| **Meta-Learning** | `core/meta_learning.py` | Strategy registry, adaptive parameter tuning, regime shift detection, and exploration–exploitation balance |
-| **Ethical Reasoning** | `core/ethical_reasoning.py` | Constraint registry, domain-scoped ethical evaluation, audit trail, and configurable guardrails |
-| **Embodied Interaction** | `core/embodied_interaction.py` | Sensor abstraction, actuator command bus, environment state, and body-schema for physical/simulated world reasoning |
-| **Social Cognition** | `core/social_cognition.py` | Theory of Mind, relationship memory, social context tracking, and norm compliance evaluation |
-
-### Quantum Consensus Engine
-
-Async-first weighted multi-agent voting in `core/quantum_engine.py`:
-
-- **Speculative gather** — returns as soon as quorum + early-exit confidence is met, cancelling stragglers
-- **Weighted voting** — per-agent reputation via exponential moving average, updated on feedback
-- **Destructive interference** — contradicting high-weight groups (negation pairs, >20% numerical divergence) reduce winner confidence
-- **Domain-aware reputation** — scores keyed by `(agent_id, domain)` with general-domain fallback
-- **Embedding similarity** — optional sentence-transformers cosine similarity for soft dedup (thread-safe lazy singleton, falls back to exact match)
-- **Persistence** — optional reputation persistence to SemanticMemory with auto-save every 10 updates
-- **Profiler** — built-in `ConsensusProfiler` with p50/p95 latency, avg confidence, early-exit %, and contradiction counts
-
-### Multi-Agent Orchestrator
-
-Parallel task orchestration in `core/multi_agent_orchestrator.py`:
-
-- **Role-based dispatch** — assigns tasks to agents by `AgentRole` (Reasoner, Creative, Critic, Specialist, etc.)
-- **Cognitive enrichment pipeline** — post-consensus stage runs Self-Model assessment, Transfer Learning suggestions, Causal Reasoning analysis, Meta-Learning adaptation, Ethical Reasoning guardrails, Social Cognition agent observation, and Embodied Interaction environment tracking
-- **Batch execution** — concurrent multi-task runs with configurable parallelism
-- **Kernel integration** — wired into the boot sequence via `core/kernel.py` with bus event subscriptions
-
-### AGI Completeness
-
-OpenChimera targets 10 cognitive capabilities.  Current status: **10 / 10** implemented and tested.
-
-| # | Capability | Module | Status |
-| --- | ----------- | -------- | -------- |
-| 1 | Episodic Memory | `core/memory_system.py` | ✅ |
-| 2 | Multi-Perspective Deliberation | `core/deliberation.py` | ✅ |
-| 3 | Hierarchical Planning | `core/goal_planner.py` | ✅ |
-| 4 | Self-Directed Evolution | `core/evolution.py` | ✅ |
-| 5 | Confidence Calibration | `core/metacognition.py` | ✅ |
-| 6 | Self-Model | `core/self_model.py` | ✅ |
-| 7 | Cross-Domain Transfer | `core/transfer_learning.py` | ✅ |
-| 8 | Causal Reasoning | `core/causal_reasoning.py` | ✅ |
-| 9 | Embodied Interaction | `core/embodied_interaction.py` | ✅ |
-| 10 | Social Cognition | `core/social_cognition.py` | ✅ |
-
-## Install
-
-Create a virtual environment and install from source:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-prod.txt
-python -m pip install .
-```
-
-Initialize local state:
-
-```powershell
-openchimera bootstrap
-```
-
-Optional: create a local-only runtime override file at `config/runtime_profile.local.json` or point `OPENCHIMERA_RUNTIME_PROFILE` at a private profile path.
-
-Recommended local override workflow:
-
-```powershell
-Copy-Item .\config\runtime_profile.local.example.json .\config\runtime_profile.local.json
-# Edit tokens, provider activation, TLS, and local launcher paths in the local file only.
-```
-
-OpenChimera now validates local runtime profiles on load and fails fast on inconsistent settings such as enabled auth without a token, enabled TLS without both certificate paths, or a preferred cloud provider that is not also enabled.
-
-Optional HTTPS: set `api.tls.enabled=true` plus `api.tls.certfile` and `api.tls.keyfile` in your local runtime override, or use `OPENCHIMERA_TLS_ENABLED=1`, `OPENCHIMERA_TLS_CERTFILE`, and `OPENCHIMERA_TLS_KEYFILE` for a shell-scoped launch.
-
-## Quick Start
-
-> **Five minutes from zero to running.** No Rust, no Docker, no cloud accounts required.
-> See [QUICKSTART.md](QUICKSTART.md) for the complete guide.
+## ⚡ Quick Start
 
 ```bash
-# 1. Clone and enter the repo
-git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git openchimera
-cd openchimera
-
-# 2. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
-
-# 3. Install all production dependencies (pinned, with hashes)
-pip install -r requirements-prod.lock
-
-# 4. Install OpenChimera in editable mode
-pip install -e .
-
-# 5. Bootstrap local state (creates data/ dirs, seed JSON)
-openchimera bootstrap
-
-# 6. Diagnostics check — confirms everything is wired correctly
-openchimera doctor
-
-# 7. Start the runtime on http://127.0.0.1:7870 (Ctrl+C to stop)
-openchimera serve
-```
-
-**Verify it's alive** (second terminal, same venv active):
-
-```bash
-curl http://127.0.0.1:7870/health
-curl http://127.0.0.1:7870/v1/system/readiness
-openchimera status --json
-```
-
-**Run the test suite** (2 600+ tests, ~45 seconds):
-
-```bash
-pip install -r requirements-dev.txt
-python -m pytest tests/ -q
-# Expected: 2600+ passed, 2 skipped (Windows-only tests)
-```
-
-> **Note on skipped tests:** Two tests are expected to be skipped on
-> non-Windows platforms. `test_minimind_runtime_config_is_resolved` validates
-> Windows-specific `python.exe` path resolution, and
-> `test_returns_true_when_powershell_succeeds` exercises PowerShell speech
-> synthesis. Both are guarded with `@unittest.skipUnless(os.name == "nt", ...)`
-> and will run automatically on Windows.
-
-If TLS is enabled, use `https://127.0.0.1:7870` instead. OpenChimera fails fast on invalid certificate configuration rather than silently falling back to plain HTTP.
-
-Runtime logs are emitted to the console and, by default, to `logs/openchimera-runtime.jsonl` as structured JSON lines. Use `OPENCHIMERA_LOG_LEVEL`, `OPENCHIMERA_STRUCTURED_LOG_ENABLED`, or `OPENCHIMERA_STRUCTURED_LOG_PATH` to override the log level or file destination for a deployment.
-
-Exposed deployments should not bind beyond localhost without auth. If you set `OPENCHIMERA_HOST=0.0.0.0` or any non-loopback host, also set `OPENCHIMERA_API_TOKEN` and `OPENCHIMERA_ADMIN_TOKEN`.
-
-## Python Namespace
-
-After installation (`pip install -e .`), the public API is available under the `openchimera` namespace. Both import paths are equivalent:
-
-```python
-# Using the openchimera namespace (recommended for library consumers)
-from openchimera.kernel import Kernel
-from openchimera.provider import OpenChimeraProvider
-from openchimera.query_engine import QueryEngine
-from openchimera.quantum_engine import QuantumEngine
-from openchimera.orchestrator import MultiAgentOrchestrator
-from openchimera.agent_pool import AgentPool, AgentSpec, AgentRole
-from openchimera.memory import MemorySystem
-from openchimera.session_memory import SessionMemory
-from openchimera.config import ROOT, load_runtime_profile
-from openchimera.chimera_bridge import ChimeraLangBridge
-from openchimera.api_server import OpenChimeraAPIServer
-
-# Using the core namespace directly (identical objects)
-from core.kernel import Kernel
-```
-
-## Containers
-
-OpenChimera now ships with a first-class container path for Docker Desktop, Linux hosts, or CI smoke deployments.
-
-Build the image:
-
-```powershell
-docker build -t openchimera:local .
-```
-
-Run the container directly:
-
-```powershell
-docker run --rm -p 7870:7870 \
-  -e OPENCHIMERA_HOST=0.0.0.0 \
-  -e OPENCHIMERA_API_TOKEN=replace-with-user-token \
-  -e OPENCHIMERA_ADMIN_TOKEN=replace-with-admin-token \
-  -e OPENCHIMERA_PORT=7870 \
-  -v ${PWD}\config\runtime_profile.local.json:/app/config/runtime_profile.local.json:ro \
-  -v openchimera-data:/app/data \
-  -v openchimera-logs:/app/logs \
-  -v openchimera-models:/app/models \
-  openchimera:local
-```
-
-Or use Compose:
-
-```powershell
-Copy-Item .env.example .env
-# Edit .env and set OPENCHIMERA_API_TOKEN plus OPENCHIMERA_ADMIN_TOKEN first.
-docker compose up --build -d
-docker compose ps
-docker compose logs -f openchimera
-```
-
-Container defaults:
-
-- the runtime binds to `0.0.0.0:7870` inside the container
-- the container path expects `OPENCHIMERA_API_TOKEN` and `OPENCHIMERA_ADMIN_TOKEN` to be set before startup
-- data, logs, and models are persisted through named volumes
-- `config/runtime_profile.local.json` is mounted read-only so deployment secrets and machine-specific roots stay out of the image
-- the image healthcheck probes `/health` locally inside the container
-- if you intentionally need an unauthenticated non-loopback bind in an isolated lab, set `OPENCHIMERA_ALLOW_INSECURE_BIND=1` explicitly instead of relying on implicit insecure defaults
-
-## Deployment
-
-The deployment helpers below are source-checkout utilities. They are present in the repository and source distribution, but they are not installed into your working directory by the `openchimera` wheel entry point.
-
-For a persistent Windows host, use the built-in Task Scheduler deployment path instead of launching the server manually in a shell.
-
-Install the startup task from an elevated PowerShell session:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\install-openchimera-task.ps1
-```
-
-This registers a startup task named `OpenChimera` that:
-
-- runs `scripts\start-openchimera.ps1`
-- starts the runtime from the repository root
-- appends process output to `logs\openchimera-task.log`
-- restarts automatically after failures with a one-minute interval
-
-Useful operations:
-
-```powershell
-Get-ScheduledTask -TaskName OpenChimera
-Start-ScheduledTask -TaskName OpenChimera
-Get-Content .\logs\openchimera-task.log -Tail 100
-powershell -ExecutionPolicy Bypass -File .\scripts\remove-openchimera-task.ps1
-```
-
-If you prefer to run under a specific service account instead of `SYSTEM`, pass `-RunAsUser` when installing the task.
-
-For repository automation, GitHub Actions now treats OpenChimera as a Python service release:
-
-- `.github/workflows/python-ci.yml` runs the curated release validation gate on Windows and Ubuntu, then performs a separate Ubuntu full-discovery unittest sweep before package build checks.
-- `.github/workflows/deploy.yml` builds `sdist` and wheel artifacts, smoke-installs them on Windows and Ubuntu, and publishes a GitHub release when you push a version tag like `v0.1.0`.
-
-For local operator and developer validation, use the repo-native quality gate scripts so the same checks are easy to run outside CI:
-
-`python run.py validate` now executes the curated release validation suite defined in `config/release_validation_modules.txt` with a concise success summary by default, including a short doctor-warning digest and bounded remediation hints when the runtime configuration is degraded.
-Use `python run.py validate --verbose-tests` when you want raw unittest output streamed live, or `python run.py validate --pattern test_*.py` when you explicitly want the full unittest discovery sweep.
-`python run.py validate --json` now emits a compact automation-friendly payload by default, including machine-readable test metrics such as counts and duration; add `--include-test-output` when you need the full captured unittest stdout and stderr in the JSON response.
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run-quality-gate.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\run-quality-gate.ps1 -SkipPreCommit -TestPattern test_cli.py
-```
-
-```bash
-./scripts/run-quality-gate.sh
-./scripts/run-quality-gate.sh --skip-pre-commit --pattern test_cli.py
-```
-
-## CLI
-
-OpenChimera now ships with a small first-class CLI:
-
-```powershell
-openchimera bootstrap
-openchimera doctor
-openchimera config --json
+# Interactive setup wizard
 openchimera onboard
-openchimera capabilities
-openchimera tools
-openchimera query --text "summarize the current runtime"
-openchimera sessions
-openchimera memory
-openchimera model-roles
-openchimera plugins
-openchimera subsystems
-openchimera mcp
-openchimera briefing
-openchimera autonomy
-openchimera jobs
-openchimera status --json
+
+# Run diagnostics
+openchimera doctor
+
+# Start the API server
 openchimera serve
+
+# Launch the Rust TUI
+openchimera tui
+
+# One-off query (no server needed)
+openchimera ask "What is the capital of France?" --provider openai
+
+# Check status
+openchimera status
 ```
 
-Command summary:
+---
 
-- `openchimera bootstrap` creates missing local directories and baseline JSON state.
-- `openchimera doctor` checks config sources, auth state, and optional integration roots without printing secret values.
-- `openchimera doctor` now also prints bounded next-action guidance for common degraded states such as missing GGUF assets, unsupported harness roots, or unsafe public binds.
-- `openchimera config` prints the sanitized effective configuration snapshot, including deployment mode, auth state, TLS state, structured logging, and override-profile status.
-- `openchimera onboard` shows onboarding completion, blockers, and next actions.
-- onboarding can persist a `prefer_free_models` preference so fallback planning can bias no-cost models before paid providers.
-- `openchimera capabilities` lists commands, tools, skills, plugins, and MCP inventory.
-- `openchimera tools` lists validated runtime tools, inspects one tool contract, or executes a tool with explicit JSON arguments, including autonomy jobs and autonomy artifact inspection.
-- `openchimera query` runs work through the query engine with resumable sessions and can execute explicit tool requests before completion when you pass `--execute-tools` with one or more `--tool-request-json` payloads.
-- `openchimera sessions` inspects persisted query sessions.
-- `openchimera memory` shows hydrated user, repo, and session memory summaries.
-- `openchimera model-roles` inspects or overrides explicit model-role routing.
-- `openchimera plugins` inspects or changes plugin installation state.
-- `openchimera subsystems` inspects or invokes managed subsystem contracts.
-- `openchimera mcp` shows discovered MCP servers and their health.
-- `openchimera mcp --serve` exposes a local stdio MCP server so OpenChimera can be consumed as an MCP provider, not just report external MCP inventory.
-- `openchimera mcp --registry` shows OpenChimera-managed MCP connectors together with their last-known probe state.
-- `openchimera mcp --register ...` and `openchimera mcp --unregister ...` manage registry-backed HTTP or stdio connectors without editing manifests by hand.
-- `openchimera mcp --probe [--id ...]` runs health checks for one or all managed MCP connectors and persists the result into `data/mcp_health_state.json`.
-- `openchimera mcp --resources` and `openchimera mcp --prompts` render the native OpenChimera MCP resource and prompt descriptors.
-- `openchimera briefing` renders the operator daily briefing, including learned free-fallback leaders and degraded fallback warnings.
-- `openchimera channels` inspects configured channel subscriptions, can create or delete subscriptions from JSON/id arguments, can dispatch a test payload to any topic, and can query recent channel delivery history filtered by topic or result status.
-- `openchimera autonomy` inspects autonomy diagnostics, reads autonomy artifact history and snapshots, runs explicit autonomy jobs, or stages preview-only repair plans from the CLI.
-- `openchimera jobs` shows durable operator jobs, filters them by status or type, inspects one job by id, and can cancel or replay them.
-- `openchimera status` prints a local runtime snapshot without starting the API server.
-- `openchimera serve` boots the kernel and hosted API.
-- `scripts/run-quality-gate.ps1` and `scripts/run-quality-gate.sh` run the local hygiene and validation gate in one step.
+## 🏗️ Architecture
 
-## API Surface
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Rust TUI  ←→  Python FastAPI  ←→  17+ AI Providers         │
+│                     ↓                                        │
+│     Tools · MCP · RAG · Cognitive (AXIOM/EVE/ADAM)         │
+│                     ↓                                        │
+│        TypeScript Dashboard (Vite + React)                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-Selected routes:
+| Layer | Tech | What it does |
+|---|---|---|
+| **Rust TUI** | Ratatui | Real-time terminal UI with provider health, agent status, cognitive monitoring |
+| **Python Runtime** | FastAPI + Click | API server, CLI, agent orchestration, tool execution |
+| **Providers** | 17 adapters | OpenAI, Anthropic, Google, Groq, Ollama, DeepSeek, Mistral, Cohere, Azure, Together, Fireworks, xAI, Perplexity, OpenRouter, Bedrock, Cerebras, AI21 |
+| **Tools** | 25+ built-in | Browser automation, computer use (screenshot/click/type), shell exec, file ops, code sandbox, GitHub, web search, RAG, cognitive tools, godmode |
+| **Cognitive** | AXIOM/EVE/ADAM | Memory + grounding, UX validation, cognitive substrate with genome evolution |
+| **Dashboard** | Vite + React | Real-time monitoring at `http://localhost:3000` |
 
-- `GET /openapi.json`
-- `GET /docs`
-- `GET /health`
-- `GET /v1/system/readiness`
-- `GET /v1/system/status`
-- `GET /v1/system/metrics`
-- `GET /v1/config/status`
-- `GET /v1/auth/status`
-- `GET /v1/credentials/status`
-- `GET /v1/channels/status`
-- `GET /v1/channels/history`
-- `GET /v1/onboarding/status`
-- `GET /v1/model-registry/status`
-- `GET /v1/providers/status`
-- `GET /v1/tools/status`
-- `GET /v1/autonomy/diagnostics`
-- `GET /v1/autonomy/artifacts/history`
-- `GET /v1/autonomy/artifacts/get`
-- `GET /v1/autonomy/operator-digest`
-- `GET /v1/model-roles/status`
-- `GET /v1/capabilities/status`
-- `GET /v1/capabilities/commands`
-- `GET /v1/capabilities/tools`
-- `GET /v1/capabilities/skills`
-- `GET /v1/capabilities/plugins`
-- `GET /v1/capabilities/mcp`
-- `POST /v1/tools/execute`
-- `GET /v1/mcp/status`
-- `GET /v1/mcp/registry`
-- `GET /mcp`
-- `GET /v1/query/status`
-- `GET /v1/query/sessions`
-- `GET /v1/query/memory`
-- `GET /v1/plugins/status`
-- `GET /v1/subsystems/status`
-- `GET /v1/jobs/get`
-- `GET /v1/browser/status`
-- `POST /v1/browser/fetch`
-- `POST /v1/browser/submit-form`
-- `POST /v1/runtime/start`
-- `POST /v1/runtime/stop`
-- `POST /v1/model-roles/configure`
-- `POST /v1/query/run`
-- `POST /v1/query/session/get`
-- `POST /v1/plugins/install`
-- `POST /v1/plugins/uninstall`
-- `POST /v1/subsystems/invoke`
-- `POST /v1/channels/dispatch`
-- `POST /v1/jobs/create`
-- `POST /v1/autonomy/preview-repair`
-- `POST /v1/autonomy/operator-digest/dispatch`
-- `POST /v1/mcp/registry/set`
-- `POST /v1/mcp/registry/delete`
-- `POST /v1/mcp/probe`
-- `POST /mcp`
+---
 
-MCP integration notes:
+## 🔧 Configuration
 
-- the repo now includes a root `.mcp.json` manifest that declares `openchimera-local`.
-- capability discovery scans `.mcp.json` manifests as well as health-state entries, so self-declared MCP servers show up in `openchimera mcp --json`.
-- OpenChimera-managed connectors now have a first-class registry in `data/mcp_registry.json`, and probe outcomes are persisted separately in `data/mcp_health_state.json` so discovery and liveness stay independently observable.
-- `openchimera-local` currently exposes operator-focused tools for daily briefing, autonomy diagnostics, operator digest access/dispatch, MCP registry inspection/probing, and channel status/history through the native stdio MCP server.
-- the hosted API now also serves the same MCP methods at `/mcp`, and the descriptor returned by `GET /mcp` includes tool, resource, and prompt counts for HTTP consumers.
-- managed MCP connectors are also exposed through `/v1/mcp/registry`, `/v1/mcp/registry/set`, `/v1/mcp/registry/delete`, and `/v1/mcp/probe`, so automation can manage the connector mesh without going through the CLI.
-- the hosted API now also exposes a public human-readable docs page at `/docs` and a machine-readable OpenAPI-style contract at `/openapi.json`.
+### Environment Variables
 
-## Configuration
+Set API keys as environment variables (recommended for security):
 
-Committed config is intentionally safe and generic:
+```powershell
+# Windows PowerShell
+$env:OPENAI_API_KEY = "sk-..."
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:GROQ_API_KEY = "gsk_..."
+```
 
-- `config/runtime_profile.json` contains publishable defaults only.
-- `config/runtime_profile.local.json` is the preferred place for machine-specific roots, model paths, and private overrides.
-- `GET /v1/config/status` and `openchimera config --json` expose the effective sanitized configuration without leaking secret values.
-- `OPENCHIMERA_RUNTIME_PROFILE` can point to an external private profile file.
-- `.env.example` contains placeholders only and should not contain real tokens.
+```bash
+# macOS / Linux
+export OPENAI_API_KEY="sk-..."
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GROQ_API_KEY="gsk_..."
+```
 
-Autonomy defaults now include:
+### Config Files
 
-- `autonomy.jobs.discover_free_models` for probing free or no-cost fallback catalogs
-- `autonomy.jobs.sync_scouted_models` for merging legacy fallback manifests with current discovery results
-- `autonomy.jobs.learn_fallback_rankings` for converting route-memory outcomes into learned free-fallback ordering and degradation signals
-- `autonomy.jobs.check_degradation_chains` for detecting broken runtime/fallback chains before they turn into silent drift
-- `autonomy.jobs.run_self_audit` for building a consolidated runtime audit across providers, subsystems, jobs, and integration gaps
-- `autonomy.jobs.preview_self_repair` for packaging a preview-only repair plan with Aegis-oriented recommendations
-- `autonomy.jobs.dispatch_operator_digest` for rolling recent alerts, failed durable jobs, and failed channel deliveries into a scheduled operator digest
-- `autonomy.artifacts.retention.max_history_entries` and `autonomy.artifacts.retention.max_age_days` for pruning stale autonomy artifact history without deleting current snapshots
-- `autonomy.alerts.dispatch_topic` and `autonomy.alerts.minimum_severity` for routing severe autonomy findings into operator channels
-- `autonomy.digests.dispatch_topic` and `autonomy.digests.history_limit` for tuning where operator digests are published and how much recent operator history they summarize
-- `providers.prefer_free_models` for biasing fallback recommendations toward no-cost models without changing the local-first default
+Layered YAML configuration:
+- `config/default.yaml` — Base config (checked in)
+- `config/local.yaml` — Your local overrides (gitignored)
+- `OPENCHIMERA_CONFIG` env var — Custom config path
 
-The new diagnostics and preview surfaces are intentionally non-destructive:
+```yaml
+# config/local.yaml
+providers:
+  openai:
+    enabled: true
+    api_key: "${OPENAI_API_KEY}"
+    default_model: "gpt-4o"
+  anthropic:
+    enabled: true
+    api_key: "${ANTHROPIC_API_KEY}"
+```
 
-- `GET /v1/autonomy/diagnostics` returns the current scheduler status plus the latest autonomy artifacts such as self-audit, degradation chains, and repair previews.
-- `GET /v1/autonomy/artifacts/history` returns recent artifact generations so operators can inspect audit/repair history instead of just the latest snapshot.
-- `GET /v1/autonomy/artifacts/get` reads one current autonomy artifact by name.
-- `GET /v1/autonomy/operator-digest` reads the latest rolled-up operator digest artifact directly without going through generic artifact lookup.
-- `POST /v1/autonomy/preview-repair` can either generate a fresh preview immediately or enqueue it as a durable operator job when `enqueue=true` is supplied.
-- `POST /v1/autonomy/operator-digest/dispatch` generates or queues the operator digest with optional `history_limit`, `dispatch_topic`, and `enqueue` controls.
-- `openchimera autonomy --run-job dispatch_operator_digest` generates the current operator digest immediately and writes the `operator_digest` artifact under `data/autonomy`.
-- `openchimera autonomy --operator-digest` reads the current digest artifact, and `openchimera autonomy --dispatch-digest` exposes the digest dispatch path without requiring a raw job name.
-- queued autonomy jobs are now classified into explicit job types such as `autonomy.audit`, `autonomy.learning`, and `autonomy.preview_repair` so filtering and replay can target real operator workflows.
-- severe degradation and self-audit findings now emit a dedicated `system/autonomy/alert` channel event so Slack, Discord, Telegram, or webhook subscribers can receive proactive operator alerts instead of polling artifacts.
-- scheduled operator digests reuse the daily briefing channel surface by default and include recent autonomy alerts, failed durable jobs, and failed channel deliveries so operators can see the current failure picture in one dispatch.
-- `POST /v1/channels/dispatch` and `openchimera channels --dispatch-topic ...` let operators push a manual payload to any configured topic for alert smoke-tests, webhook verification, or custom operator broadcasts.
-- `GET /v1/channels/history` and `openchimera channels --history ...` expose a bounded persisted delivery log with compact payload previews so failed webhook and alert deliveries can be inspected after the fact without tailing runtime output.
+---
 
-Recovered architecture enhancements from legacy archaeology are being absorbed as roadmap inputs for autonomy, routing, and operator ergonomics. They are not promoted to standalone subsystem entries unless OpenChimera has a stable runtime contract for them.
+## 🧠 Cognitive Stack
 
-Authentication uses either environment variables or the local credential store:
+OpenChimera v2 integrates the owner's cognitive architecture:
 
-- `OPENCHIMERA_API_TOKEN`
-- `OPENCHIMERA_ADMIN_TOKEN`
-- `OPENCHIMERA_API_AUTH_HEADER`
-- `OPENCHIMERA_HOST`
-- `OPENCHIMERA_PORT`
-- `OPENCHIMERA_MINIMIND_PYTHON`
+- **AXIOM** — Long-term memory + grounding. Auto-recalls past decisions before re-deriving.
+- **EVE** — Simulated-human UX validation. Predicts UX outcomes before building.
+- **ADAM** — Persistent cognitive substrate. Genome evolution, beliefs, skills lifecycle.
 
-Optional real multimodal backends:
+```bash
+# Activate godmode (full cognitive loop)
+# The AI can tool-call godmode.activate to use cognitive tools
 
-- Windows speech transcription and synthesis require a Windows host with `System.Speech` available.
-- `OPENAI_API_KEY` enables real image generation and can also be used for vision analysis.
-- `OPENROUTER_API_KEY` enables real vision analysis when configured.
+# Via API
+POST /api/v2/tools/execute
+{
+  "tool_id": "godmode.activate",
+  "arguments": {"action": "recall", "query": "What did we decide about auth?"}
+}
+```
 
-The CLI and API status surfaces report whether auth is configured, but they do not print raw token values.
+---
 
-## Optional Integrations
+## 🖥️ Computer Use
 
-OpenChimera can supervise or inspect optional external components when you provide local paths for them:
+Browser automation and desktop control:
 
-- AETHER
-- WRAITH
-- Project Evo
-- MiniMind
-- upstream harness Python port
-- legacy workflow snapshots for compatibility evidence
-- Aegis and Ascension-related workspaces
+```bash
+# Navigate and screenshot
+POST /api/v2/tools/execute
+{
+  "tool_id": "browser.navigate",
+  "arguments": {"url": "https://example.com"}
+}
 
-These integrations are optional. A clean source checkout still boots in degraded mode without them.
+# Take desktop screenshot
+POST /api/v2/tools/execute
+{
+  "tool_id": "computer.screenshot",
+  "arguments": {}
+}
+```
 
-See `LEGACY_INTEGRATIONS.md` for the neutral compatibility and evidence model.
+---
 
-## Security
+## 📊 Dashboard
 
-This repository is intended to stay open-source friendly:
+```bash
+cd typescript/dashboard
+npm install
+npm run dev
+# Opens at http://localhost:3000
+```
 
-- no committed secrets
-- no committed workstation-specific tokens
-- sanitized default runtime profile
-- local override file support for private paths and credentials
-- credential status surfaces that do not leak raw values
+---
 
-See `SECURITY.md` for reporting guidance and repository hygiene expectations.
+## 🛠️ Development
 
-## Open Source
+```bash
+# Python
+pip install -e ".[all,dev]"
+pytest
 
-OpenChimera is licensed under the MIT License. The runtime is designed so contributors can clone the repo, install it from source, bootstrap missing state, and run it locally without inheriting another machine's private configuration.
+# Rust
+cd crates/chimera-tui
+cargo build --release
 
-If you are contributing, keep private overrides out of committed files and prefer local-only config files or environment variables for any credentialed provider setup.
+# TypeScript
+cd typescript/dashboard
+npm install
+npm run dev
+```
+
+---
+
+## 📜 License
+
+MIT © Fernando Garza

@@ -1,0 +1,153 @@
+# OpenChimera v2 — Default Configuration
+# Override in config/local.yaml or via env vars (OPENCHIMERA_*)
+
+server:
+  host: "127.0.0.1"
+  port: 7870
+  workers: 1
+
+api:
+  auth:
+    enabled: false
+    token: ""
+    admin_token: ""
+  cors:
+    enabled: true
+    origins:
+      - "http://localhost:3000"
+
+providers:
+  default: "openai"
+  timeout: 60
+  retry_count: 2
+  openai:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "gpt-4o"
+  anthropic:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "claude-3-5-sonnet-20241022"
+  google:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "gemini-1.5-flash-latest"
+  groq:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "llama-3.3-70b-versatile"
+  ollama:
+    enabled: false
+    api_key: ""
+    base_url: "http://localhost:11434"
+    default_model: "llama3.2"
+  deepseek:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "deepseek-chat"
+  mistral:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "mistral-large-latest"
+  cohere:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "command-r-plus"
+  azure:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "gpt-4o"
+  together:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+  fireworks:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "accounts/fireworks/models/llama-v3p3-70b-instruct"
+  xai:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "grok-2-latest"
+  perplexity:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "sonar-pro"
+  openrouter:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "openai/gpt-4o"
+  bedrock:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  cerebras:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "llama3.1-70b"
+  ai21:
+    enabled: false
+    api_key: ""
+    base_url: ""
+    default_model: "jamba-1.5-large"
+
+mcp:
+  enabled: true
+  registry_path: "data/mcp_registry.json"
+  health_check_interval: 300
+  default_timeout: 30
+
+rag:
+  enabled: true
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  vector_store: "chroma"
+  chunk_size: 512
+  chunk_overlap: 64
+  top_k: 5
+  persist_dir: "data/rag_db"
+
+cognitive:
+  axiom:
+    enabled: true
+    checkpoints_dir: "D:\\AXIOM-AETHER\\checkpoints"
+    auto_recall: true
+  eve:
+    enabled: true
+    personas:
+      - "general"
+      - "developer"
+      - "researcher"
+    auto_approve: false
+  adam:
+    enabled: true
+    memory_db: "D:\\ADAM\\adam_memory.db"
+    genome_path: "D:\\ADAM\\adam_genome.json"
+    auto_evolve: false
+
+computer_use:
+  enabled: true
+  browser: "chromium"
+  headless: true
+  screenshot_dir: "data/screenshots"
+  viewport_width: 1280
+  viewport_height: 720
+
+logging:
+  level: "INFO"
+  structured: true
+  path: "logs/openchimera.jsonl"

@@ -1,63 +1,22 @@
-# Build artifacts
-dist/
-build/
-*.spec
-openchimera.egg-info/
-target/
-Cargo.lock
-.coverage
-
-# Python artifacts
-*.pyc
+# OpenChimera v2
+/data/
+/logs/
+*.db
+*.sqlite3
+.env
+config/local.yaml
+config/runtime_profile.local.json
 __pycache__/
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
-# Local secrets and machine-specific overrides
-.env
-.env.*
-!.env.example
-config/runtime_profile.local.json
-data/credentials.json
-
-# Runtime outputs
-*.log
-debug.log
-.DS_Store
-logs/
-memory/
-!core/memory/
-models/
-checkpoints/
-rag_storage.json
-chimera_kb.json
-# Exclude runtime-mutated data files but keep committed seed configs
-data/
-!data/model_registry.json
-!data/mcp_registry.json
-!data/onboarding_state.json
-!data/local_llm_route_memory.json
-!data/mcp_health_state.json
-tmp_sandbox_debug/
-tmp_sandbox_helper/
-tmp_sandbox_timing/
-tmp_session_test/
-
-# Node artifacts — lockfiles in skill fixtures aren't committed
+.venv/
+venv/
+dist/
+build/
+target/
+Cargo.lock
 node_modules/
-skills/dependency-auditor/test-project/package-lock.json
-
-# Local editor settings
-.vscode/
-
-# AI assistant guide (local only)
-CLAUDE.md
-
-# Audit pipeline run artifacts (generated at runtime)
-artifacts/audit_runs/
+*.log
+*.local
