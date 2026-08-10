@@ -137,12 +137,12 @@ pillow==12.2.0
     # via sentence-transformers
 psutil==7.2.2
     # via -r requirements.in
-pydantic==2.13.2
+pydantic==2.13.4
     # via
     #   -r requirements.in
     #   fastapi
     #   openai
-pydantic-core==2.46.2
+pydantic-core==2.46.4
     # via pydantic
 python-dateutil==2.9.0.post0
     # via pandas
