@@ -18,6 +18,73 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OpenChimeraCLITests(unittest.TestCase):
+    def test_query_accepts_positional_text_and_flag(self) -> None:
+        parser = run._build_parser()
+        positional = parser.parse_args(["query", "hello there"])
+        self.assertEqual(positional.text_pos, ["hello there"])
+        multiword = parser.parse_args(["query", "hello", "there"])
+        self.assertEqual(multiword.text_pos, ["hello", "there"])
+        flag = parser.parse_args(["query", "--text", "hi"])
+        self.assertEqual(flag.text, "hi")
+        self.assertEqual(flag.text_pos, [])
+
+    def test_query_command_rejects_empty_text(self) -> None:
+        err = io.StringIO()
+        with patch.object(sys, "stderr", err):
+            exit_code = run.main(["query"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("Provide a query", err.getvalue())
+
+    def test_tools_accepts_positional_id(self) -> None:
+        parser = run._build_parser()
+        self.assertEqual(parser.parse_args(["tools", "ascension.deliberate"]).tool_id_pos, "ascension.deliberate")
+        self.assertEqual(parser.parse_args(["tools", "--id", "x"]).id, "x")
+
+    def test_skill_description_extracts_frontmatter_and_heading(self) -> None:
+        frontmatter = '---\nname: "demo"\ndescription: "A demo skill"\n---\n# Demo\nbody'
+        self.assertEqual(run._skill_description(frontmatter, "demo"), "A demo skill")
+        heading_only = "# Just A Heading\n\ntext"
+        self.assertEqual(run._skill_description(heading_only, "fallback"), "Just A Heading")
+        self.assertEqual(run._skill_description("", "fallback"), "fallback")
+
+    def test_skills_inspect_single_and_unknown(self) -> None:
+        out = io.StringIO()
+        with redirect_stdout(out):
+            code = run.main(["skills", "ai-seo"])
+        self.assertEqual(code, 0)
+        self.assertIn("Skill:", out.getvalue())
+        self.assertIn("ai-seo", out.getvalue())
+
+        err = io.StringIO()
+        with patch.object(sys, "stderr", err):
+            code = run.main(["skills", "definitely-not-a-real-skill"])
+        self.assertEqual(code, 2)
+        self.assertIn("No skill named", err.getvalue())
+
+    def test_main_converts_user_errors_to_clean_message(self) -> None:
+        err = io.StringIO()
+        with patch.object(run, "_run_cli", side_effect=ValueError("bad subsystem id")), patch.object(sys, "stderr", err):
+            code = run.main(["status"])
+        self.assertEqual(code, 2)
+        self.assertIn("Error: bad subsystem id", err.getvalue())
+
+    def test_main_lets_unexpected_errors_propagate(self) -> None:
+        # Programming bugs (e.g. TypeError) must still surface as a traceback.
+        with patch.object(run, "_run_cli", side_effect=TypeError("internal bug")):
+            with self.assertRaises(TypeError):
+                run.main(["status"])
+
+    def test_tools_execute_reports_permission_error_gracefully(self) -> None:
+        from core.tool_executor import ToolPermissionError
+        fake_provider = MagicMock()
+        fake_provider.execute_tool.side_effect = ToolPermissionError("Tool 'jobs.create' requires admin permission scope")
+        err = io.StringIO()
+        with patch.object(run, "_build_provider", return_value=fake_provider), patch.object(sys, "stderr", err):
+            exit_code = run.main(["tools", "jobs.create", "--execute"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("requires admin permission scope", err.getvalue())
+        self.assertIn("--permission-scope admin", err.getvalue())
+
     def test_bootstrap_command_emits_json(self) -> None:
         with patch.object(run, "bootstrap_workspace", return_value={"status": "ok", "workspace_root": "fake/openchimera", "created_directories": [], "created_files": [], "normalized_files": []}):
             output = io.StringIO()

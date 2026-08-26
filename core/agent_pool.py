@@ -730,9 +730,11 @@ def create_llm_pool(
             len(models), ", ".join(models),
         )
     else:
-        log.warning(
+        # Optional dependency: Ollama is not required. The heuristic fallback is
+        # a designed path, so this is an informational notice, not a warning.
+        log.info(
             "[AgentPool] No Ollama models reachable at %s:%d — "
-            "falling back to heuristic strategies",
+            "using heuristic strategies",
             ollama_host, ollama_port,
         )
 

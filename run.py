@@ -45,6 +45,7 @@ from core.logging_utils import configure_runtime_logging
 from core.mcp_registry import delete_mcp_registry_entry, list_mcp_registry_with_health, probe_all_mcp_registry_entries, probe_mcp_registry_entry, upsert_mcp_registry_entry
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
+from core.tool_executor import ToolExecutionError, ToolPermissionError
 from core.wraith_service import WraithService
 
 
@@ -286,7 +287,8 @@ def _build_parser() -> argparse.ArgumentParser:
     capabilities_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     query_parser = subparsers.add_parser("query", help="Run a query through the OpenChimera query engine.")
-    query_parser.add_argument("--text", default="", help="User query text.")
+    query_parser.add_argument("text_pos", nargs="*", default=[], help="User query text (positional, e.g. openchimera query \"hello\").")
+    query_parser.add_argument("--text", default="", help="User query text (alternative to the positional form).")
     query_parser.add_argument("--session-id", default="", help="Resume an existing query session.")
     query_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
     query_parser.add_argument("--execute-tools", action="store_true", help="Execute the supplied tool requests before model completion.")
@@ -294,7 +296,8 @@ def _build_parser() -> argparse.ArgumentParser:
     query_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     tools_parser = subparsers.add_parser("tools", help="Inspect or execute runtime tools.")
-    tools_parser.add_argument("--id", default="", help="Tool id to inspect or execute.")
+    tools_parser.add_argument("tool_id_pos", nargs="?", default="", help="Tool id to inspect or execute (positional, e.g. openchimera tools ascension.deliberate).")
+    tools_parser.add_argument("--id", default="", help="Tool id to inspect or execute (alternative to the positional form).")
     tools_parser.add_argument("--arguments-json", default="", help="JSON object of tool arguments when executing a tool.")
     tools_parser.add_argument("--permission-scope", choices=["user", "admin"], default="user")
     tools_parser.add_argument("--execute", action="store_true", help="Execute the selected tool instead of listing metadata.")
@@ -358,7 +361,9 @@ def _build_parser() -> argparse.ArgumentParser:
     roles_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     skills_parser = subparsers.add_parser("skills", help="Discover or inspect registered skills.")
+    skills_parser.add_argument("name", nargs="?", default="", help="Inspect a single skill by name (omit to list all).")
     skills_parser.add_argument("--discover", action="store_true", help="Discover available skills.")
+    skills_parser.add_argument("--limit", type=int, default=40, help="Max skills to print when listing (default 40; use --json for all).")
     skills_parser.add_argument("--json", action="store_true", help="Emit JSON output.")
 
     setup_parser = subparsers.add_parser("setup", help="One-step first-time setup: bootstrap workspace, run diagnostics, and show next steps.")
@@ -1438,6 +1443,9 @@ def _query_command(
     tool_request_items: list[str],
     as_json: bool,
 ) -> int:
+    if not text.strip():
+        print('Provide a query, e.g.  openchimera query "summarize the runtime status"', file=sys.stderr)
+        return 2
     provider = _build_provider()
     try:
         tool_requests = [_parse_json_object(item, label="tool-request-json") for item in tool_request_items if str(item).strip()]
@@ -1531,7 +1539,18 @@ def _tools_command(
         except (ValueError, json.JSONDecodeError) as exc:
             print(str(exc), file=sys.stderr)
             return 2
-        payload = provider.execute_tool(str(tool_id).strip(), arguments, permission_scope=permission_scope)
+        try:
+            payload = provider.execute_tool(str(tool_id).strip(), arguments, permission_scope=permission_scope)
+        except ToolPermissionError as exc:
+            print(
+                f"{exc}\nHint: re-run with --permission-scope admin "
+                "(and a valid admin token when API auth is enabled).",
+                file=sys.stderr,
+            )
+            return 2
+        except (ToolExecutionError, ValueError) as exc:
+            print(f"Tool execution failed: {exc}", file=sys.stderr)
+            return 2
         if as_json:
             _print_payload(payload, as_json=True)
             return 0
@@ -1998,48 +2017,86 @@ def _roles_command(assign_args: list[str] | None, list_roles: bool, as_json: boo
     return 0
 
 
-def _skills_discover_command(as_json: bool) -> int:
-    """Discover available skills from the skills/ directory and capability registry."""
-    provider = _build_provider()
+def _skill_description(content: str, fallback: str) -> str:
+    """Best-effort one-line summary from a SKILL.md (YAML frontmatter or heading)."""
+    lines = content.splitlines()
+    if lines and lines[0].strip() == "---":
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            if line.strip().lower().startswith("description:"):
+                return line.split(":", 1)[1].strip().strip('"').strip("'") or fallback
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            return stripped.lstrip("#").strip() or fallback
+        if stripped and stripped != "---":
+            return stripped
+    return fallback
+
+
+def _skills_discover_command(as_json: bool, name: str = "", limit: int = 40) -> int:
+    """Discover skills from the skills/ directory; optionally inspect one by name."""
     skills_dir = Path(__file__).resolve().parent / "skills"
     discovered: list[dict[str, Any]] = []
 
-    # Walk skills directory for SKILL.md descriptors
     if skills_dir.exists():
-        for skill_md in skills_dir.rglob("SKILL.md"):
+        for skill_md in sorted(skills_dir.rglob("SKILL.md")):
             skill_name = skill_md.parent.name
             try:
                 content = skill_md.read_text(encoding="utf-8")
-                first_line = content.splitlines()[0].lstrip("#").strip() if content else skill_name
             except Exception:
-                first_line = skill_name
+                content = ""
             discovered.append({
                 "name": skill_name,
                 "path": str(skill_md.relative_to(skills_dir)),
-                "description": first_line,
-                "source": "filesystem",
+                "description": _skill_description(content, fallback=skill_name),
             })
 
-    # Also pull from capability registry
-    try:
-        cap_skills = provider.capability_plane.list_capabilities("skills") if hasattr(provider, "capability_plane") else []
-        for item in cap_skills:
-            discovered.append({"source": "registry", **item})
-    except Exception:
-        pass
+    # Inspect a single skill by name.
+    needle = name.strip().lower()
+    if needle:
+        match = next((s for s in discovered if s["name"].lower() == needle), None)
+        if match is None:
+            suggestions = [s["name"] for s in discovered if needle in s["name"].lower()][:8]
+            if as_json:
+                _print_payload({"error": "unknown_skill", "name": name, "suggestions": suggestions}, as_json=True)
+            else:
+                print(f"No skill named '{name}'.", file=sys.stderr)
+                if suggestions:
+                    print("Did you mean: " + ", ".join(suggestions), file=sys.stderr)
+            return 2
+        if as_json:
+            _print_payload(match, as_json=True)
+            return 0
+        print(f"Skill:       {match['name']}")
+        print(f"Path:        skills/{match['path']}")
+        print(f"Description: {match['description']}")
+        return 0
 
     payload = {"count": len(discovered), "skills": discovered}
     if as_json:
         _print_payload(payload, as_json=True)
         return 0
-    print(f"Discovered skills: {len(discovered)}")
-    for item in discovered[:30]:
-        print(f"  [{item.get('source', '?')}] {item.get('name', '?')}: {item.get('description', '')[:80]}")
+    print(f"Registered skills: {len(discovered)}")
+    shown = discovered if limit <= 0 else discovered[:limit]
+    for item in shown:
+        print(f"  {item.get('name', '?')}: {item.get('description', '')[:80]}")
+    if len(shown) < len(discovered):
+        print(f"  … and {len(discovered) - len(shown)} more — inspect one with 'openchimera skills <name>' or use --json.")
     return 0
 
 
 def _serve_command(verbose: bool) -> int:
     _setup_logging(verbose=verbose)
+    # On an interactive (TTY) boot, keep the console quiet (WARNING+) so the
+    # per-subsystem INFO init wall doesn't bury the readiness banner. The
+    # structured log file (if configured) still records full INFO, and
+    # `--verbose` or a piped/CI run (non-TTY) keep the detailed console output.
+    if sys.stdout.isatty() and not verbose:
+        for handler in logging.getLogger().handlers:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+                handler.setLevel(logging.WARNING)
     workspace_root = _configure_workspace()
     logging.info("Starting OpenChimera from %s", workspace_root)
     bootstrap_report = bootstrap_workspace()
@@ -2058,7 +2115,7 @@ def _serve_command(verbose: bool) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def _run_cli(argv: list[str] | None = None) -> int:
     _configure_workspace()
     parser = _build_parser()
     args = parser.parse_args(argv if argv is not None else (["serve"] if len(sys.argv) == 1 else None))
@@ -2157,8 +2214,9 @@ def main(argv: list[str] | None = None) -> int:
     if command == "capabilities":
         return _capabilities_command(kind=getattr(args, "kind", None), as_json=bool(args.json))
     if command == "query":
+        positional_text = " ".join(getattr(args, "text_pos", []) or []).strip()
         return _query_command(
-            text=str(getattr(args, "text", "")),
+            text=positional_text or str(getattr(args, "text", "")),
             session_id=str(getattr(args, "session_id", "")).strip() or None,
             permission_scope=str(getattr(args, "permission_scope", "user")),
             execute_tools=bool(getattr(args, "execute_tools", False)),
@@ -2167,7 +2225,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     if command == "tools":
         return _tools_command(
-            tool_id=str(getattr(args, "id", "")).strip(),
+            tool_id=str(getattr(args, "tool_id_pos", "") or getattr(args, "id", "")).strip(),
             arguments_json=str(getattr(args, "arguments_json", "")),
             permission_scope=str(getattr(args, "permission_scope", "user")),
             execute=bool(getattr(args, "execute", False)),
@@ -2233,11 +2291,35 @@ def main(argv: list[str] | None = None) -> int:
             as_json=bool(args.json),
         )
     if command == "skills":
-        if bool(getattr(args, "discover", False)):
-            return _skills_discover_command(as_json=bool(args.json))
-        return _skills_discover_command(as_json=bool(args.json))
+        return _skills_discover_command(
+            as_json=bool(args.json),
+            name=str(getattr(args, "name", "")).strip(),
+            limit=int(getattr(args, "limit", 40)),
+        )
     parser.error(f"Unknown command: {command}")
     return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point.
+
+    Turns expected user-input / runtime conditions (bad ids, missing files,
+    malformed JSON, insufficient permissions) into a concise one-line error and
+    a non-zero exit instead of a raw Python traceback. Unexpected errors
+    (programming bugs) still propagate so they remain visible.
+    """
+    try:
+        return _run_cli(argv)
+    except ToolPermissionError as exc:
+        print(
+            f"{exc}\nHint: re-run with --permission-scope admin "
+            "(and a valid admin token when API auth is enabled).",
+            file=sys.stderr,
+        )
+        return 2
+    except (ToolExecutionError, ValueError, KeyError, FileNotFoundError, json.JSONDecodeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

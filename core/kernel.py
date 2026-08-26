@@ -213,9 +213,55 @@ class OpenChimeraKernel:
         )
 
         if run_forever:
+            self._print_ready_banner(boot_status_report)
             while True:
                 time.sleep(1)
         return status
+
+    def _print_ready_banner(self, boot_status_report: dict[str, Any]) -> None:
+        """Print a concise, human-friendly readiness summary for interactive runs.
+
+        Suppressed when stdout is not a TTY (pipes, CI, background) so logs stay
+        the machine-readable interface there. Never raises.
+        """
+        try:
+            import sys
+
+            if not sys.stdout.isatty():
+                return
+            from core.config import get_provider_base_url, is_api_auth_enabled
+
+            url = get_provider_base_url()
+            status = str(boot_status_report.get("status", "?")).lower()
+            auth_on = is_api_auth_enabled()
+            try:
+                online = bool(self.provider.status().get("online"))
+            except Exception:
+                online = False
+
+            def c(text: str, code: str) -> str:
+                return f"\033[{code}m{text}\033[0m"
+
+            dim = lambda s: c(s, "2")
+            dot = c("●", "32") if status == "full" else c("●", "33")
+
+            lines = [
+                "",
+                f"  {c('OpenChimera', '1;36')}  {dot} {status}",
+                f"  {c('API', '1')}    {c(url, '36')}  {dim('(OpenAI-compatible)')}",
+                f"  {c('Docs', '1')}   {c(url + '/docs', '36')}",
+                f"  {c('Auth', '1')}   {'enabled' if auth_on else dim('disabled — loopback only')}",
+            ]
+            if not online:
+                lines.append(
+                    f"  {c('Model', '1')}  {dim('none loaded —')} "
+                    f"openchimera onboard --register-local-model-path <model.gguf>"
+                )
+            lines.append(dim("  Ctrl+C to stop  ·  openchimera status  ·  openchimera doctor"))
+            lines.append("")
+            print("\n".join(lines), flush=True)
+        except Exception:
+            pass
 
     def _start_local_runtime(self) -> None:
         LOGGER.info("AETHER unavailable; starting local OpenChimera runtime fallback.")
@@ -422,7 +468,13 @@ class OpenChimeraKernel:
         report["subsystems"]["aether"] = "ok" if self.aether.status().get("running") else "degraded"
         report["subsystems"]["wraith"] = "ok" if self.wraith.status().get("running") else "degraded"
         report["subsystems"]["evo"] = "ok" if self.evo.status().get("running") else "degraded"
-        report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "failed"
+        # A provider that is reachable but has no healthy model (e.g. no local
+        # model installed yet) is degraded, not failed — the gateway is still
+        # operational. "failed" is reserved for a provider that cannot be queried.
+        try:
+            report["subsystems"]["provider"] = "ok" if self.provider.status().get("online") else "degraded"
+        except Exception:
+            report["subsystems"]["provider"] = "failed"
         report["subsystems"]["api_server"] = "ok" if self.api_server else "failed"
 
         # Check AGI modules
@@ -449,9 +501,13 @@ class OpenChimeraKernel:
         failed_count = sum(1 for s in report["subsystems"].values() if s == "failed")
         degraded_count = sum(1 for s in report["subsystems"].values() if s == "degraded")
 
-        if failed_count > 0 and "provider" in [k for k, v in report["subsystems"].items() if v == "failed"]:
+        # The runtime is "not operational" (FAILED) only when the API server
+        # itself did not come up. Anything else that failed/degraded while the
+        # server is serving (no model, an optional subsystem down, ...) is a
+        # DEGRADED boot, not a FAILED one.
+        if report["subsystems"].get("api_server") == "failed":
             report["status"] = BootStatus.FAILED.value
-        elif failed_count > 0 or degraded_count > 2:
+        elif failed_count > 0 or degraded_count > 0:
             report["status"] = BootStatus.DEGRADED.value
         else:
             report["status"] = BootStatus.FULL.value

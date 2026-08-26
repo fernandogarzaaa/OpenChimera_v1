@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 try:
@@ -55,10 +56,18 @@ class WraithOrchestrator:
         OpenChimera service entry point.
         Runs the WRAITH orchestrator's default task loop.
         Called by WraithService in a background thread.
+
+        The bundled scraper task is a simulation (it deliberately raises and
+        retries with backoff). It is opt-in so a normal boot stays quiet and
+        fast — set WRAITH_RUN_DEMO=1 to run the sample task loop.
         """
+        log = logging.getLogger("openchimera.wraith")
         default_task = os.getenv("WRAITH_DEFAULT_TASK", "CHIMERA_INGEST_01")
-        print(f"[WRAITH] run() invoked — starting task loop (task={default_task})")
-        self.run_scraper_task(default_task)
+        if os.getenv("WRAITH_RUN_DEMO", "").strip().lower() in ("1", "true", "yes", "on"):
+            log.info("WRAITH run() invoked — starting sample task loop (task=%s)", default_task)
+            self.run_scraper_task(default_task)
+        else:
+            log.info("WRAITH orchestrator ready (idle; set WRAITH_RUN_DEMO=1 to run the sample task loop).")
 
 
 if __name__ == "__main__":

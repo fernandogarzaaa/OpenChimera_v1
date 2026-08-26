@@ -472,20 +472,27 @@ class TestRecordLearning(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             sched = self._make_sched(Path(tmp))
             from unittest.mock import MagicMock
-            sched._causal = MagicMock()
+            from core.causal_reasoning import CausalReasoning
+            # spec= ensures the test fails if _record_learning calls a method
+            # that does not exist on the real CausalReasoning API.
+            sched._causal = MagicMock(spec=CausalReasoning)
             sched._transfer = MagicMock()
             sched._record_learning("discover_free_models", {"ok": True}, success=True)
-            sched._causal.record_observation.assert_called_once()
+            sched._causal.add_cause.assert_called_once()
+            self.assertEqual(sched._causal.add_cause.call_args.kwargs.get("cause"), "autonomy_job:discover_free_models")
+            self.assertEqual(sched._causal.add_cause.call_args.kwargs.get("effect"), "success")
             sched._transfer.register_pattern.assert_called_once()
 
     def test_record_learning_skips_transfer_on_failure(self):
         with tempfile.TemporaryDirectory() as tmp:
             sched = self._make_sched(Path(tmp))
             from unittest.mock import MagicMock
-            sched._causal = MagicMock()
+            from core.causal_reasoning import CausalReasoning
+            sched._causal = MagicMock(spec=CausalReasoning)
             sched._transfer = MagicMock()
             sched._record_learning("discover_free_models", {"err": "boom"}, success=False)
-            sched._causal.record_observation.assert_called_once()
+            sched._causal.add_cause.assert_called_once()
+            self.assertEqual(sched._causal.add_cause.call_args.kwargs.get("effect"), "failure")
             sched._transfer.register_pattern.assert_not_called()
 
     def test_record_learning_tolerates_none_subsystems(self):

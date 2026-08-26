@@ -49,6 +49,8 @@ SANDBOX_RUNTIME_PATHS: tuple[str, ...] = (
     "core",
     "sandbox",
     "scripts",
+    "services",
+    "swarms",
 )
 
 

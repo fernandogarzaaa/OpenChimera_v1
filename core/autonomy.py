@@ -267,24 +267,27 @@ class AutonomyScheduler:
         """Feed job outcomes into causal and transfer learning subsystems."""
         if self._causal is not None:
             try:
-                self._causal.record_observation(
-                    event=f"autonomy_job:{job_name}",
-                    outcome="success" if success else "failure",
-                    context={"job": job_name, "streak": self.jobs[job_name].success_streak},
+                # Record "running this job tends to produce this outcome" as a
+                # causal edge; evidence accrues with the job's success streak.
+                self._causal.add_cause(
+                    cause=f"autonomy_job:{job_name}",
+                    effect="success" if success else "failure",
+                    evidence_count=max(1, self.jobs[job_name].success_streak),
                 )
             except Exception as exc:
-                log.warning("[Autonomy] Failed to register transfer pattern: %s", exc)
+                log.warning("[Autonomy] Failed to record causal outcome: %s", exc)
         if self._transfer is not None and success:
             try:
                 from core.transfer_learning import PatternType
                 self._transfer.register_pattern(
-                    name=f"autonomy:{job_name}",
-                    pattern_type=PatternType.HEURISTIC,
-                    pattern_data={"job": job_name, "summary": str(result)[:500]},
                     source_domain="autonomy",
+                    pattern_type=PatternType.HEURISTIC,
+                    description=f"autonomy:{job_name}",
+                    keywords=[job_name, "autonomy"],
+                    metadata={"job": job_name, "summary": str(result)[:500]},
                 )
             except Exception as exc:
-                log.warning("[Autonomy] Failed to execute block: %s", exc)
+                log.warning("[Autonomy] Failed to register transfer pattern: %s", exc)
 
     def _sync_scouted_models(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         source_path = self.legacy_workspace_root / "chimera_free_fallbacks.json"

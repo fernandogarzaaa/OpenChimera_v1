@@ -43,6 +43,44 @@ class RuntimeProfileTests(unittest.TestCase):
             self.assertEqual(profile["providers"]["preferred_cloud_provider"], "openai")
             self.assertTrue(profile["api"]["auth"]["enabled"])
 
+    def test_save_override_writes_only_delta_and_leaves_committed_profile_untouched(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            base_path = Path(temp_dir) / "runtime_profile.json"
+            override_path = Path(temp_dir) / "runtime_profile.local.json"
+            committed = {
+                "hardware": {"cpu_count": 8, "ram_gb": 19.8},
+                "local_runtime": {"mode": "performance", "cpu_threads": 6},
+            }
+            base_path.write_text(json.dumps(committed), encoding="utf-8")
+            committed_bytes = base_path.read_bytes()
+
+            # The wizard mutates a fully-merged profile and persists it; only the
+            # machine-specific changes should reach the git-ignored override.
+            mutated = {
+                "hardware": {"cpu_count": 4, "ram_gb": 0.0},
+                "local_runtime": {"mode": "bootstrap-safe", "cpu_threads": 6},
+            }
+
+            config.load_runtime_profile.cache_clear()
+            with patch.object(config, "get_runtime_profile_path", return_value=base_path), patch.object(
+                config, "get_runtime_profile_override_path", return_value=override_path
+            ):
+                config.save_runtime_profile_override(mutated)
+                merged = config.load_runtime_profile()
+
+            # Committed profile is byte-for-byte unchanged.
+            self.assertEqual(base_path.read_bytes(), committed_bytes)
+            # Override holds only the changed keys (cpu_threads was unchanged -> omitted).
+            override = json.loads(override_path.read_text(encoding="utf-8"))
+            self.assertEqual(override, {
+                "hardware": {"cpu_count": 4, "ram_gb": 0.0},
+                "local_runtime": {"mode": "bootstrap-safe"},
+            })
+            # Loading layers the override back on top of the committed defaults.
+            self.assertEqual(merged["hardware"]["cpu_count"], 4)
+            self.assertEqual(merged["local_runtime"]["mode"], "bootstrap-safe")
+            self.assertEqual(merged["local_runtime"]["cpu_threads"], 6)
+
     def test_legacy_root_falls_back_to_real_default_when_profile_points_to_missing_bootstrap_path(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             missing_profile_root = Path(temp_dir) / "external" / "legacy-workspace"
