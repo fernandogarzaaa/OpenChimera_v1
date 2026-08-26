@@ -223,7 +223,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==5.4.1
+sentence-transformers==5.5.1
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
