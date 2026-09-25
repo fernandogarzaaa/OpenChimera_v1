@@ -7,12 +7,12 @@ from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = {
-    "astrbot": "astrbot",
+    "AstrBot": "astrbot",
     "deer-flow": "deer-flow",
     "khoj": "khoj",
     "ragflow": "ragflow",
-    "llamafactory": "llamafactory",
-    "swe-agent": "swe-agent",
+    "LlamaFactory": "llamafactory",
+    "SWE-agent": "swe-agent",
 }
 
 
