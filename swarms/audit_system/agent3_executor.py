@@ -112,8 +112,8 @@ class ExecutorAgent:
 
         # 2. Check against static protected path list
         for af in rec.affected_files:
-            rel = Path(af).name
-            if any(af.endswith(p) for p in _PROTECTED_PATHS):
+            normalized = af.replace("\\", "/")
+            if any(normalized.endswith(p) for p in _PROTECTED_PATHS):
                 return ExecutionRecord(
                     recommendation_id=rec.rec_id,
                     status="skipped",
