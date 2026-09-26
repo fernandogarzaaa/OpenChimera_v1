@@ -785,16 +785,33 @@ class CausalReasoning:
         b_vals: List[Tuple[float, float]],
         max_gap_s: float = 60.0,
     ) -> List[Tuple[float, float]]:
-        """Match observations from two variables by nearest timestamp."""
+        """Match observations from two variables by nearest timestamp.
+
+        Each observation from ``b_vals`` is used at most once. Reusing the
+        same observation for every ``a`` entry collapses variance (e.g. on
+        Windows where ``time.time()`` has coarse ~15ms granularity and a
+        tight loop stamps every observation with an identical timestamp),
+        which drives Pearson correlation to 0.0 for perfectly correlated
+        series.
+        """
         if not a_vals or not b_vals:
             return []
         pairs: List[Tuple[float, float]] = []
         b_sorted = sorted(b_vals, key=lambda x: x[0])
-        for a_ts, a_val in a_vals:
-            # Find closest b
-            best_b = min(b_sorted, key=lambda x: abs(x[0] - a_ts))
-            if abs(best_b[0] - a_ts) <= max_gap_s:
-                pairs.append((a_val, best_b[1]))
+        used = [False] * len(b_sorted)
+        for a_ts, a_val in sorted(a_vals, key=lambda x: x[0]):
+            best_idx = -1
+            best_gap = None
+            for idx, (b_ts, _b_val) in enumerate(b_sorted):
+                if used[idx]:
+                    continue
+                gap = abs(b_ts - a_ts)
+                if gap <= max_gap_s and (best_gap is None or gap < best_gap):
+                    best_gap = gap
+                    best_idx = idx
+            if best_idx >= 0:
+                used[best_idx] = True
+                pairs.append((a_val, b_sorted[best_idx][1]))
         return pairs
 
     @staticmethod

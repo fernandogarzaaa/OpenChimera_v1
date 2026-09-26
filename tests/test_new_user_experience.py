@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import time
 import unittest
@@ -63,7 +64,7 @@ class TestPhase1_InstallationBootstrap(unittest.TestCase):
         """The CLI should accept --help without crashing."""
         import subprocess
         result = subprocess.run(
-            ["python", "-c", "from run import main; import sys; sys.argv=['openchimera', '--help']; main()"],
+            [sys.executable, "-c", "from run import main; import sys; sys.argv=['openchimera', '--help']; main()"],
             capture_output=True, text=True, timeout=10,
             cwd=str(ROOT),
         )

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sys
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -40,9 +43,59 @@ def serve(host: str | None, port: int | None, reload: bool) -> None:
 
 
 @cli.command()
-def status() -> None:
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def bootstrap(as_json: bool) -> None:
+    """Create missing local state directories and report what exists."""
+    workspace = Path.cwd()
+    dirs = [workspace / "config", workspace / "data"]
+    created: list[str] = []
+    for directory in dirs:
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            created.append(str(directory))
+    payload = {
+        "status": "ok",
+        "workspace": str(workspace),
+        "config_dir": str(workspace / "config"),
+        "data_dir": str(workspace / "data"),
+        "created_directories": created,
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    console.print("[bold green]Bootstrap complete[/bold green]")
+    console.print(f"Workspace: {workspace}")
+    if created:
+        for item in created:
+            console.print(f"  Created: {item}")
+    else:
+        console.print("  Local state already present")
+
+
+@cli.command()
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def status(as_json: bool) -> None:
     """Show runtime status."""
     settings = load_settings()
+    if as_json:
+        enabled = [k for k, v in settings.providers.items() if v.enabled]
+        payload = {
+            "status": "ok",
+            "version": "2.0.0",
+            "config_path": str(settings.config_path),
+            "server": {"host": settings.server.host, "port": settings.server.port},
+            "providers_enabled": enabled,
+            "cognitive": {
+                "axiom": settings.cognitive.axiom.enabled,
+                "eve": settings.cognitive.eve.enabled,
+                "adam": settings.cognitive.adam.enabled,
+            },
+            "computer_use": settings.computer_use.enabled,
+            "rag": settings.rag.enabled,
+            "mcp": settings.mcp.enabled,
+        }
+        print(json.dumps(payload, indent=2))
+        return
     table = Table(title="OpenChimera v2 Status", show_header=True, header_style="bold cyan")
     table.add_column("Key", style="dim")
     table.add_column("Value")
@@ -151,10 +204,13 @@ def tui() -> None:
 
 
 @cli.command()
-def doctor() -> None:
+@click.option("--production", is_flag=True, help="Include production-readiness checks.")
+@click.option("--json", "as_json", is_flag=True, help="Emit a JSON report (always exits 0).")
+def doctor(production: bool, as_json: bool) -> None:
     """Run diagnostics — inspired by OpenClaw's doctor command."""
     settings = load_settings()
-    console.print(Panel.fit("[bold]🔍 OpenChimera Diagnostics[/bold]", border_style="yellow"))
+    if not as_json:
+        console.print(Panel.fit("[bold]🔍 OpenChimera Diagnostics[/bold]", border_style="yellow"))
 
     issues: list[str] = []
     warnings: list[str] = []
@@ -164,8 +220,6 @@ def doctor() -> None:
     enabled = [k for k, v in providers.items() if v.enabled]
     if not enabled:
         issues.append("No providers enabled. Set at least one API key.")
-    else:
-        console.print(f"[green]✓[/green] {len(enabled)} provider(s) enabled: {', '.join(enabled)}")
 
     for name, prov in providers.items():
         if prov.enabled and name not in ("ollama",) and not prov.api_key:
@@ -176,16 +230,18 @@ def doctor() -> None:
         warnings.append("Auth enabled but no API token set")
 
     # Check optional deps
+    chromadb_available = True
     try:
-        import chromadb
-        console.print("[green]✓[/green] ChromaDB available")
+        import chromadb  # noqa: F401
     except ImportError:
+        chromadb_available = False
         warnings.append("ChromaDB not installed — RAG uses memory fallback")
 
+    playwright_available = True
     try:
-        import playwright
-        console.print("[green]✓[/green] Playwright available")
+        import playwright  # noqa: F401
     except ImportError:
+        playwright_available = False
         warnings.append("Playwright not installed — browser tools unavailable")
 
     # Check cognitive
@@ -193,8 +249,55 @@ def doctor() -> None:
     axiom_dir = pathlibPath(settings.cognitive.axiom.checkpoints_dir)
     if not axiom_dir.exists():
         warnings.append(f"AXIOM checkpoints dir does not exist: {axiom_dir}")
-    else:
-        console.print(f"[green]✓[/green] AXIOM checkpoints dir exists")
+
+    production_checks: dict[str, bool] = {}
+    production_warnings: list[str] = []
+    if production:
+        config_dir = Path("config")
+        data_dir = Path("data")
+        binds_localhost = settings.server.host in ("127.0.0.1", "localhost", "::1")
+        production_checks = {
+            "config_dir_exists": config_dir.exists(),
+            "data_dir_exists": data_dir.exists(),
+            "server_binds_localhost": binds_localhost,
+            "auth_or_local_bind": bool(settings.api.auth.enabled) or binds_localhost,
+            "chromadb_available": chromadb_available,
+            "playwright_available": playwright_available,
+        }
+        if not production_checks["config_dir_exists"]:
+            production_warnings.append("config/ directory is missing. Run 'openchimera bootstrap'.")
+        if not production_checks["data_dir_exists"]:
+            production_warnings.append("data/ directory is missing. Run 'openchimera bootstrap'.")
+        if not production_checks["server_binds_localhost"]:
+            production_warnings.append("Server binds beyond localhost. Enable API auth before exposing the runtime.")
+        if not production_checks["auth_or_local_bind"]:
+            production_warnings.append("Runtime is exposed without API auth. Set OPENCHIMERA_API_TOKEN.")
+        if not enabled:
+            production_warnings.append("No providers enabled. Set at least one API key for production use.")
+
+    if as_json:
+        payload = {
+            "status": "ok" if not issues and not production_warnings else "warning",
+            "version": "2.0.0",
+            "issues": issues,
+            "warnings": warnings,
+            "production": {
+                "requested": production,
+                "checks": production_checks,
+                "warnings": production_warnings,
+            } if production else {"requested": False, "checks": {}, "warnings": []},
+        }
+        print(json.dumps(payload, indent=2))
+        return
+
+    if enabled:
+        console.print(f"[green]✓[/green] {len(enabled)} provider(s) enabled: {', '.join(enabled)}")
+    if chromadb_available:
+        console.print("[green]✓[/green] ChromaDB available")
+    if playwright_available:
+        console.print("[green]✓[/green] Playwright available")
+    if axiom_dir.exists():
+        console.print("[green]✓[/green] AXIOM checkpoints dir exists")
 
     # Report
     if issues:
@@ -205,14 +308,113 @@ def doctor() -> None:
         console.print(f"\n[bold yellow]⚠ {len(warnings)} warning(s):[/bold yellow]")
         for w in warnings:
             console.print(f"  [yellow]- {w}[/yellow]")
+    if production:
+        console.print("\n[bold]Production checks:[/bold]")
+        for check_name, check_value in production_checks.items():
+            console.print(f"  {check_name}: {'ok' if check_value else 'missing'}")
+        if production_warnings:
+            console.print("[bold yellow]Production warnings:[/bold yellow]")
+            for w in production_warnings:
+                console.print(f"  [yellow]- {w}[/yellow]")
 
-    if not issues and not warnings:
+    if not issues and not warnings and not production_warnings:
         console.print("\n[bold green]✅ All checks passed — OpenChimera is ready![/bold green]")
-    elif not issues:
+    elif not issues and not production_warnings:
         console.print("\n[bold yellow]⚠ Warnings only — functional but not optimal[/bold yellow]")
     else:
         console.print("\n[bold red]✗ Issues found — please fix before using[/bold red]")
         sys.exit(1)
+
+
+@cli.group()
+def backup() -> None:
+    """Create, list, or restore local state backups."""
+    pass
+
+
+def _backup_root() -> Path:
+    root = Path.cwd() / "data" / "backups"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+@backup.command("create")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def backup_create(as_json: bool) -> None:
+    """Create a timestamped backup of local config state."""
+    root = _backup_root()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    archive_name = f"openchimera-{stamp}.zip"
+    archive_path = root / archive_name
+    manifest = {
+        "created_at": stamp,
+        "version": "2.0.0",
+        "workspace": str(Path.cwd()),
+    }
+    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("manifest.json", json.dumps(manifest, indent=2))
+        config_dir = Path.cwd() / "config"
+        if config_dir.exists():
+            for item in sorted(config_dir.glob("*.yaml")):
+                bundle.write(item, arcname=f"config/{item.name}")
+    payload = {
+        "status": "ok",
+        "backup": {
+            "file": archive_name,
+            "path": str(archive_path),
+            "created_at": stamp,
+            "size_bytes": archive_path.stat().st_size,
+        },
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    console.print(f"[bold green]Created backup: {archive_path}[/bold green]")
+
+
+@backup.command("list")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def backup_list(as_json: bool) -> None:
+    """List existing local state backups."""
+    root = _backup_root()
+    backups = []
+    for path in sorted(root.glob("openchimera-*.zip")):
+        backups.append(
+            {
+                "file": path.name,
+                "path": str(path),
+                "size_bytes": path.stat().st_size,
+            }
+        )
+    if as_json:
+        print(json.dumps({"status": "ok", "count": len(backups), "backups": backups}, indent=2))
+        return
+    console.print(f"Backups: {len(backups)}")
+    for item in backups:
+        console.print(f"- {item['file']} ({item['size_bytes']} bytes)")
+
+
+@backup.command("restore")
+@click.argument("file", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def backup_restore(file: str | None, as_json: bool) -> None:
+    """Restore local state from a backup archive."""
+    if not file:
+        console.print("[bold red]Backup restore requires a backup file path or file name.[/bold red]")
+        sys.exit(2)
+    candidate = Path(file)
+    if not candidate.is_absolute():
+        candidate = _backup_root() / candidate
+    if not candidate.exists():
+        console.print(f"[bold red]Backup archive not found: {candidate}[/bold red]")
+        sys.exit(1)
+    with zipfile.ZipFile(candidate, "r") as bundle:
+        bundle.extractall(Path.cwd())
+    payload = {"status": "ok", "restored_from": str(candidate)}
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    console.print(f"[bold green]Restored local state from: {candidate}[/bold green]")
 
 
 @cli.command()

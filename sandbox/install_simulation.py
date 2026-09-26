@@ -49,6 +49,7 @@ SANDBOX_RUNTIME_PATHS: tuple[str, ...] = (
     "core",
     "sandbox",
     "scripts",
+    "services",
 )
 
 
@@ -306,6 +307,7 @@ def prepare_sandbox_workspace(destination: str | Path | None = None) -> dict[str
         "OPENCHIMERA_LEGACY_HARNESS_ROOT": str(stubs_root / "openclaw" / "integrations" / "legacy-harness-snapshot"),
         "MINIMIND_ROOT": str(minimind_root),
         "OPENCHIMERA_MINIMIND_PYTHON": sys.executable,
+        "OPENCHIMERA_MEDIA_BACKEND_TIMEOUT": "3",
     }
 
     return {
