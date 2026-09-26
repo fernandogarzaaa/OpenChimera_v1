@@ -137,6 +137,7 @@ jobs:
       - name: Run package smoke checks
         shell: bash
         run: |
-          openchimera --help
-          openchimera status
-          openchimera onboard
+          openchimera bootstrap
+          openchimera doctor --production --json
+          openchimera status --json
+          openchimera backup create --json
