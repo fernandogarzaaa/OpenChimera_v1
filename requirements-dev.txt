@@ -34,11 +34,11 @@ click==8.3.1
     #   pip-tools
     #   typer
     #   uvicorn
-cuda-bindings==13.2.0
+cuda-bindings==13.2.0; sys_platform != "darwin"
     # via torch
-cuda-pathfinder==1.5.3
+cuda-pathfinder==1.5.3; sys_platform != "darwin"
     # via cuda-bindings
-cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.2
+cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.2; sys_platform != "darwin"
     # via torch
 distlib==0.4.0
     # via virtualenv
@@ -112,44 +112,44 @@ numpy==2.4.4
     #   scipy
     #   sentence-transformers
     #   transformers
-nvidia-cublas==13.1.0.3
+nvidia-cublas==13.1.0.3; sys_platform != "darwin"
     # via
     #   cuda-toolkit
     #   nvidia-cudnn-cu13
     #   nvidia-cusolver
-nvidia-cuda-cupti==13.0.85
+nvidia-cuda-cupti==13.0.85; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cuda-nvrtc==13.0.88
+nvidia-cuda-nvrtc==13.0.88; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cuda-runtime==13.0.96
+nvidia-cuda-runtime==13.0.96; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cudnn-cu13==9.19.0.56
+nvidia-cudnn-cu13==9.19.0.56; sys_platform != "darwin"
     # via torch
-nvidia-cufft==12.0.0.61
+nvidia-cufft==12.0.0.61; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cufile==1.15.1.6
+nvidia-cufile==1.15.1.6; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-curand==10.4.0.35
+nvidia-curand==10.4.0.35; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cusolver==12.0.4.66
+nvidia-cusolver==12.0.4.66; sys_platform != "darwin"
     # via cuda-toolkit
-nvidia-cusparse==12.6.3.3
+nvidia-cusparse==12.6.3.3; sys_platform != "darwin"
     # via
     #   cuda-toolkit
     #   nvidia-cusolver
-nvidia-cusparselt-cu13==0.8.0
+nvidia-cusparselt-cu13==0.8.0; sys_platform != "darwin"
     # via torch
-nvidia-nccl-cu13==2.28.9
+nvidia-nccl-cu13==2.28.9; sys_platform != "darwin"
     # via torch
-nvidia-nvjitlink==13.0.88
+nvidia-nvjitlink==13.0.88; sys_platform != "darwin"
     # via
     #   cuda-toolkit
     #   nvidia-cufft
     #   nvidia-cusolver
     #   nvidia-cusparse
-nvidia-nvshmem-cu13==3.4.5
+nvidia-nvshmem-cu13==3.4.5; sys_platform != "darwin"
     # via torch
-nvidia-nvtx==13.0.85
+nvidia-nvtx==13.0.85; sys_platform != "darwin"
     # via cuda-toolkit
 openai==1.109.1
     # via
@@ -254,7 +254,7 @@ tqdm==4.67.3
     #   transformers
 transformers==5.5.4
     # via sentence-transformers
-triton==3.6.0
+triton==3.6.0; sys_platform != "darwin"
     # via torch
 typer==0.24.1
     # via
