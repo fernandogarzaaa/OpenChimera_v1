@@ -13,7 +13,6 @@ pub struct App {
     pub tab: CurrentTab,
     pub status: Option<SystemStatus>,
     pub providers: Vec<ProviderStatus>,
-    pub agents: Vec<AgentStatus>,
     pub error: Option<String>,
 }
 
@@ -23,7 +22,6 @@ impl App {
             tab: CurrentTab::Dashboard,
             status: None,
             providers: vec![],
-            agents: vec![],
             error: None,
         }
     }
