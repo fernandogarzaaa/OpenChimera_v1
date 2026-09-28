@@ -157,7 +157,7 @@ This determines who gets paid first in an exit — and how much.
 ```
 1x Non-Participating Preferred (BEST for founders):
   Investor gets 1x money back OR converts to common (their choice).
-  At acquisition: investor takes larger of {1x invested} or {% ownership × proceeds}
+  At acquisition: investor takes larger of {1x invested} or { % ownership × proceeds}
   Example: $10M invested, exits at $100M, owns 20%
     Option A: $10M (1x)
     Option B: $20M (20% of $100M)
