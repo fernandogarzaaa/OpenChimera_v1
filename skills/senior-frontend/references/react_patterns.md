@@ -524,6 +524,7 @@ function ParentComponent() {
 
 ### Virtualization for Long Lists
 
+{% raw %}
 ```tsx
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -562,6 +563,7 @@ function VirtualList({ items }: { items: Item[] }) {
   );
 }
 ```
+{% endraw %}
 
 ---
 
