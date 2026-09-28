@@ -11,7 +11,6 @@ import yaml
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # Server & API Config
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -159,7 +158,7 @@ class RagConfig(BaseModel):
 
 class AxiomConfig(BaseModel):
     enabled: bool = True
-    checkpoints_dir: str = "D:\\AXIOM-AETHER\\checkpoints"
+    checkpoints_dir: str = "data/cognitive/axiom/checkpoints"
     auto_recall: bool = True
 
 
@@ -171,8 +170,8 @@ class EveConfig(BaseModel):
 
 class AdamConfig(BaseModel):
     enabled: bool = True
-    memory_db: str = "D:\\ADAM\\adam_memory.db"
-    genome_path: str = "D:\\ADAM\\adam_genome.json"
+    memory_db: str = "data/cognitive/adam/adam_memory.db"
+    genome_path: str = "data/cognitive/adam/adam_genome.json"
     auto_evolve: bool = False
 
 
