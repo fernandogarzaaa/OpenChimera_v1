@@ -124,7 +124,7 @@ rag:
 cognitive:
   axiom:
     enabled: true
-    checkpoints_dir: "D:\\AXIOM-AETHER\\checkpoints"
+    checkpoints_dir: "data/cognitive/axiom/checkpoints"
     auto_recall: true
   eve:
     enabled: true
@@ -135,8 +135,8 @@ cognitive:
     auto_approve: false
   adam:
     enabled: true
-    memory_db: "D:\\ADAM\\adam_memory.db"
-    genome_path: "D:\\ADAM\\adam_genome.json"
+    memory_db: "data/cognitive/adam/adam_memory.db"
+    genome_path: "data/cognitive/adam/adam_genome.json"
     auto_evolve: false
 
 computer_use:

@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click
@@ -26,7 +27,6 @@ def cli() -> None:
 
     One-liner install: iwr -useb https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.ps1 | iex
     """
-    pass
 
 
 @cli.command()
@@ -115,11 +115,16 @@ def status(as_json: bool) -> None:
 
 
 @cli.command()
-def onboard() -> None:
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON onboarding status.")
+def onboard(as_json: bool) -> None:
     """Interactive setup wizard — configure providers, API keys, and preferences."""
-    console.print(Panel.fit("[bold blue]🐉 OpenChimera v2 Onboarding[/bold blue]", border_style="blue"))
-
     settings = load_settings(force_reload=True)
+    if as_json:
+        enabled = [name for name, prov in settings.providers.items() if prov.enabled]
+        print(json.dumps({"status": "ok", "providers_enabled": enabled, "next_steps": ["openchimera doctor --json", "openchimera serve", "openchimera status --json"]}, indent=2))
+        return
+
+    console.print(Panel.fit("[bold blue]🐉 OpenChimera v2 Onboarding[/bold blue]", border_style="blue"))
     config_dir = Path("config")
     config_dir.mkdir(exist_ok=True)
 
@@ -156,22 +161,19 @@ def onboard() -> None:
 
     # Check optional features
     console.print("\n[bold]Step 2: Optional Features[/bold]")
-    try:
-        import chromadb
+    if importlib.util.find_spec("chromadb") is not None:
         console.print("  [green]✓[/green] ChromaDB (RAG vector store)")
-    except ImportError:
+    else:
         console.print("  [yellow]○[/yellow] ChromaDB not installed — RAG will use memory fallback")
 
-    try:
-        import playwright
+    if importlib.util.find_spec("playwright") is not None:
         console.print("  [green]✓[/green] Playwright (browser automation)")
-    except ImportError:
+    else:
         console.print("  [yellow]○[/yellow] Playwright not installed — browser tools unavailable")
 
-    try:
-        import mcp
+    if importlib.util.find_spec("mcp") is not None:
         console.print("  [green]✓[/green] MCP SDK (Model Context Protocol)")
-    except ImportError:
+    else:
         console.print("  [yellow]○[/yellow] MCP SDK not installed")
 
     # Cognitive stack
@@ -190,17 +192,43 @@ def onboard() -> None:
 
 
 @cli.command()
-def tui() -> None:
+@click.option("--check", "check_only", is_flag=True, help="Only check whether the TUI binary is available.")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output for --check.")
+def tui(check_only: bool, as_json: bool) -> None:
     """Launch the Rust TUI (must be compiled first)."""
+    import shutil
     import subprocess
-    exe = Path(__file__).resolve().parents[3] / "target" / "release" / "openchimera.exe"
-    if not exe.exists():
-        exe = exe.with_suffix("")
-    if not exe.exists():
+
+    root = Path(__file__).resolve().parents[3]
+    candidates = [
+        root / "target" / "release" / "openchimera",
+        root / "target" / "release" / "openchimera.exe",
+        Path.cwd() / "target" / "release" / "openchimera",
+        Path.cwd() / "target" / "release" / "openchimera.exe",
+    ]
+    exe = next((candidate for candidate in candidates if candidate.exists()), None)
+    cargo = shutil.which("cargo")
+    payload = {
+        "status": "ok" if exe else "missing",
+        "binary": str(exe) if exe else "",
+        "cargo_available": bool(cargo),
+        "cargo": cargo or "",
+        "build_command": "cargo build --release",
+    }
+    if check_only:
+        if as_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            console.print_json(data=payload)
+        if not exe:
+            sys.exit(1)
+        return
+    if not exe:
         console.print("[bold red]TUI binary not found.[/bold red] Run: cargo build --release", style="red")
-        console.print("Or install with: iwr -useb .../install.ps1 | iex")
+        if not cargo:
+            console.print("[yellow]Cargo/Rust toolchain was not found on PATH; install Rust before building the TUI.[/yellow]")
         sys.exit(1)
-    subprocess.run([str(exe)])
+    subprocess.run([str(exe)], check=False)
 
 
 @cli.command()
@@ -326,10 +354,96 @@ def doctor(production: bool, as_json: bool) -> None:
         sys.exit(1)
 
 
+@cli.command()
+@click.option("--kind", type=click.Choice(["commands", "tools", "providers"]), default=None, help="Filter capability kind.")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def capabilities(kind: str | None, as_json: bool) -> None:
+    """Inspect packaged CLI, provider, and tool capabilities."""
+    settings = load_settings()
+    payload = {
+        "commands": sorted(cli.commands.keys()),
+        "providers": [name for name, _ in settings.providers.items()],
+        "tools": __import__("openchimera.tools.registry", fromlist=["ToolRegistry"]).ToolRegistry(settings).list_tools(),
+    }
+    if kind:
+        payload = {kind: payload[kind]}
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    for name, value in payload.items():
+        console.print(f"[bold]{name}[/bold]")
+        if isinstance(value, list):
+            for item in value:
+                console.print(f"  - {item if isinstance(item, str) else item.get('id', item)}")
+
+
+@cli.command("config")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def config_command(as_json: bool) -> None:
+    """Show a safe runtime configuration snapshot without secrets."""
+    settings = load_settings()
+    payload = {
+        "config_path": str(settings.config_path),
+        "server": {"host": settings.server.host, "port": settings.server.port},
+        "auth_enabled": settings.api.auth.enabled,
+        "providers_enabled": [name for name, prov in settings.providers.items() if prov.enabled],
+        "cognitive_paths": {
+            "axiom_checkpoints": settings.cognitive.axiom.checkpoints_dir,
+            "adam_memory_db": settings.cognitive.adam.memory_db,
+            "adam_genome_path": settings.cognitive.adam.genome_path,
+        },
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+        return
+    console.print_json(data=payload)
+
+
+@cli.command("query")
+@click.option("--text", required=True, help="User query text.")
+@click.option("--provider", default=None, help="Provider to use.")
+@click.option("--model", default=None, help="Model to use.")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def query_command(text: str, provider: str | None, model: str | None, as_json: bool) -> None:
+    """Run a query through the packaged orchestrator."""
+    import asyncio
+
+    async def _run() -> dict:
+        settings = load_settings()
+        from openchimera.agent import AgentOrchestrator
+        from openchimera.providers.manager import ProviderManager
+        from openchimera.tools.registry import ToolRegistry
+
+        orch = AgentOrchestrator(ProviderManager(settings), ToolRegistry(settings))
+        try:
+            return await orch.query(text, provider=provider, model=model, execute_tools=False)
+        except RuntimeError as exc:
+            return {"session_id": "", "text": f"No provider available. Run `openchimera onboard` to configure providers. ({exc})", "provider": "none", "model": model or "none", "tools": []}
+
+    result = asyncio.run(_run())
+    if as_json:
+        print(json.dumps(result, indent=2))
+        return
+    console.print(result.get("text", ""))
+
+
+@cli.command("tools")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
+def tools_command(as_json: bool) -> None:
+    """List packaged runtime tools."""
+    from openchimera.tools.registry import ToolRegistry
+
+    tools = ToolRegistry(load_settings()).list_tools()
+    if as_json:
+        print(json.dumps({"tools": tools}, indent=2))
+        return
+    for tool in tools:
+        console.print(f"- {tool.get('id')}: {tool.get('description', '')}")
+
+
 @cli.group()
 def backup() -> None:
     """Create, list, or restore local state backups."""
-    pass
 
 
 def _backup_root() -> Path:
@@ -343,7 +457,7 @@ def _backup_root() -> Path:
 def backup_create(as_json: bool) -> None:
     """Create a timestamped backup of local config state."""
     root = _backup_root()
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     archive_name = f"openchimera-{stamp}.zip"
     archive_path = root / archive_name
     manifest = {
@@ -425,9 +539,10 @@ def backup_restore(file: str | None, as_json: bool) -> None:
 def ask(text: str, provider: str | None, model: str | None, tools: bool) -> None:
     """Send a one-off query to the agent (no server required)."""
     import asyncio
+
+    from openchimera.agent import AgentOrchestrator
     from openchimera.providers.manager import ProviderManager
     from openchimera.tools.registry import ToolRegistry
-    from openchimera.agent import AgentOrchestrator
 
     async def _ask() -> None:
         settings = load_settings()

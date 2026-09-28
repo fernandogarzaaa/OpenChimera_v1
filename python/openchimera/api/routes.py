@@ -2,20 +2,24 @@
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from openchimera.agent import AgentOrchestrator
+from openchimera.cognitive.bridge import CognitiveBridge
 from openchimera.config import load_settings
 from openchimera.providers.manager import ProviderManager
-from openchimera.tools.registry import ToolRegistry
-from openchimera.cognitive.bridge import CognitiveBridge
-from openchimera.agent import AgentOrchestrator
 from openchimera.rag.engine import get_engine
+from openchimera.tools.registry import ToolRegistry
 
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Pydantic Models
@@ -47,6 +51,20 @@ class QueryRequest(BaseModel):
     temperature: float | None = None
     max_tokens: int | None = None
 
+
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    model: str | None = None
+    messages: list[ChatMessage]
+    temperature: float | None = None
+    max_tokens: int | None = None
+    stream: bool = False
 
 class QueryResponse(BaseModel):
     session_id: str
@@ -80,7 +98,7 @@ async def lifespan(app: FastAPI):
     app.state.tools = ToolRegistry(settings)
     app.state.cognitive = CognitiveBridge(settings)
     app.state.orchestrator = AgentOrchestrator(app.state.providers, app.state.tools)
-    app.state.started_at = datetime.now(timezone.utc)
+    app.state.started_at = datetime.now(UTC)
     yield
 
 
@@ -112,11 +130,74 @@ def health() -> dict:
     return {"status": "ok", "version": "2.0.0"}
 
 
+@app.get("/v1/models")
+async def openai_models() -> dict:
+    """OpenAI-compatible model listing for local/app-team smoke tests."""
+    data = []
+    for provider_name, provider in app.state.providers._providers.items():
+        try:
+            models = await provider.list_models()
+        except Exception:  # noqa: BLE001 - provider adapters may raise SDK-specific exceptions
+            models = []
+        for model in models or [provider.default_model]:
+            if model:
+                data.append({
+                    "id": model,
+                    "object": "model",
+                    "owned_by": provider_name,
+                })
+    return {"object": "list", "data": data}
+
+
+@app.post("/v1/chat/completions")
+async def openai_chat_completions(req: ChatCompletionRequest) -> dict:
+    """Minimal OpenAI-compatible chat completions endpoint."""
+    if req.stream:
+        raise HTTPException(status_code=400, detail="streaming chat completions are not yet supported by this packaged endpoint")
+    if not req.messages:
+        raise HTTPException(status_code=400, detail="messages must contain at least one message")
+    text = "\n".join(message.content for message in req.messages if message.role == "user").strip()
+    try:
+        result = await app.state.orchestrator.query(
+            text=text,
+            provider=None,
+            model=req.model,
+            execute_tools=False,
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+        )
+    except RuntimeError as exc:
+        # Never expose exception internals to API consumers; log server-side instead.
+        logger.warning("chat completions no-provider fallback: %s", exc)
+        result = {
+            "text": "No provider available. Run `openchimera onboard` to configure providers.",
+            "model": req.model or "none",
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        }
+    created = int(time.time())
+    content = result.get("text", "")
+    model = result.get("model") or req.model or "unknown"
+    return {
+        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        "object": "chat.completion",
+        "created": created,
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": result.get("usage") or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
+
+
 @app.get("/api/v2/status", response_model=StatusResponse)
 def api_status() -> StatusResponse:
     import psutil
     proc = psutil.Process()
-    uptime = int((datetime.now(timezone.utc) - app.state.started_at).total_seconds())
+    uptime = int((datetime.now(UTC) - app.state.started_at).total_seconds())
     providers = app.state.providers.get_all_status()
     online = sum(1 for p in providers if p.get("healthy"))
     agents = app.state.orchestrator.list_agents()

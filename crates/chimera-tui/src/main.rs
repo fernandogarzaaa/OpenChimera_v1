@@ -3,11 +3,7 @@ use std::io;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
     backend::{Backend, CrosstermBackend},
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, Tabs},
-    Frame, Terminal,
+    Terminal,
 };
 use tokio::time::{interval, Duration};
 
@@ -54,7 +50,7 @@ async fn run_app<B: Backend>(
     app: &mut App,
     tick: &mut tokio::time::Interval,
 ) -> anyhow::Result<()> {
-    let mut last_tick = std::time::Instant::now();
+    let mut last_tick = tokio::time::Instant::now();
     loop {
         let timeout = tick.period().checked_sub(last_tick.elapsed()).unwrap_or(tick.period());
 
@@ -76,7 +72,7 @@ async fn run_app<B: Backend>(
 
         if tick.tick().await <= last_tick + tick.period() {
             app.refresh().await;
-            last_tick = std::time::Instant::now();
+            last_tick = tokio::time::Instant::now();
         }
 
         terminal.draw(|f| ui::draw(f, app))?;

@@ -165,7 +165,7 @@ POST /api/v2/tools/execute
 ## 📊 Dashboard
 
 ```bash
-cd typescript/dashboard
+cd src/dashboard
 npm install
 npm run dev
 # Opens at http://localhost:3000
@@ -185,7 +185,7 @@ cd crates/chimera-tui
 cargo build --release
 
 # TypeScript
-cd typescript/dashboard
+cd src/dashboard
 npm install
 npm run dev
 ```
@@ -195,3 +195,21 @@ npm run dev
 ## 📜 License
 
 MIT © Fernando Garza
+
+---
+
+## ✅ Release validation
+
+Before cutting a release or accepting a PR, run the same core gates used by this audit:
+
+```bash
+python -m pip install -e ".[dev]"
+pytest -q
+ruff check .
+python -m build
+python -m pip_audit
+cd src/dashboard && npm install && npm run build
+openchimera tui --check --json
+```
+
+The packaged server exposes both the native `/api/v2/*` API and OpenAI-compatible `/v1/models` plus `/v1/chat/completions` endpoints for app-team smoke tests. Use non-secret mock/local configuration for release validation; never commit API keys.

@@ -6,9 +6,8 @@ import json
 import time
 from typing import Any
 
-from openchimera.config import ProvidersConfig, Settings
+from openchimera.config import Settings
 from openchimera.providers.base import BaseProvider, get_profile
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # OpenAI-compatible providers (OpenAI, Groq, Together, Fireworks, xAI, DeepSeek,
