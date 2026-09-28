@@ -123,6 +123,7 @@ print(f"Validation success: {results.success}")
 
 ### dbt Tests
 
+{% raw %}
 ```yaml
 # models/marts/schema.yml
 version: 2
@@ -216,6 +217,7 @@ WHERE {{ column_name }} NOT IN (
 )
 {% endtest %}
 ```
+{% endraw %}
 
 ### Custom Data Quality Checks
 

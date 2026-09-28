@@ -845,6 +845,7 @@ models:
 
 ### Macros
 
+{% raw %}
 ```sql
 -- macros/generate_surrogate_key.sql
 {% macro generate_surrogate_key(columns) %}
@@ -867,6 +868,7 @@ models:
 -- Usage in models:
 -- {{ safe_divide('revenue', 'orders') }} as avg_order_value
 ```
+{% endraw %}
 
 ---
 
