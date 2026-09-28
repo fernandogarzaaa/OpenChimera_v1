@@ -1,5 +1,7 @@
 use chimera_core::*;
 
+use crate::api;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CurrentTab {
     Dashboard,
