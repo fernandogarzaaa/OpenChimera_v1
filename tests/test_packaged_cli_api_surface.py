@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -15,7 +16,7 @@ def _run_packaged_python(code: str) -> subprocess.CompletedProcess[str]:
     env["PYTHONPATH"] = str(PYTHON_PACKAGE_PATH)
     return subprocess.run(
         [sys.executable, "-c", code],
-        cwd=Path("/tmp"),
+        cwd=Path(tempfile.gettempdir()),
         env=env,
         text=True,
         capture_output=True,
