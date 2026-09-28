@@ -14,11 +14,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from openchimera.agent import AgentOrchestrator
 from openchimera.config import load_settings
-from openchimera.providers.manager import ProviderManager
 from openchimera.server import start_server
-from openchimera.tools.registry import ToolRegistry
 
 console = Console()
 
@@ -366,7 +363,7 @@ def capabilities(kind: str | None, as_json: bool) -> None:
     payload = {
         "commands": sorted(cli.commands.keys()),
         "providers": [name for name, _ in settings.providers.items()],
-        "tools": ToolRegistry(settings).list_tools(),
+        "tools": __import__("openchimera.tools.registry", fromlist=["ToolRegistry"]).ToolRegistry(settings).list_tools(),
     }
     if kind:
         payload = {kind: payload[kind]}
@@ -413,6 +410,10 @@ def query_command(text: str, provider: str | None, model: str | None, as_json: b
 
     async def _run() -> dict:
         settings = load_settings()
+        from openchimera.agent import AgentOrchestrator
+        from openchimera.providers.manager import ProviderManager
+        from openchimera.tools.registry import ToolRegistry
+
         orch = AgentOrchestrator(ProviderManager(settings), ToolRegistry(settings))
         try:
             return await orch.query(text, provider=provider, model=model, execute_tools=False)
@@ -430,6 +431,8 @@ def query_command(text: str, provider: str | None, model: str | None, as_json: b
 @click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
 def tools_command(as_json: bool) -> None:
     """List packaged runtime tools."""
+    from openchimera.tools.registry import ToolRegistry
+
     tools = ToolRegistry(load_settings()).list_tools()
     if as_json:
         print(json.dumps({"tools": tools}, indent=2))

@@ -155,8 +155,8 @@ class CognitiveBridge:
 
         # Fallback: write to local checkpoint
         try:
-            from pathlib import Path
             import uuid
+            from pathlib import Path
             cp_dir = Path(self.settings.cognitive.axiom.checkpoints_dir)
             cp_dir.mkdir(parents=True, exist_ok=True)
             filename = f"{kind}_{uuid.uuid4().hex[:8]}_{int(time.time())}.json"

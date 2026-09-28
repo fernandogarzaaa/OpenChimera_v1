@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
-import json
 import subprocess
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -418,7 +416,6 @@ class ToolRegistry:
     async def _handle_computer_screenshot(self, args: dict[str, Any]) -> dict[str, Any]:
         try:
             import pyautogui
-            from PIL import Image
             screenshot = pyautogui.screenshot()
             region = args.get("region")
             if region:
@@ -613,8 +610,6 @@ class ToolRegistry:
     # ── MCP ──
 
     async def _handle_mcp_list_tools(self, args: dict[str, Any]) -> dict[str, Any]:
-        from openchimera.mcp.client import MCPClient
-        client = MCPClient(command="echo", args=["mcp"])  # placeholder
         return {"note": "MCP server connection required. Configure in data/mcp_registry.json", "server": args.get("server_name")}
 
     async def _handle_mcp_call_tool(self, args: dict[str, Any]) -> dict[str, Any]:

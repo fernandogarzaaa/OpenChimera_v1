@@ -201,7 +201,7 @@ class ComputerUseConfig(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
+    model_config = SettingsConfigDict(  # type: ignore[typeddict-unknown-key]
         env_prefix="OPENCHIMERA_",
         env_nested_separator="__",
         extra="ignore",

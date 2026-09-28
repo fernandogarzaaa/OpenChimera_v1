@@ -2,8 +2,6 @@
 
 import uvicorn
 
-from openchimera.api.routes import app
-
 
 def start_server(host: str, port: int, reload: bool = False) -> None:
     uvicorn.run(
