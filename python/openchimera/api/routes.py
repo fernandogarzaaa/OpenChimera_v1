@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+import time
+import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
@@ -15,6 +18,8 @@ from openchimera.config import load_settings
 from openchimera.providers.manager import ProviderManager
 from openchimera.rag.engine import get_engine
 from openchimera.tools.registry import ToolRegistry
+
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Pydantic Models
@@ -147,9 +152,6 @@ async def openai_models() -> dict:
 @app.post("/v1/chat/completions")
 async def openai_chat_completions(req: ChatCompletionRequest) -> dict:
     """Minimal OpenAI-compatible chat completions endpoint."""
-    import time
-    import uuid
-
     if req.stream:
         raise HTTPException(status_code=400, detail="streaming chat completions are not yet supported by this packaged endpoint")
     if not req.messages:
@@ -165,8 +167,10 @@ async def openai_chat_completions(req: ChatCompletionRequest) -> dict:
             max_tokens=req.max_tokens,
         )
     except RuntimeError as exc:
+        # Never expose exception internals to API consumers; log server-side instead.
+        logger.warning("chat completions no-provider fallback: %s", exc)
         result = {
-            "text": f"No provider available. Run `openchimera onboard` to configure providers. ({exc})",
+            "text": "No provider available. Run `openchimera onboard` to configure providers.",
             "model": req.model or "none",
             "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
         }
