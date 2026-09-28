@@ -413,6 +413,7 @@ spec:
 
 #### Automated Canary Controller
 
+{% raw %}
 ```python
 class CanaryController:
     def __init__(self, istio_client, prometheus_client):
@@ -501,6 +502,7 @@ class CanaryController:
 
         await self.istio.apply_virtual_service(virtual_service)
 ```
+{% endraw %}
 
 ### 3. Rolling Updates
 
