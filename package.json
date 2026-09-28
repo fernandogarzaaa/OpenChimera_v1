@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "npm --prefix src/dashboard run dev",
+    "build": "npm --prefix src/dashboard run build",
+    "preview": "npm --prefix src/dashboard run preview"
   },
   "dependencies": {
     "react": "^19.0.0",

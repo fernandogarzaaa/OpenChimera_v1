@@ -86,6 +86,10 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
+    "networkx>=3.2.0",
+    "numpy>=2.1.0",
+    "build>=1.2.0",
+    "pip-audit>=2.7.0",
 ]
 
 [project.scripts]
@@ -103,6 +107,10 @@ packages = ["python/openchimera"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+
+[tool.pytest.ini_options]
+pythonpath = ["python", "."]
+testpaths = ["tests"]
 
 [tool.mypy]
 python_version = "3.11"
