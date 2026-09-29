@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
 
-from core.tool_executor import ToolExecutionError, ToolExecutor
+from core.tool_executor import ToolExecutionError, ToolExecutor, ToolPermissionError  # noqa: F401  -- re-exported; tests import it from here
 from services.hook_pipeline import HookPipeline
 
 # ---------------------------------------------------------------------------
