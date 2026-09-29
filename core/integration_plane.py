@@ -92,8 +92,8 @@ class IntegrationPlane:
         mcp_snapshot = self.mcp_status_getter()
         mcp_servers = mcp_snapshot.get("servers", []) if isinstance(mcp_snapshot, dict) else []
         registry_servers = mcp_snapshot.get("registry", {}).get("servers", []) if isinstance(mcp_snapshot, dict) else []
-        context_entry = next((item for item in mcp_servers if str(item.get("id")) == "context_hub"), {})
-        gateway_entry = next((item for item in registry_servers if str(item.get("id")) == "context_gateway_remote"), {})
+        context_entry: dict[str, Any] = next((item for item in mcp_servers if str(item.get("id")) == "context_hub"), {})
+        gateway_entry: dict[str, Any] = next((item for item in registry_servers if str(item.get("id")) == "context_gateway_remote"), {})
         status = str(context_entry.get("status") or gateway_entry.get("status") or "missing").lower()
         available = bool(context_root.exists() or hub_service.exists() or context_entry or gateway_entry)
         return {

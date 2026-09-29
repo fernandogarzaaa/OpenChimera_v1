@@ -517,7 +517,7 @@ class SocialNormRegistry:
 
         # Create character n-gram vectors
         def make_char_vector(words: set[str], n: int = 3) -> dict[str, int]:
-            vector = {}
+            vector: dict[str, int] = {}
             for word in words:
                 # Generate character n-grams
                 padded = f"#{word}#"  # Padding for boundary n-grams
