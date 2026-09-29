@@ -11,7 +11,6 @@ from core.ethical_reasoning import (
     EvaluationResult,
     PolicyViolation,
     Severity,
-    VetoRecord,
 )
 
 

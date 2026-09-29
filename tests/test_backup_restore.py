@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core.database import DatabaseManager
 from core.credential_store import CredentialStore
+from core.database import DatabaseManager
 from run import _backup_create_payload, _backup_list_payload, _backup_restore_payload, _doctor_payload
 
 

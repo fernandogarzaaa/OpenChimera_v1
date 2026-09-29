@@ -1,7 +1,6 @@
 """Tests for scripts/self_evolution_cycle.py — evolution cycle helpers."""
 from __future__ import annotations
 
-import importlib
 import json
 import os
 import sys
@@ -10,7 +9,6 @@ import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-
 
 # ---------------------------------------------------------------------------
 # Import the module under test (not on sys.path by default)
@@ -23,7 +21,6 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 import self_evolution_cycle as evo_cycle  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers

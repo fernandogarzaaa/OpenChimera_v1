@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import threading
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 
 class TestEvoService(unittest.TestCase):
     @patch("core.evo_service.get_evo_root")
     def _make_svc(self, get_evo_root_mock, entrypoint_exists=False):
+        import tempfile
         from pathlib import Path
-        import tempfile, types
 
         td = Path(tempfile.mkdtemp())
         get_evo_root_mock.return_value = td
@@ -87,8 +87,8 @@ class TestEvoService(unittest.TestCase):
 class TestWraithService(unittest.TestCase):
     @patch("core.wraith_service.get_wraith_root")
     def _make_svc(self, get_wraith_root_mock, entrypoint_exists=False):
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         td = Path(tempfile.mkdtemp())
         get_wraith_root_mock.return_value = td

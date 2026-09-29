@@ -6,7 +6,6 @@ from unittest.mock import MagicMock
 
 from core.skill_registry import SkillEntry, SkillRegistry
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

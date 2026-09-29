@@ -5,15 +5,14 @@ from __future__ import annotations
 
 import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from core.channel_adapters import (
+    ChannelRouter,
     DMSecurityManager,
     DMSecurityPolicy,
-    WhatsAppAdapter,
     WebChatAdapter,
-    WebChatSession,
-    ChannelRouter,
+    WhatsAppAdapter,
 )
 
 

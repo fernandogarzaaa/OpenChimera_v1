@@ -24,10 +24,8 @@ import pytest
 from core.quantum_engine import (
     AgentReputation,
     ConsensusFailure,
-    ConsensusProfiler,
     QuantumEngine,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Confidence parsed from dict response

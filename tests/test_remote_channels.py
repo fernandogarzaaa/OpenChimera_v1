@@ -23,7 +23,6 @@ import pytest
 from core.remote_channels import (
     CHANNEL_CLASSES,
     ChannelInfo,
-    ChannelStatus,
     DiscordChannel,
     RemoteChannel,
     RemoteChannelManager,

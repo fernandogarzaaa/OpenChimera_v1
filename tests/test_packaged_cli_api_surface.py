@@ -6,7 +6,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTHON_PACKAGE_PATH = REPO_ROOT / "python"
 

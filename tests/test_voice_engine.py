@@ -3,21 +3,20 @@ Tests for Phase 2: Voice & Audio Engine (TTS, STT, Wake Word Detection).
 """
 from __future__ import annotations
 
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core.voice_engine import (
-    TTSBackend,
     STTBackend,
-    VoiceConfig,
-    TTSEngine,
-    TTSResult,
     TranscriptionEngine,
     TranscriptionResult,
-    WakeWordDetector,
+    TTSBackend,
+    TTSEngine,
+    TTSResult,
+    VoiceConfig,
     VoiceEngine,
+    WakeWordDetector,
 )
 
 
@@ -75,8 +74,8 @@ class TestTTSEngine(unittest.TestCase):
         self.assertEqual(self.engine._synthesis_count, 1)
 
     def test_caching_disabled(self):
-        result1 = self.engine.synthesize("Hello!", use_cache=False)
-        result2 = self.engine.synthesize("Hello!", use_cache=False)
+        _result1 =self.engine.synthesize("Hello!", use_cache=False)
+        _result2 =self.engine.synthesize("Hello!", use_cache=False)
         self.assertEqual(self.engine._synthesis_count, 2)
 
     def test_tts_result_to_dict(self):
@@ -100,7 +99,6 @@ class TestTTSEngine(unittest.TestCase):
 
     def test_save_to_file(self):
         import tempfile
-        import os
         with tempfile.TemporaryDirectory() as tmp:
             output_path = Path(tmp) / "test.wav"
             result = self.engine.save_to_file("Hello!", output_path)

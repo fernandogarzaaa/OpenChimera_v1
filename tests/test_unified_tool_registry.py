@@ -5,6 +5,7 @@ import unittest
 from typing import Any
 from unittest.mock import MagicMock
 
+from core.tool_registry import UnifiedToolRegistry
 from core.tool_runtime import (
     RuntimeToolRegistry,
     RuntimeToolSpec,
@@ -12,8 +13,6 @@ from core.tool_runtime import (
     ToolPermissionError,
     ToolRegistry,
 )
-from core.tool_registry import UnifiedToolRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers

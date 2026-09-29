@@ -11,8 +11,6 @@ Comprehensive end-to-end test of the complete OpenChimera system including:
 - Module import validation
 - Load testing
 """
-import asyncio
-import threading
 import time
 from pathlib import Path
 from unittest import mock
@@ -30,9 +28,7 @@ from core.identity_manager import IdentityManager
 from core.kernel import BootStatus, OpenChimeraKernel
 from core.knowledge_base import KnowledgeBase
 from core.meta_learning import MetaLearning
-from core.personality import Personality
 from core.plan_mode import PlanMode, PlanStatus, StepStatus
-from core.provider import OpenChimeraProvider
 from core.safety_layer import SafetyLayer
 from core.self_model import SelfModel
 from core.session_memory import SessionMemory
@@ -132,7 +128,7 @@ class TestFullSystemSimulation:
         """Test query → reasoning → planning → execution loop."""
         bus = EventBus()
         plan_mode = PlanMode(bus=bus)
-        coordinator = AgentCoordinator(bus=bus)
+        AgentCoordinator(bus=bus)
 
         # Create a simple plan
         plan = plan_mode.create_plan(
@@ -165,7 +161,6 @@ class TestFullSystemSimulation:
 
     def test_06_memory_persistence_loop(self):
         """Test memory write/read roundtrip."""
-        from core.session_memory import SessionMemory
         from pathlib import Path
 
         # SessionMemory requires session_id and store_root
@@ -206,8 +201,8 @@ class TestFullSystemSimulation:
             kb = KnowledgeBase(storage_path=Path(tmpdir) / "test_kb.json")
 
             # Add entries
-            entry1 = kb.add("Python is a programming language", category="tech", tags=["python", "programming"])
-            entry2 = kb.add("OpenChimera is an AGI system", category="tech", tags=["agi", "openchimera"])
+            _entry1 =kb.add("Python is a programming language", category="tech", tags=["python", "programming"])
+            _entry2 =kb.add("OpenChimera is an AGI system", category="tech", tags=["agi", "openchimera"])
             entry3 = kb.add("The sky is blue", category="nature", tags=["sky", "color"])
 
             # Search by content
@@ -368,9 +363,8 @@ class TestFullSystemSimulation:
 
     def test_14_session_persistence_and_resume(self):
         """Test session can be persisted and resumed."""
-        from core.session_memory import SessionMemory
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create and populate session
@@ -447,13 +441,13 @@ class TestFullSystemSimulation:
 
     def test_20_complete_query_execution_pipeline(self):
         """Test complete pipeline: query → reasoning → planning → execution → memory."""
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
 
         # Create all components
         bus = EventBus()
         plan_mode = PlanMode(bus=bus)
-        coordinator = AgentCoordinator(bus=bus)
+        _coordinator =AgentCoordinator(bus=bus)
         safety = SafetyLayer()
         kb = KnowledgeBase()
 

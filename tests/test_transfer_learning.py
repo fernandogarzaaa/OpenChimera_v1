@@ -7,13 +7,11 @@ import pytest
 
 from core._bus_fallback import EventBus
 from core.transfer_learning import (
-    DomainProfile,
     PatternEntry,
     PatternType,
     TransferCandidate,
     TransferLearning,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

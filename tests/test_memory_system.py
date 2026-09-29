@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import os
-import pathlib
 import struct
 import tempfile
 import unittest
-from typing import Any
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
-from core.memory_system import MemorySystem
 from core.memory.episodic import EpisodicMemory
-from core.memory.working import WorkingMemory
 from core.memory.semantic import SemanticMemory
+from core.memory.working import WorkingMemory
+from core.memory_system import MemorySystem
 
 
 def run(coro):

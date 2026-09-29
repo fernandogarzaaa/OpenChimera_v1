@@ -2,11 +2,9 @@
 from __future__ import annotations
 
 import unittest
-from typing import Any
 from unittest.mock import MagicMock
 
 from core.command_registry import CommandEntry, CommandRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers

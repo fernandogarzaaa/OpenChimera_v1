@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from core.ascension_service import AscensionService
 

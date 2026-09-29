@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from core.identity_manager import IdentityManager
 from core.health_monitor import HealthMonitor
+from core.identity_manager import IdentityManager
 
 
 class TestIdentityManager:
@@ -60,8 +60,8 @@ class TestIdentityManager:
         user1 = identity_mgr.create_user("User1")
         user2 = identity_mgr.create_user("User2")
 
-        session1 = identity_mgr.create_session(user1.user_id)
-        session2 = identity_mgr.create_session(user2.user_id)
+        _session1 =identity_mgr.create_session(user1.user_id)
+        _session2 =identity_mgr.create_session(user2.user_id)
         identity_mgr.create_session(user1.user_id)  # Another for user1
 
         all_active = identity_mgr.get_active_sessions()

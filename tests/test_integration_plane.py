@@ -4,11 +4,11 @@ legacy-stack detection helpers.
 All tests use mocked dependencies; no network or disk I/O.
 """
 from __future__ import annotations
+
 import unittest
 from unittest.mock import MagicMock, patch
 
 from core.integration_plane import IntegrationPlane
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -1,7 +1,8 @@
 """Tests for RBAC enforcement in CommandRegistry."""
 import pytest
-from core.command_registry import CommandEntry, CommandRegistry
+
 from core.bus import EventBus
+from core.command_registry import CommandEntry, CommandRegistry
 
 
 def test_admin_command_requires_admin():

@@ -20,15 +20,15 @@ Covers:
 """
 from __future__ import annotations
 
-import sys
 import os
+import sys
+
 import pytest
 
 # Make ChimeraLang importable for low-level VM tests
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "external", "chimeralang"))
 
 from core.chimera_bridge import ChimeraLangBridge, get_bridge
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

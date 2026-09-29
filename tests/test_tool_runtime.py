@@ -4,8 +4,8 @@ ToolExecutionError, RuntimeToolSpec.
 All tests are offline. No network, DB, or disk access.
 """
 from __future__ import annotations
+
 import unittest
-from typing import Any
 from unittest.mock import MagicMock
 
 from pydantic import BaseModel
@@ -16,7 +16,6 @@ from core.tool_runtime import (
     ToolExecutionError,
     ToolPermissionError,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -46,7 +45,8 @@ def _make_spec(
     category: str = "test",
 ) -> RuntimeToolSpec:
     if executor is None:
-        executor = lambda args: {"echoed": args}
+        def executor(args):
+            return {"echoed": args}
     return RuntimeToolSpec(
         tool_id=tool_id,
         name=f"Tool:{tool_id}",

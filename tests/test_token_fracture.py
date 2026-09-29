@@ -3,9 +3,10 @@
 All tests are pure-Python with no network or disk I/O.
 """
 from __future__ import annotations
+
 import unittest
 
-from core.token_fracture import compress_context, _estimate_tokens
+from core.token_fracture import _estimate_tokens, compress_context
 
 
 class TestEstimateTokens(unittest.TestCase):

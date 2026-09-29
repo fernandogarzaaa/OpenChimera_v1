@@ -3,12 +3,10 @@ from __future__ import annotations
 
 import json
 import tempfile
-import time
 import unittest
 from pathlib import Path
 
 from core.session_memory import SessionMemory, UserPreferences, WorkingMemory
-
 
 # ---------------------------------------------------------------------------
 # WorkingMemory
@@ -566,9 +564,7 @@ class TestQueryEngineResumeAndClearMemory(unittest.TestCase):
 
     def _make_engine(self, sessions=None):
         from unittest.mock import MagicMock
-        from core.capabilities import CapabilityRegistry
-        from core.model_roles import ModelRoleManager
-        from core.model_registry import ModelRegistry
+
         from core.query_engine import QueryEngine
 
         db = MagicMock()

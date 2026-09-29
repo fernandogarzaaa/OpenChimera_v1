@@ -3,11 +3,11 @@
 All tests use mocked dependencies; no network or disk I/O.
 """
 from __future__ import annotations
+
 import unittest
 from unittest.mock import MagicMock, patch
 
 from core.activation_plane import ActivationPlane
-
 
 # ---------------------------------------------------------------------------
 # Helpers

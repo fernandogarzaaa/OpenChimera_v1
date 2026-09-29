@@ -16,13 +16,13 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock
 
-from core.tool_executor import ToolExecutor, ToolPermissionError
-from core.mcp_normalization import normalize_mcp_server_entry
 from core.active_inquiry import ActiveInquiry
 from core.embodied_interaction import ActuatorInterface
+from core.mcp_normalization import normalize_mcp_server_entry
 from core.social_cognition import SocialNormRegistry
+from core.tool_executor import ToolExecutor, ToolPermissionError
 from swarms.god_swarm import GodSwarm, _load_god_swarm_agent_specs
 
 

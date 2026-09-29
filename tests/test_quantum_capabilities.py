@@ -22,9 +22,7 @@ import pytest
 
 from core.quantum_capabilities import (
     BUILT_IN_CAPABILITIES,
-    CATEGORY_CHANNEL,
     CATEGORY_INFERENCE,
-    CapabilitySpec,
     QuantumCapabilityRegistry,
 )
 

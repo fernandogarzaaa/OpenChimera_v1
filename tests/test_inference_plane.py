@@ -8,10 +8,9 @@ All tests are offline by default. The live Ollama test is gated via
 pytest.mark.skipif.
 """
 from __future__ import annotations
-import sys
+
 import unittest
 from unittest.mock import MagicMock, patch
-
 
 # ---------------------------------------------------------------------------
 # Helper: build a minimal InferencePlane without a real kernel
@@ -21,7 +20,7 @@ def _make_plane(
     profile: dict | None = None,
     cloud_models: list | None = None,
     credential_store: MagicMock | None = None,
-) -> "InferencePlane":
+) -> "InferencePlane":  # noqa: F821  -- bound by the function-local import below; annotations are strings
     from core.inference_plane import InferencePlane
 
     mock_llm = MagicMock()
@@ -212,7 +211,7 @@ class TestCallOllamaMocked(unittest.TestCase):
 
         plane._post_json_request = fake_post
 
-        result = plane._call_ollama_free_model(
+        _result =plane._call_ollama_free_model(
             model_id="gemma4:latest",
             messages=[{"role": "user", "content": "hello"}],
             temperature=0.1,

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
+from unittest.mock import MagicMock
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = {
