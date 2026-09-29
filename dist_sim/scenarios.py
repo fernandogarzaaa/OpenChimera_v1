@@ -23,7 +23,6 @@ from .cluster import SimCluster
 from .harness import run_concurrent_scenario, run_sim_scenario
 from .node import SimNode
 
-
 # ---------------------------------------------------------------------------
 # Shared simulated agent callables
 # ---------------------------------------------------------------------------

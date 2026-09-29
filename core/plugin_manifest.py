@@ -25,7 +25,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-
 _REQUIRED_FIELDS: frozenset[str] = frozenset({"id", "name", "version"})
 _LIST_FIELDS: frozenset[str] = frozenset({"tools", "skills", "commands", "tags"})
 _METADATA_EXCLUDED: frozenset[str] = frozenset({

@@ -21,10 +21,8 @@ import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
-from core._bus_fallback import EventBus
 from core.config import ROOT
 
 log = logging.getLogger(__name__)

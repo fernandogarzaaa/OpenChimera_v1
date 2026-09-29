@@ -355,7 +355,7 @@ class AutonomyScheduler:
     def _audit_skill_bridges(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         legacy_skill_source = self.legacy_workspace_root / "skills"
         openchimera_skills = ROOT / "skills"
-        target_path = self.data_root / "skill_audit.json"
+        _target_path = self.data_root / "skill_audit.json"
         self.data_root.mkdir(parents=True, exist_ok=True)
 
         legacy_skill_names = sorted(path.name for path in legacy_skill_source.iterdir() if path.is_dir()) if legacy_skill_source.exists() else []
@@ -725,7 +725,7 @@ class AutonomyScheduler:
 
     def _dispatch_operator_digest(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = payload or {}
-        context = self._build_runtime_context()
+        _context = self._build_runtime_context()
         digest_config = self.profile.get("autonomy", {}).get("digests", {})
         history_limit = max(1, int(payload.get("history_limit") or digest_config.get("history_limit", 5) or 5))
         dispatch_topic = str(payload.get("dispatch_topic") or digest_config.get("dispatch_topic", "system/briefing/daily")).strip() or "system/briefing/daily"

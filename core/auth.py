@@ -8,7 +8,6 @@ from typing import Any, Mapping
 
 from core.config import get_api_admin_token, get_api_auth_header, get_api_auth_token, is_api_auth_enabled
 
-
 PUBLIC_PATHS = {"/health", "/v1/system/readiness", "/openapi.json", "/docs"}
 PRIVILEGED_POST_PATHS = {
     "/v1/runtime/start",

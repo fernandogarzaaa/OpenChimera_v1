@@ -7,13 +7,13 @@ Usage::
 from __future__ import annotations
 
 from core.ethical_reasoning import (  # noqa: F401
-    Severity,
-    EvalOutcome,
     EthicalConstraint,
-    PolicyViolation,
-    EvaluationResult,
-    VetoRecord,
     EthicalReasoning,
+    EvalOutcome,
+    EvaluationResult,
+    PolicyViolation,
+    Severity,
+    VetoRecord,
 )
 
 __all__ = [

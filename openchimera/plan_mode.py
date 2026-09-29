@@ -7,11 +7,11 @@ Usage::
 from __future__ import annotations
 
 from core.plan_mode import (  # noqa: F401
-    PlanStatus,
-    StepStatus,
-    PlanStep,
     Plan,
     PlanMode,
+    PlanStatus,
+    PlanStep,
+    StepStatus,
 )
 
 __all__ = ["PlanStatus", "StepStatus", "PlanStep", "Plan", "PlanMode"]

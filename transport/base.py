@@ -5,6 +5,7 @@ ChimeraTransport: Abstract base class for streaming and event transport in OpenC
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
+
 class ChimeraTransport(ABC):
     """Abstract base for Chimera streaming/event transports."""
     @abstractmethod

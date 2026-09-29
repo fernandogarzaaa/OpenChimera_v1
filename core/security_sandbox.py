@@ -9,14 +9,12 @@ Provides:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -488,10 +486,10 @@ class SandboxManager:
     def _subprocess_execute(self, execution_id: str, code: str, language: str) -> SandboxResult:
         """Fallback subprocess-based sandbox (restricted environment)."""
         try:
+            import os
             import subprocess
             import sys
             import tempfile
-            import os
             start = time.time()
             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(code)

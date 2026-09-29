@@ -2,9 +2,10 @@
 """
 Config discovery utilities for OpenChimera: CHIMERA.md and .chimera.json
 """
-from typing import Optional, Dict
-import os
 import json
+import os
+from typing import Dict, Optional
+
 
 def discover_chimera_md(start_path: str) -> Optional[str]:
     path = os.path.abspath(start_path)

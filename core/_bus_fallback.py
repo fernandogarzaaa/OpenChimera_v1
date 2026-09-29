@@ -5,7 +5,6 @@ import threading
 from collections import deque
 from typing import Any, Callable
 
-
 LOGGER = logging.getLogger("core.bus")
 
 

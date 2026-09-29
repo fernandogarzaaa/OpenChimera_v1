@@ -15,7 +15,6 @@ Deps    — requirements-prod.txt cross-referenced against pip-audit (if availab
 from __future__ import annotations
 
 import ast
-import hashlib
 import json
 import logging
 import os
@@ -24,7 +23,6 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from swarms.audit_system.models import AuditFinding, AuditReport
 

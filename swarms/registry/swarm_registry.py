@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 # Pattern tuples: (compiled_regex, swarm_name, description)
 _DEFAULT_PATTERNS: List[Tuple[re.Pattern, str, str]] = [

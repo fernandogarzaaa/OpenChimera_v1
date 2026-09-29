@@ -118,7 +118,7 @@ async def _run(args: argparse.Namespace) -> int:
     dry_run = not args.apply
 
     print(f"\n{'='*60}")
-    print(f"  OpenChimera Audit Pipeline")
+    print("  OpenChimera Audit Pipeline")
     print(f"  run_id   : {run_id}")
     print(f"  workspace: {args.workspace}")
     print(f"  mode     : {'DRY-RUN' if dry_run else 'APPLY'}")
@@ -137,7 +137,7 @@ async def _run(args: argparse.Namespace) -> int:
 
     # Print summary
     print(f"\n{'='*60}")
-    print(f"  PIPELINE COMPLETE")
+    print("  PIPELINE COMPLETE")
     print(f"  Verdict  : {report.overall_verdict.upper()}")
     print(f"  Stages   : {len(report.stages)}")
     for stage in report.stages:

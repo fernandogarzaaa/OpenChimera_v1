@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib
 import sys
-from pathlib import Path
 from typing import Any
 
 from core.config import get_harness_repo_root, get_legacy_harness_snapshot_root, is_supported_harness_repo_root

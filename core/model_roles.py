@@ -5,7 +5,6 @@ from typing import Any
 from core.config import load_runtime_profile, save_runtime_profile
 from core.model_registry import ModelRegistry
 
-
 ROLE_TO_QUERY_TYPE = {
     "main_loop_model": "general",
     "fast_model": "fast",

@@ -7,8 +7,8 @@ Usage::
 from __future__ import annotations
 
 from core.world_model import (  # noqa: F401
-    SystemWorldModel,
     InterventionSimulator,
+    SystemWorldModel,
 )
 
 __all__ = ["SystemWorldModel", "InterventionSimulator"]

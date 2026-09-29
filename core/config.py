@@ -9,7 +9,6 @@ from typing import Any
 
 from core.transactions import atomic_write_json
 
-
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 
 

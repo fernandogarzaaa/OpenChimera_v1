@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
-from importlib.metadata import PackageNotFoundError, version as package_version
 import json
 import logging
 import os
@@ -12,17 +10,20 @@ import sys
 import threading
 import time
 import tomllib
+from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
 
+from core.aether_service import AetherService
 from core.bootstrap import bootstrap_workspace
 from core.bus import EventBus
-from core.aether_service import AetherService
 from core.config import (
     ROOT,
-    build_runtime_configuration_status,
     build_deployment_status,
     build_identity_snapshot,
+    build_runtime_configuration_status,
     get_api_admin_token,
     get_api_auth_header,
     get_api_auth_token,
@@ -42,7 +43,13 @@ from core.database import DatabaseManager
 from core.evo_service import EvoService
 from core.kernel import OpenChimeraKernel
 from core.logging_utils import configure_runtime_logging
-from core.mcp_registry import delete_mcp_registry_entry, list_mcp_registry_with_health, probe_all_mcp_registry_entries, probe_mcp_registry_entry, upsert_mcp_registry_entry
+from core.mcp_registry import (
+    delete_mcp_registry_entry,
+    list_mcp_registry_with_health,
+    probe_all_mcp_registry_entries,
+    probe_mcp_registry_entry,
+    upsert_mcp_registry_entry,
+)
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
 from core.wraith_service import WraithService
@@ -1812,8 +1819,8 @@ def _plugins_command(install_id: str, uninstall_id: str, as_json: bool, load_pat
     provider = _build_provider()
     if load_path:
         # Load a plugin from a manifest path via the capability plane
-        from core.capability_plane import CapabilityPlane
         from core.bus import EventBus
+        from core.capability_plane import CapabilityPlane
         bus = EventBus()
         # Minimal stub for plugin loading — capability plane is self-contained
         class _StubPlugins:

@@ -7,14 +7,14 @@ Usage::
 from __future__ import annotations
 
 from core.embodied_interaction import (  # noqa: F401
-    SensorReading,
     ActuatorCommand,
-    WorldObject,
-    SensorInterface,
     ActuatorInterface,
-    EnvironmentState,
     BodySchema,
     EmbodiedInteraction,
+    EnvironmentState,
+    SensorInterface,
+    SensorReading,
+    WorldObject,
 )
 
 __all__ = [

@@ -11,7 +11,6 @@ from urllib import error, request
 from core.rag import Document
 from core.token_fracture import compress_context
 
-
 LOGGER = logging.getLogger(__name__)
 
 

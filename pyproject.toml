@@ -126,20 +126,12 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Legacy/root runtime and historical tests are covered by pytest shards but are not yet
-# lint-clean. The release lint gate below is deliberately run on the maintained
-# installable package plus packaged-surface tests while legacy cleanup remains roadmap.
-"core/**" = ["E", "F", "I"]
-"openchimera/**" = ["E", "F", "I"]
+# Historical tests are exercised by pytest but still carry style debt; they
+# stay out of the release lint gate until a dedicated test-hygiene pass.
+# (The legacy runtime — core/, root openchimera/, run.py, scripts/,
+# services/, swarms/, transport/, utils/, dist_sim/ — was graduated into
+# the gate after cleanup.)
 "tests/**" = ["E", "F", "I"]
-"run.py" = ["E", "F", "I"]
-"run_audit.py" = ["E", "F", "I"]
-"scripts/**" = ["E", "F", "I"]
-"services/**" = ["E", "F", "I"]
-"swarms/**" = ["E", "F", "I"]
-"transport/**" = ["E", "F", "I"]
-"utils/**" = ["E", "F", "I"]
-"dist_sim/**" = ["E", "F", "I"]
 
 [tool.pytest.ini_options]
 pythonpath = [".", "python"]

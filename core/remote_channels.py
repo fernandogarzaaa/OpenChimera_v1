@@ -22,12 +22,10 @@ import logging
 import secrets
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from pathlib import Path
 from typing import Any, Callable
 
-from core.config import ROOT
 from core.credential_store import CredentialStore
 from core.quantum_capabilities import get_registry
 
@@ -179,8 +177,8 @@ class TelegramChannel(RemoteChannel):
                 await update.message.reply_text("Already paired. Send any command.")
                 return
             await update.message.reply_text(
-                f"Send the pairing code to authenticate.\n"
-                f"Hint: check your OpenChimera console log."
+                "Send the pairing code to authenticate.\n"
+                "Hint: check your OpenChimera console log."
             )
 
         async def _handle_message(update: Any, context: Any) -> None:
@@ -422,8 +420,8 @@ class WebhookChannel(RemoteChannel):
         if self._info.status != ChannelStatus.RUNNING:
             return {"ok": False, "error": "Webhook channel not running"}
 
-        import urllib.request
         import urllib.error
+        import urllib.request
 
         body = json.dumps({"topic": topic, "payload": payload, "ts": time.time()}).encode()
         headers: dict[str, str] = {"Content-Type": "application/json"}

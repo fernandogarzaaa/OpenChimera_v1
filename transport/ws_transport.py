@@ -2,9 +2,12 @@
 """
 WSTransport: WebSocket transport for persistent connections in OpenChimera.
 """
-from typing import Any, Dict, AsyncGenerator
+from typing import Any, AsyncGenerator, Dict
+
 from fastapi import WebSocket
+
 from .base import ChimeraTransport
+
 
 class WSTransport(ChimeraTransport):
     def __init__(self, websocket: WebSocket) -> None:

@@ -5,6 +5,7 @@ Uses LLM client to summarize old messages into a compressed context block.
 """
 from typing import List, Tuple
 
+
 class SessionCompactor:
     def __init__(self, llm_client) -> None:
         self.llm_client = llm_client

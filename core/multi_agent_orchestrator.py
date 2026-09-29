@@ -26,15 +26,14 @@ import logging
 import os
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
 from core.agent_pool import (
     AgentPool,
     AgentRole,
-    AgentSpec,
     create_llm_pool,
     create_pool,
 )

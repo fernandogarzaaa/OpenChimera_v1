@@ -7,7 +7,6 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable, Coroutine, List, Literal, Optional
 
-
 AgentStatus = Literal["idle", "active", "done", "failed"]
 
 log = logging.getLogger(__name__)

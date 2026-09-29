@@ -13,17 +13,14 @@ Responsibilities:
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
-import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from core.capabilities import CapabilityRegistry
 from core.config import ROOT
-
 
 # ---------------------------------------------------------------------------
 # Phase 4 — Skill Composition and Creation Engine

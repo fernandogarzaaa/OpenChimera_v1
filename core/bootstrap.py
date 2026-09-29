@@ -7,8 +7,6 @@ from typing import Any
 from core.config import (
     ROOT,
     default_runtime_profile,
-    get_chimera_kb_path,
-    get_rag_storage_path,
     get_runtime_profile_path,
     normalize_runtime_profile,
     save_runtime_profile,

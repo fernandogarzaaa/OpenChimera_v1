@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 _REQUEST_ID: ContextVar[str | None] = ContextVar("openchimera_request_id", default=None)
 
 _STANDARD_RECORD_FIELDS = {

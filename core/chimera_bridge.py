@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +36,7 @@ if str(_CHIMERA_ROOT) not in sys.path:
 try:
     from chimera.detect import DetectionReport, HallucinationDetector
     from chimera.integrity import ChainBuilder, IntegrityEngine
-    from chimera.lexer import LexError, Lexer
+    from chimera.lexer import Lexer, LexError
     from chimera.parser import ParseError, Parser
     from chimera.type_checker import TypeChecker
     from chimera.types import ChimeraValue, Confidence, MemoryScope
