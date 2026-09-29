@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import time
@@ -10,10 +11,11 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from openchimera.agent import AgentOrchestrator
 from openchimera.cognitive.bridge import CognitiveBridge
@@ -122,6 +124,60 @@ if settings.api.cors.enabled:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API authentication (bearer tokens — enforced only when explicitly enabled)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+AUTH_EXEMPT_PATHS = frozenset({"/health"})
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Enforce bearer-token auth when `api.auth.enabled` is set.
+
+    Fail-open only when auth is disabled (the default loopback posture) or
+    the app state has no settings yet. CORS preflights (OPTIONS) and the
+    liveness probe (/health) never require credentials.
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        if request.method == "OPTIONS" or request.url.path in AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+        settings = getattr(request.app.state, "settings", None)
+        auth = settings.api.auth if settings is not None else None
+        if auth is None or not auth.enabled:
+            return await call_next(request)
+        expected = [token for token in (auth.token, auth.admin_token) if token]
+        if not expected:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "API auth is enabled but no token is configured"},
+            )
+        scheme, _, credential = request.headers.get("authorization", "").partition(" ")
+        presented_ok = scheme.lower() == "bearer" and _token_matches(credential, expected)
+        if not presented_ok:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API token"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await call_next(request)
+
+
+def _token_matches(credential: str, expected: list[str]) -> bool:
+    """Constant-time token comparison that never raises on odd input."""
+    if not credential.isascii():
+        return False
+    for token in expected:
+        if not token.isascii():
+            continue
+        if hmac.compare_digest(credential, token):
+            return True
+    return False
+
+
+app.add_middleware(AuthMiddleware)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
