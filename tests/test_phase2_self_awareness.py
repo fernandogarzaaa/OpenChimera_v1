@@ -13,19 +13,17 @@ from __future__ import annotations
 
 import os
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
-from core.causal_reasoning import CausalReasoning, EdgeType
+from core.causal_reasoning import CausalReasoning
 from core.evolution import EvolutionEngine
 from core.memory.episodic import EpisodicMemory
 from core.memory.semantic import SemanticMemory
 from core.metacognition import MetacognitionEngine
-
 
 # ---------------------------------------------------------------------------
 # Shared test infrastructure
@@ -341,7 +339,7 @@ class _FakeMiniMind:
 class TestApplyRepair(unittest.TestCase):
     """Verify _apply_repair dispatches correctly for each category."""
 
-    def _make_scheduler(self, temp_root: Path) -> "AutonomyScheduler":  # type: ignore[name-defined]
+    def _make_scheduler(self, temp_root: Path) -> "AutonomyScheduler":  # type: ignore[name-defined]  # noqa: F821  -- bound by the function-local import below; annotations are strings
         from core.autonomy import AutonomyScheduler
         from core.bus import EventBus as BusImpl
 

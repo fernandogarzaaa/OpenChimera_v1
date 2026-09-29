@@ -12,23 +12,19 @@ Covers:
 """
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from core.social_cognition import (
-    SocialCognition,
-    SocialNormRegistry,
-    RelationshipMemory,
-    SocialContextTracker,
-    TheoryOfMind,
-    MentalState,
-    RelationshipRecord,
-    SocialContext,
-    SocialNorm,
-)
 from core._bus_fallback import EventBus
-
+from core.social_cognition import (
+    MentalState,
+    RelationshipMemory,
+    RelationshipRecord,
+    SocialCognition,
+    SocialContext,
+    SocialContextTracker,
+    SocialNormRegistry,
+    TheoryOfMind,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures

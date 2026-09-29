@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from core.runtime_plane import RuntimePlane
 

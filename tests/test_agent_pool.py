@@ -35,17 +35,16 @@ from core.agent_pool import (
     AgentRole,
     AgentSpec,
     AgentStatus,
-    create_pool,
-    make_agent_callable,
-    _reasoner_strategy,
     _creative_strategy,
     _critic_strategy,
-    _factchecker_strategy,
-    _synthesizer_strategy,
     _explorer_strategy,
+    _factchecker_strategy,
+    _reasoner_strategy,
     _specialist_strategy,
+    _synthesizer_strategy,
+    create_pool,
+    make_agent_callable,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. AgentRole enum

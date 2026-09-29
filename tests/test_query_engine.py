@@ -11,7 +11,6 @@ from core.model_registry import ModelRegistry
 from core.model_roles import ModelRoleManager
 from core.query_engine import QueryEngine
 
-
 # ---------------------------------------------------------------------------
 # Helpers for mock-based tests
 # ---------------------------------------------------------------------------
@@ -480,7 +479,8 @@ class TestSkillPromptSelection(unittest.TestCase):
 
     def test_skill_prompt_injected_into_hydrated_messages(self):
         """When a skill matches, the hydrated messages should contain a system message with the skill name."""
-        import tempfile, os
+        import os
+        import tempfile
         with tempfile.NamedTemporaryFile(mode="w", suffix="SKILL.md", delete=False) as f:
             f.write("---\nid: security-auditor\n---\nYou are an ISO 27001 security auditor.\n")
             skill_path = f.name

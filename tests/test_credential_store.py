@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import unittest
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from core.credential_store import CredentialStore
-
 
 # ---------------------------------------------------------------------------
 # Helper — build a CredentialStore with a fully mocked database

@@ -1,9 +1,9 @@
 """Tests for new core components: PlanMode, AgentCoordinator, KnowledgeBase, SafetyLayer."""
 import pytest
 
-from core.plan_mode import PlanMode, PlanStatus, StepStatus
 from core.agent_coordinator import AgentCoordinator
 from core.knowledge_base import KnowledgeBase
+from core.plan_mode import PlanMode, PlanStatus, StepStatus
 from core.safety_layer import SafetyLayer
 
 

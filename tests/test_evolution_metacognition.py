@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import math
 import os
 import struct
 import tempfile
 import unittest
-from unittest.mock import MagicMock
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
-from core.memory.episodic import EpisodicMemory
 from core.evolution import EvolutionEngine
+from core.memory.episodic import EpisodicMemory
 from core.metacognition import MetacognitionEngine
 
 

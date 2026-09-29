@@ -3,23 +3,18 @@ Tests for Phase 4: Security & Sandboxing (InjectionDefense, ToolPolicyEngine, Sa
 """
 from __future__ import annotations
 
-import time
 import unittest
 
 from core.security_sandbox import (
-    InjectionRisk,
     InjectionDefense,
-    InjectionScanResult,
-    PermissionLevel,
+    InjectionRisk,
+    SandboxConfig,
+    SandboxManager,
+    SandboxResult,
+    SandboxStatus,
     ToolPolicy,
     ToolPolicyEngine,
-    PolicyViolation,
-    SandboxConfig,
-    SandboxStatus,
-    SandboxResult,
-    SandboxManager,
 )
-
 
 # ---------------------------------------------------------------------------
 # InjectionDefense Tests

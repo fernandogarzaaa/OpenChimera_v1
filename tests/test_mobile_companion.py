@@ -3,23 +3,17 @@ Tests for Phase 6: Mobile & Companion API.
 """
 from __future__ import annotations
 
-import time
 import unittest
 
 from core.mobile_companion import (
-    DevicePlatform,
-    DeviceStatus,
-    DeviceRegistration,
     DeviceManager,
-    PushNotification,
-    PushNotificationManager,
+    DevicePlatform,
     MenuBarAction,
     MenuBarCompanion,
-    DeviceSession,
-    SessionContinuityManager,
     MobileCompanionAPI,
+    PushNotificationManager,
+    SessionContinuityManager,
 )
-
 
 # ---------------------------------------------------------------------------
 # Device Manager Tests
@@ -74,7 +68,7 @@ class TestDeviceManager(unittest.TestCase):
         self.assertEqual(len(devices), 2)
 
     def test_ios_default_capabilities(self):
-        result = self.manager.register("ios-dev", "user", DevicePlatform.IOS)
+        self.manager.register("ios-dev", "user", DevicePlatform.IOS)
         # Get device capabilities from registered device
         device = self.manager._devices["ios-dev"]
         self.assertIn("push_notifications", device.capabilities)
@@ -99,7 +93,7 @@ class TestDeviceManager(unittest.TestCase):
         self.assertIn("by_platform", status)
 
     def test_device_to_dict_excludes_token(self):
-        result = self.manager.register("d-dict", "user", DevicePlatform.IOS)
+        _result =self.manager.register("d-dict", "user", DevicePlatform.IOS)
         device = self.manager._devices["d-dict"]
         d = device.to_dict()
         self.assertNotIn("api_token", d)

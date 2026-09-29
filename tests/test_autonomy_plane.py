@@ -150,7 +150,7 @@ class AutonomyPlaneDispatchTests(unittest.TestCase):
         plane = _make_plane(run_autonomy_job_callback=run_cb)
         plane.dispatch_operator_digest(history_limit=10)
         call_kwargs = run_cb.call_args
-        payload = call_kwargs[1].get("payload") or call_kwargs[0][1] if len(call_kwargs[0]) > 1 else {}
+        _payload =call_kwargs[1].get("payload") or call_kwargs[0][1] if len(call_kwargs[0]) > 1 else {}
         # history_limit passed through payload when it's not None
         self.assertIsNotNone(call_kwargs)
 

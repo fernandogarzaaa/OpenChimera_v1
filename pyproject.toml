@@ -125,14 +125,6 @@ ignore = [
     "EXE002",  # VM checkout marks text files executable even when git mode is 100644
 ]
 
-[tool.ruff.lint.per-file-ignores]
-# Historical tests are exercised by pytest but still carry style debt; they
-# stay out of the release lint gate until a dedicated test-hygiene pass.
-# (The legacy runtime — core/, root openchimera/, run.py, scripts/,
-# services/, swarms/, transport/, utils/, dist_sim/ — was graduated into
-# the gate after cleanup.)
-"tests/**" = ["E", "F", "I"]
-
 [tool.pytest.ini_options]
 pythonpath = [".", "python"]
 testpaths = ["tests"]

@@ -11,7 +11,6 @@ from core.deliberation_engine import (
     enhance_ascension_deliberation,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -153,7 +152,7 @@ class TestDeliberationGraphConsensus(unittest.TestCase):
 
     def test_max_flow_single_hypothesis(self) -> None:
         graph = DeliberationGraph()
-        h = graph.add_hypothesis("only one", "sole", confidence=0.9)
+        _h =graph.add_hypothesis("only one", "sole", confidence=0.9)
         result = graph.max_flow_consensus()
         # Single node → root and leaf, flow should work
         self.assertIsNotNone(result["winning_hypothesis"])
@@ -171,7 +170,7 @@ class TestDeliberationGraphConsensus(unittest.TestCase):
         graph = DeliberationGraph()
         low = graph.add_hypothesis("weak", "p1", confidence=0.2)
         high = graph.add_hypothesis("strong", "p2", confidence=0.95)
-        mid = graph.add_hypothesis("medium", "p3", confidence=0.5)
+        _mid =graph.add_hypothesis("medium", "p3", confidence=0.5)
         ranked = graph.ranked_hypotheses()
         self.assertEqual(len(ranked), 3)
         # Highest confidence first (no supports/contradictions → score = confidence)

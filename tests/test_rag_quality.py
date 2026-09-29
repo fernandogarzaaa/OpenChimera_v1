@@ -67,7 +67,9 @@ class TestRAGStatusRetrievalBackend(unittest.TestCase):
             status = rag.get_status()
             self.assertIn("retrieval_backend", status)
         finally:
-            import os; os.unlink(path)
+            import os
+
+            os.unlink(path)
 
     def test_retrieval_backend_is_valid_string(self):
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
@@ -77,4 +79,6 @@ class TestRAGStatusRetrievalBackend(unittest.TestCase):
             backend = rag.get_status()["retrieval_backend"]
             self.assertIn(backend, {"embedding", "keyword"})
         finally:
-            import os; os.unlink(path)
+            import os
+
+            os.unlink(path)

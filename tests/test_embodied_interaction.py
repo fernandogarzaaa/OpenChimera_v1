@@ -12,23 +12,19 @@ Covers:
 """
 from __future__ import annotations
 
-import math
-import time
-
 import pytest
 
+from core._bus_fallback import EventBus
 from core.embodied_interaction import (
-    EmbodiedInteraction,
-    SensorInterface,
-    ActuatorInterface,
-    EnvironmentState,
-    BodySchema,
-    SensorReading,
     ActuatorCommand,
+    ActuatorInterface,
+    BodySchema,
+    EmbodiedInteraction,
+    EnvironmentState,
+    SensorInterface,
+    SensorReading,
     WorldObject,
 )
-from core._bus_fallback import EventBus
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -134,8 +130,10 @@ class TestSensorInterface:
             except Exception as e:
                 errors.append(e)
         threads = [threading.Thread(target=worker) for _ in range(10)]
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         assert not errors
 
 

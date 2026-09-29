@@ -56,8 +56,10 @@ def _run(coro):
 # ===========================================================================
 
 try:
-    from core._bus_fallback import EventBus as _EventBus
-    from core._database_fallback import DatabaseManager as _DatabaseManager
+    from core._bus_fallback import EventBus as _EventBus  # noqa: F401  -- availability probe for skipUnless
+    from core._database_fallback import (
+        DatabaseManager as _DatabaseManager,  # noqa: F401  -- availability probe for skipUnless
+    )
     from core.memory.episodic import EpisodicMemory
     from core.memory.semantic import SemanticMemory
     from core.memory.working import WorkingMemory
@@ -185,8 +187,8 @@ class TestMemoryPipeline(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core._bus_fallback import EventBus as _GoalEventBus
-    from core._database_fallback import DatabaseManager as _GoalDB
+    from core._bus_fallback import EventBus as _GoalEventBus  # noqa: F401  -- availability probe for skipUnless
+    from core._database_fallback import DatabaseManager as _GoalDB  # noqa: F401  -- availability probe for skipUnless
     from core.goal_planner import GoalPlanner, GoalStatus
 
     _GOAL_AVAILABLE = True
@@ -274,8 +276,8 @@ class TestGoalLifecycle(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core._bus_fallback import EventBus as _DelibBus
-    from core.deliberation import DeliberationGraph, Hypothesis
+    from core._bus_fallback import EventBus as _DelibBus  # noqa: F401  -- availability probe for skipUnless
+    from core.deliberation import DeliberationGraph, Hypothesis  # noqa: F401  -- Hypothesis kept as availability probe
     from core.deliberation_engine import DeliberationEngine
 
     _DELIBERATION_AVAILABLE = True
@@ -316,7 +318,7 @@ class TestDeliberationConsensus(unittest.TestCase):
             perspective="load",
             confidence=0.70,
         )
-        h2 = self.graph.add_hypothesis(
+        _h2 =self.graph.add_hypothesis(
             claim="Model B is better for accuracy-critical tasks requiring precision",
             perspective="accuracy",
             confidence=0.65,
@@ -390,7 +392,7 @@ class TestDeliberationConsensus(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core.quantum_engine import QuantumEngine, ConsensusResult
+    from core.quantum_engine import ConsensusResult, QuantumEngine
 
     _QUANTUM_AVAILABLE = True
 except ImportError:
@@ -456,7 +458,11 @@ class TestMultiAgentConsensus(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core.causal_reasoning import CausalReasoning, EdgeType, ConfidenceLevel
+    from core.causal_reasoning import (  # noqa: F401  -- ConfidenceLevel kept as availability probe
+        CausalReasoning,
+        ConfidenceLevel,
+        EdgeType,
+    )
 
     _CAUSAL_AVAILABLE = True
 except ImportError:
@@ -565,7 +571,7 @@ class TestCausalReasoningChain(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core.transfer_learning import TransferLearning, PatternType, TransferCandidate
+    from core.transfer_learning import PatternType, TransferCandidate, TransferLearning
 
     _TRANSFER_AVAILABLE = True
 except ImportError:
@@ -658,10 +664,13 @@ class TestTransferLearning(unittest.TestCase):
 # ===========================================================================
 
 try:
-    from core._bus_fallback import EventBus as _PipelineBus
-    from core._database_fallback import DatabaseManager as _PipelineDB
+    from core._bus_fallback import EventBus as _PipelineBus  # noqa: F401  -- availability probe for skipUnless
+    from core._database_fallback import (
+        DatabaseManager as _PipelineDB,  # noqa: F401  -- availability probe for skipUnless
+    )
     from core.deliberation_engine import DeliberationEngine as _PipelineDE
-    from core.goal_planner import GoalPlanner as _PipelineGP, GoalStatus as _PipelineGS
+    from core.goal_planner import GoalPlanner as _PipelineGP
+    from core.goal_planner import GoalStatus as _PipelineGS
     from core.quantum_engine import QuantumEngine as _PipelineQE
 
     _PIPELINE_CORE_AVAILABLE = True
@@ -844,7 +853,7 @@ class TestFullPipelineSimulation(unittest.TestCase):
         episode = self._step5_record_episode(goal.id, exec_result)
 
         # Step 6: Generate DPO pair (graceful if evolution unavailable)
-        dpo = self._step6_generate_dpo_pair(episode)
+        _dpo =self._step6_generate_dpo_pair(episode)
 
         # Verify final goal state
         final_goal = self.planner.get_goal(goal.id)

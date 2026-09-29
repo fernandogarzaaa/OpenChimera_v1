@@ -5,22 +5,21 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from core.mcp_registry import (
-    delete_mcp_registry_entry,
-    get_mcp_registry_entry,
-    get_mcp_registry_path,
-    get_mcp_health_state_path,
-    list_mcp_registry,
-    list_mcp_registry_with_health,
-    load_mcp_registry,
-    load_mcp_health_state,
-    upsert_mcp_registry_entry,
-    probe_all_mcp_registry_entries,
-    probe_mcp_registry_entry,
     _probe_entry,
     _probe_stdio_entry,
+    delete_mcp_registry_entry,
+    get_mcp_health_state_path,
+    get_mcp_registry_entry,
+    get_mcp_registry_path,
+    list_mcp_registry,
+    list_mcp_registry_with_health,
+    load_mcp_health_state,
+    load_mcp_registry,
+    probe_all_mcp_registry_entries,
+    probe_mcp_registry_entry,
+    upsert_mcp_registry_entry,
 )
 
 

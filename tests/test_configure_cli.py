@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from run import _build_parser
 
 
@@ -40,7 +38,7 @@ def test_configure_dispatches_to_wizard() -> None:
 
     with patch("run.configure_command", create=True) as mock_cmd:
         mock_cmd.return_value = 0
-        with patch("core.configure_wizard.configure_command", return_value=0) as wiz:
+        with patch("core.configure_wizard.configure_command", return_value=0) as _wiz:
             result = _configure_quantum_command(
                 list_caps=True, enable_id="", disable_id="", as_json=True
             )

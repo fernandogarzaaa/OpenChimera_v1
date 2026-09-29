@@ -1,14 +1,10 @@
 """Tests for core.mcp_adapter — MCPAdapter runtime connection manager."""
 from __future__ import annotations
 
-import json
-import tempfile
 import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from core.mcp_adapter import MCPAdapter, MCPConnectionError
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -368,7 +364,7 @@ class TestMCPAdapterRegistration(unittest.TestCase):
     def test_unregister_server_calls_delete(self):
         with patch("core.mcp_adapter.delete_mcp_registry_entry", return_value={"id": "del-srv", "deleted": True}) as mock_del:
             adapter = _make_adapter()
-            result = adapter.unregister_server("del-srv")
+            _result =adapter.unregister_server("del-srv")
         mock_del.assert_called_once_with("del-srv")
 
     def test_unregister_server_removes_from_connected(self):

@@ -6,21 +6,19 @@ from __future__ import annotations
 import unittest
 
 from core.plugin_sdk import (
-    PluginState,
-    PluginManifest,
     BasePlugin,
+    ModelProviderRegistry,
+    ModelProviderType,
+    ModelSpec,
+    PluginManifest,
     PluginRegistry,
+    PluginState,
+    ProviderConfig,
     SkillCategory,
     SkillListing,
     SkillMarketplace,
-    ModelProviderType,
-    ModelSpec,
-    ProviderConfig,
-    ModelProviderRegistry,
     plugin_capability,
-    plugin_permission,
 )
-
 
 # ---------------------------------------------------------------------------
 # Plugin SDK Tests

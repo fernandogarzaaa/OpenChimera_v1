@@ -6,13 +6,9 @@ functionally correct without requiring external services.
 from __future__ import annotations
 
 import json
-import time
 import unittest
-from dataclasses import fields
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
-
 
 # ---------------------------------------------------------------------------
 # Phase 1: ToolRuntime + CapabilityPlane
@@ -80,7 +76,8 @@ class TestToolRuntime(unittest.TestCase):
     def test_tool_registry_execute_with_handler(self):
         from core.tool_runtime import ToolMetadata, ToolRegistry
         reg = ToolRegistry()
-        handler = lambda args: {"echo": args.get("msg", "hi")}
+        def handler(args):
+            return {"echo": args.get("msg", "hi")}
         reg.register(ToolMetadata(name="echo", description="Echo", handler=handler))
         result = reg.execute("echo", {"msg": "hello"})
         self.assertTrue(result.success)
@@ -179,7 +176,8 @@ class TestCapabilityPlane(unittest.TestCase):
             plane.describe_skill("ghost")
 
     def test_load_plugin_from_json(self, tmp_path=None):
-        import tempfile, os
+        import os
+        import tempfile
         plane = self._make_plane()
         manifest = {
             "id": "test-plugin",
@@ -203,7 +201,8 @@ class TestCapabilityPlane(unittest.TestCase):
             os.unlink(tmp)
 
     def test_list_plugins(self):
-        import tempfile, os
+        import os
+        import tempfile
         plane = self._make_plane()
         manifest = {"id": "p1", "name": "Plugin 1", "tools": [], "skills": []}
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
@@ -328,6 +327,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_assign_and_get(self, tmp_path=None):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -340,6 +340,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_list_roles(self):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -350,6 +351,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_reset(self):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -360,6 +362,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_persistence(self):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -373,6 +376,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_route_by_role(self):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -384,6 +388,7 @@ class TestModelRoleExpansion(unittest.TestCase):
 
     def test_role_registry_invalid_model_raises(self):
         import tempfile
+
         from core.router import ModelRole, RoleRegistry
         with tempfile.TemporaryDirectory() as tmpdir:
             cfg = Path(tmpdir) / "roles.json"
@@ -473,8 +478,6 @@ class TestEvolutionEnginePhase4(unittest.TestCase):
 
     def _make_engine(self):
         from core.evolution import EvolutionEngine
-        from core._bus_fallback import EventBus
-        from core._database_fallback import DatabaseManager
         db = MagicMock()
         db.list_episodes = MagicMock(return_value=[])
         bus = MagicMock()
@@ -591,7 +594,7 @@ class TestQuantumServiceContract(unittest.TestCase):
         self.assertTrue(result)
 
     def test_engine_property_accessible(self):
-        from core.quantum_engine import QuantumServiceContract, QuantumEngine
+        from core.quantum_engine import QuantumEngine, QuantumServiceContract
         svc = QuantumServiceContract()
         self.assertIsInstance(svc.engine, QuantumEngine)
 
@@ -635,14 +638,18 @@ class TestOperatorCLI(unittest.TestCase):
         self.assertTrue(hasattr(run, "_skills_discover_command"))
 
     def test_plugins_command_has_load_param(self):
-        import run, inspect
+        import inspect
+
+        import run
         sig = inspect.signature(run._plugins_command)
         params = list(sig.parameters.keys())
         self.assertIn("load_path", params)
         self.assertIn("list_loaded", params)
 
     def test_tools_command_has_new_params(self):
-        import run, inspect
+        import inspect
+
+        import run
         sig = inspect.signature(run._tools_command)
         params = list(sig.parameters.keys())
         self.assertIn("list_tools", params)
@@ -650,7 +657,9 @@ class TestOperatorCLI(unittest.TestCase):
         self.assertIn("call_args", params)
 
     def test_sessions_command_has_branch_replay(self):
-        import run, inspect
+        import inspect
+
+        import run
         sig = inspect.signature(run._sessions_command)
         params = list(sig.parameters.keys())
         self.assertIn("branch_checkpoint", params)

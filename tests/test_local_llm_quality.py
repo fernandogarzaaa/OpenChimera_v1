@@ -433,7 +433,7 @@ class LocalLLMRuntimeTests(unittest.TestCase):
         self.assertIn("nonexistent-model", result["missing"])
 
     def test_add_and_remove_model(self) -> None:
-        from core.local_llm import ModelConfig, ModelStats
+        from core.local_llm import ModelConfig
         manager = self._make_manager()
         config = ModelConfig(
             name="test-model",

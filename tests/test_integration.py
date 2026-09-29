@@ -1,7 +1,6 @@
 """Tests for core.integration — dynamic module import utility."""
 from __future__ import annotations
 
-import importlib.util
 import sys
 import tempfile
 import textwrap

@@ -13,7 +13,6 @@ from unittest.mock import MagicMock, patch
 
 from core.multimodal_service import MultimodalService
 
-
 PNG_1X1_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0nX7sAAAAASUVORK5CYII="
 
 
@@ -550,7 +549,7 @@ class TestUnderstandImageProvider(unittest.TestCase):
 
         with patch.object(svc, "_select_vision_provider", return_value=openrouter_provider):
             with patch.object(svc, "_post_json", side_effect=capture_post):
-                result = svc.understand_image(image_base64=png_b64)
+                _result =svc.understand_image(image_base64=png_b64)
         self.assertIn("HTTP-Referer", captured_headers)
 
 
@@ -636,9 +635,6 @@ class TestProviderSecret(unittest.TestCase):
 class TestPostJson(unittest.TestCase):
     def test_post_json_success_returns_dict(self):
         svc = _make_service()
-        from unittest.mock import MagicMock
-        from unittest.mock import patch as _patch
-        from urllib import error as _error
         mock_response_data = json.dumps({"result": "ok"}).encode("utf-8")
 
         class MockResponse:
@@ -659,8 +655,8 @@ class TestPostJson(unittest.TestCase):
 
     def test_post_json_http_error_raises_runtime_error(self):
         svc = _make_service()
-        from urllib import error as _url_error
         from io import BytesIO
+        from urllib import error as _url_error
         http_error = _url_error.HTTPError(
             url="http://example.com",
             code=400,

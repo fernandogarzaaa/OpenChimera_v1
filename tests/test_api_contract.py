@@ -5,8 +5,7 @@ import os
 import ssl
 import unittest
 from unittest import mock
-from urllib import error
-from urllib import request
+from urllib import error, request
 
 from core.api_server import OpenChimeraAPIServer
 from core.rate_limiter import RateLimiter
@@ -813,7 +812,9 @@ class ApiContractTests(unittest.TestCase):
                 # Windows (WinError 10053/10054) can abort the connection when the
                 # server sends a 429 and immediately closes the socket.  Retry once.
                 last_os_exc = exc
-                import time as _t; _t.sleep(0.05)
+                import time as _t
+
+                _t.sleep(0.05)
         raise last_os_exc  # type: ignore[misc]
 
     def _post_raw_with_headers(

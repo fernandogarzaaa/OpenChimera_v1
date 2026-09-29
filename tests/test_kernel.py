@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import threading
 import time
 import unittest
-from unittest.mock import MagicMock, patch, call
-
+from unittest.mock import MagicMock, patch
 
 from core.kernel import OpenChimeraKernel
 
@@ -228,7 +226,7 @@ class KernelStartupTests(unittest.TestCase):
             # Run one iteration of the supervisor loop
             # Patch time.sleep to exit after one cycle
             call_count = [0]
-            real_sleep = time.sleep
+            _real_sleep =time.sleep
 
             def one_shot_sleep(secs):
                 call_count[0] += 1

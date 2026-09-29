@@ -15,13 +15,15 @@ import pytest
 # ---------------------------------------------------------------------------
 # HyperparameterTuner
 # ---------------------------------------------------------------------------
+from core.evolution import ContinualLearningPipeline
+from core.goal_planner import DecompositionStrategyLearner
 from core.meta_learning import (
     HyperparameterTuner,
-    register_subsystem,
     observe_metric,
+    register_subsystem,
     tune_subsystem,
-    _TUNER,
 )
+from core.skills_plane import SkillComposer
 
 
 class TestHyperparameterTuner:
@@ -100,7 +102,6 @@ class TestHyperparameterTuner:
 # ---------------------------------------------------------------------------
 # DecompositionStrategyLearner
 # ---------------------------------------------------------------------------
-from core.goal_planner import DecompositionStrategyLearner
 
 
 class TestDecompositionStrategyLearner:
@@ -154,7 +155,6 @@ class TestDecompositionStrategyLearner:
 # ---------------------------------------------------------------------------
 # SkillComposer
 # ---------------------------------------------------------------------------
-from core.skills_plane import SkillComposer
 
 
 class TestSkillComposer:
@@ -202,7 +202,6 @@ class TestSkillComposer:
 # ---------------------------------------------------------------------------
 # ContinualLearningPipeline
 # ---------------------------------------------------------------------------
-from core.evolution import ContinualLearningPipeline
 
 
 class TestContinualLearningPipeline:

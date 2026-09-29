@@ -136,12 +136,12 @@ class TestServicePlane(unittest.TestCase):
     def test_invoke_managed_aegis_swarm(self) -> None:
         plane = _make_plane()
         plane.aegis.run_workflow.return_value = {"ok": True}
-        result = plane.invoke_managed_subsystem("aegis_swarm", {"target_project": "proj", "preview": False})
+        plane.invoke_managed_subsystem("aegis_swarm", {"target_project": "proj", "preview": False})
         plane.aegis.run_workflow.assert_called_once()
 
     def test_invoke_managed_clawd_hybrid_rtx(self) -> None:
         plane = _make_plane()
-        result = plane.invoke_managed_subsystem("clawd_hybrid_rtx", {})
+        _result =plane.invoke_managed_subsystem("clawd_hybrid_rtx", {})
         plane.clawd_hybrid_rtx_status_getter.assert_called_once()
 
     def test_invoke_managed_qwen_agent(self) -> None:

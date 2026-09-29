@@ -21,19 +21,16 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from swarms.audit_system.models import (
+from swarms.audit_system.models import (  # noqa: E402  -- sys.path bootstrap above must run first
     AuditFinding,
     AuditReport,
     ExecutionLog,
     ExecutionRecord,
-    OrchestrationReport,
     Recommendation,
     RecommendationSet,
     StageResult,
-    TestReport,
     TestResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -509,7 +506,7 @@ class TestOrchestratorStateMachine:
 
     def test_hallucination_detected_triggers_redirect(self, tmp_path):
         """When chimera_detect reports a hallucination, retry counter increments."""
-        from swarms.audit_system.agent5_orchestrator import OrchestratorAgent, StageAbortedError
+        from swarms.audit_system.agent5_orchestrator import OrchestratorAgent
         chimera = _mock_chimera()
         # Always report hallucination so all retries exhausted
         chimera.detect = AsyncMock(return_value={
