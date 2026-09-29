@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from typing import AsyncIterator
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from openchimera.agent import AgentOrchestrator
@@ -149,11 +152,40 @@ async def openai_models() -> dict:
     return {"object": "list", "data": data}
 
 
+async def _stream_chat_completion(
+    completion_id: str, created: int, model: str, pieces: list[str]
+) -> AsyncIterator[str]:
+    """Yield OpenAI-compatible SSE chat.completion chunks.
+
+    The orchestrator currently resolves the whole response before we emit,
+    so each event carries a genuine slice of the final text (today: one
+    slice). The framing — role delta, content deltas, stop chunk, [DONE] —
+    is spec-shaped so SSE clients work unchanged when token streaming lands.
+    """
+
+    def _event(delta: dict, finish_reason: str | None) -> str:
+        return (
+            "data: "
+            + json.dumps({
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
+            })
+            + "\n\n"
+        )
+
+    yield _event({"role": "assistant"}, None)
+    for piece in pieces:
+        yield _event({"content": piece}, None)
+    yield _event({}, "stop")
+    yield "data: [DONE]\n\n"
+
+
 @app.post("/v1/chat/completions")
-async def openai_chat_completions(req: ChatCompletionRequest) -> dict:
-    """Minimal OpenAI-compatible chat completions endpoint."""
-    if req.stream:
-        raise HTTPException(status_code=400, detail="streaming chat completions are not yet supported by this packaged endpoint")
+async def openai_chat_completions(req: ChatCompletionRequest):
+    """OpenAI-compatible chat completions endpoint with SSE streaming support."""
     if not req.messages:
         raise HTTPException(status_code=400, detail="messages must contain at least one message")
     text = "\n".join(message.content for message in req.messages if message.role == "user").strip()
@@ -177,6 +209,17 @@ async def openai_chat_completions(req: ChatCompletionRequest) -> dict:
     created = int(time.time())
     content = result.get("text", "")
     model = result.get("model") or req.model or "unknown"
+    if req.stream:
+        return StreamingResponse(
+            _stream_chat_completion(
+                completion_id=f"chatcmpl-{uuid.uuid4().hex[:12]}",
+                created=created,
+                model=model,
+                pieces=[content] if content else [],
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     return {
         "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
         "object": "chat.completion",

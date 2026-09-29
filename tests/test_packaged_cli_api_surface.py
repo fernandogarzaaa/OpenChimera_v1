@@ -68,14 +68,25 @@ assert result.exit_code in {0, 1}, result.output
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_packaged_streaming_openai_compatible_chat_returns_clear_400() -> None:
+def test_packaged_streaming_openai_compatible_chat_emits_sse_chunks() -> None:
     code = """
+import json
 from fastapi.testclient import TestClient
 from openchimera.api.routes import app
 with TestClient(app) as client:
     response = client.post('/v1/chat/completions', json={'model': 'mock', 'stream': True, 'messages': [{'role': 'user', 'content': 'hello'}]})
-    assert response.status_code == 400, response.text
-    assert 'streaming' in response.json()['detail']
+    assert response.status_code == 200, response.text
+    assert response.headers['content-type'].startswith('text/event-stream'), response.headers
+    assert response.text.strip().endswith('data: [DONE]'), response.text
+    events = [json.loads(line[len('data: '):]) for line in response.text.splitlines() if line.startswith('data: ') and line != 'data: [DONE]']
+    assert events, response.text
+    assert all(event['object'] == 'chat.completion.chunk' for event in events), response.text
+    assert events[0]['choices'][0]['delta'].get('role') == 'assistant', response.text
+    assert any(event['choices'][0].get('finish_reason') == 'stop' for event in events), response.text
+    streamed = ''.join(event['choices'][0]['delta'].get('content', '') for event in events)
+    direct = client.post('/v1/chat/completions', json={'model': 'mock', 'stream': False, 'messages': [{'role': 'user', 'content': 'hello'}]})
+    assert direct.status_code == 200, direct.text
+    assert streamed == direct.json()['choices'][0]['message']['content'], (streamed, direct.text)
 """
     result = _run_packaged_python(code)
     assert result.returncode == 0, result.stdout + result.stderr
