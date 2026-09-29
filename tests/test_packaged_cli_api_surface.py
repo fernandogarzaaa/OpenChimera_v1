@@ -90,3 +90,57 @@ with TestClient(app) as client:
 """
     result = _run_packaged_python(code)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_serve_bind_guardrail() -> None:
+    code = """
+from click.testing import CliRunner
+from openchimera.cli import check_bind_guardrail, cli
+assert check_bind_guardrail('127.0.0.1', False, False) is None
+assert check_bind_guardrail('localhost', False, False) is None
+assert check_bind_guardrail('::1', False, False) is None
+assert check_bind_guardrail('0.0.0.0', False, False) is not None
+assert check_bind_guardrail('', False, False) is not None
+assert check_bind_guardrail('0.0.0.0', True, False) is None
+assert check_bind_guardrail('0.0.0.0', False, True) is None
+# The CLI refuses before touching the network: no server is started.
+result = CliRunner().invoke(cli, ['serve', '--host', '0.0.0.0'])
+assert result.exit_code != 0, result.output
+assert 'auth' in result.output.lower(), result.output
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_api_auth_enforcement() -> None:
+    code = """
+import os
+os.environ['OPENCHIMERA_API__AUTH__ENABLED'] = 'true'
+os.environ['OPENCHIMERA_API__AUTH__TOKEN'] = 's3cret-test-token'
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    assert client.get('/health').status_code == 200
+    assert client.get('/v1/models').status_code == 401
+    denied = client.post('/v1/chat/completions', json={'model': 'mock', 'messages': [{'role': 'user', 'content': 'hi'}]})
+    assert denied.status_code == 401, denied.text
+    assert denied.headers.get('www-authenticate') == 'Bearer', denied.headers
+    authed = client.get('/v1/models', headers={'Authorization': 'Bearer s3cret-test-token'})
+    assert authed.status_code == 200, authed.text
+    wrong = client.get('/v1/models', headers={'Authorization': 'Bearer wrong'})
+    assert wrong.status_code == 401, wrong.text
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_api_open_by_default() -> None:
+    code = """
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    assert client.get('/health').status_code == 200
+    assert client.get('/v1/models').status_code == 200
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr

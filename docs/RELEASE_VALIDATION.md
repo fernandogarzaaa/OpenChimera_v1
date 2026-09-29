@@ -34,6 +34,22 @@ curl -N -X POST http://127.0.0.1:8787/v1/chat/completions \
 
 Do not commit API keys, tokens, private model paths, or local credentials. Use environment variables or `config/local.yaml` for local overrides.
 
+## Production exposure
+
+Loopback binds (`127.0.0.1`, `localhost`, `::1`) need no auth. Binding beyond
+loopback without API auth is refused by `openchimera serve` unless you pass
+`--allow-insecure-bind`:
+
+```bash
+OPENCHIMERA_API__AUTH__ENABLED=true OPENCHIMERA_API__AUTH__TOKEN=<token> \
+  openchimera serve --host 0.0.0.0 --port 7870
+curl http://127.0.0.1:7870/v1/models -H 'Authorization: Bearer <token>'
+```
+
+With auth enabled, every API route except `/health` (and CORS preflights)
+requires `Authorization: Bearer <token>` (`OPENCHIMERA_API__AUTH__TOKEN` or
+`...__ADMIN_TOKEN`) and returns 401 otherwise.
+
 ## TUI and cross-platform checks
 
 The packaged CLI includes a non-interactive TUI preflight check:

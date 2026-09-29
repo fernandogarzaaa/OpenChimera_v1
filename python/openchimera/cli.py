@@ -29,15 +29,42 @@ def cli() -> None:
     """
 
 
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def check_bind_guardrail(host: str | None, auth_enabled: bool, allow_insecure_bind: bool) -> str | None:
+    """Refuse non-loopback binds without API auth.
+
+    Returns an explanatory error message when the effective bind host is
+    reachable beyond this machine while API auth is disabled (and no
+    explicit override was given); otherwise returns None.
+    """
+    if (host or "").strip().lower() in LOOPBACK_HOSTS:
+        return None
+    if auth_enabled or allow_insecure_bind:
+        return None
+    return (
+        f"Refusing to bind {host or '<all interfaces>'} without API auth: the server would be "
+        "reachable beyond this machine. Enable auth (OPENCHIMERA_API__AUTH__ENABLED=true with "
+        "OPENCHIMERA_API__AUTH__TOKEN set), bind a loopback address instead, or pass "
+        "--allow-insecure-bind to override explicitly."
+    )
+
+
 @cli.command()
 @click.option("--host", default=None, help="Bind host")
 @click.option("--port", type=int, default=None, help="Bind port")
 @click.option("--reload", is_flag=True, help="Enable auto-reload")
-def serve(host: str | None, port: int | None, reload: bool) -> None:
+@click.option("--allow-insecure-bind", is_flag=True, help="Allow non-loopback binds without API auth (not recommended).")
+def serve(host: str | None, port: int | None, reload: bool, allow_insecure_bind: bool) -> None:
     """Start the OpenChimera API server."""
     settings = load_settings()
     bind_host = host or settings.server.host
     bind_port = port or settings.server.port
+    refusal = check_bind_guardrail(bind_host, settings.api.auth.enabled, allow_insecure_bind)
+    if refusal:
+        console.print(f"[bold red]{refusal}[/bold red]")
+        sys.exit(1)
     console.print(f"[bold green]🚀 Starting OpenChimera v2 on http://{bind_host}:{bind_port}[/bold green]")
     start_server(host=bind_host, port=bind_port, reload=reload)
 
