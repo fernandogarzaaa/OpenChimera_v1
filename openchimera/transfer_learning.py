@@ -7,13 +7,13 @@ Usage::
 from __future__ import annotations
 
 from core.transfer_learning import (  # noqa: F401
-    PatternType,
-    PatternEntry,
-    TransferCandidate,
     DomainProfile,
     DomainWorldModel,
-    TransferLearning,
+    PatternEntry,
+    PatternType,
     SkillSynthesizer,
+    TransferCandidate,
+    TransferLearning,
 )
 
 __all__ = [

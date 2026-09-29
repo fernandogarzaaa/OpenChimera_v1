@@ -28,13 +28,12 @@ from core.config import (
     is_loopback_host,
     is_provider_tls_enabled,
 )
-from core.mcp_server import OpenChimeraMCPServer
 from core.logging_utils import clear_request_context, set_request_context
+from core.mcp_server import OpenChimeraMCPServer
 from core.observability import ObservabilityStore
 from core.provider import OpenChimeraProvider
 from core.rate_limiter import RateLimiter
 from core.schemas import GET_QUERY_SCHEMAS, POST_BODY_SCHEMAS, HealthResponse, ReadinessResponse
-
 
 LOGGER = logging.getLogger(__name__)
 MAX_JSON_BODY_BYTES = 10 * 1024 * 1024
@@ -384,8 +383,8 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 self._write_json(get_registry().status())
                 return
             if self.path == "/v1/quantum/channels":
-                from core.remote_channels import CHANNEL_CLASSES
                 from core.quantum_capabilities import get_registry
+                from core.remote_channels import CHANNEL_CLASSES
                 registry = get_registry()
                 channels = {}
                 for cap_id in CHANNEL_CLASSES:
@@ -1200,7 +1199,7 @@ class OpenChimeraAPIServer:
                 system_status_provider=self.system_status_provider,
                 rate_limiter=self.rate_limiter,
             )
-        except OSError as exc:
+        except OSError:
             LOGGER.exception("Failed to bind OpenChimera API server.")
             return False
 

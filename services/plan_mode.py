@@ -3,8 +3,9 @@
 PlanModeContext: Singleton for toggling plan (read-only) mode in OpenChimera.
 Blocks side-effecting tool calls and logs plan steps for system prompt injection.
 """
-from typing import List
 from threading import Lock
+from typing import List
+
 
 class PlanModeContext:
     _instance = None

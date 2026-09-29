@@ -9,7 +9,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Agent 1 output — AuditReport
 # ---------------------------------------------------------------------------

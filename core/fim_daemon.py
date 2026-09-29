@@ -1,7 +1,9 @@
 import hashlib
-import time
 import os
+import time
+
 from core.bus import EventBus
+
 
 class FIMDaemon:
     def __init__(self, bus: EventBus, files_to_watch: list):
@@ -10,11 +12,12 @@ class FIMDaemon:
         self.hashes = {f: self._hash_file(f) for f in files_to_watch if os.path.exists(f)}
 
     def _hash_file(self, filepath):
-        if not os.path.exists(filepath): return None
+        if not os.path.exists(filepath):
+            return None
         try:
             with open(filepath, 'rb') as f:
                 return hashlib.sha256(f.read()).hexdigest()
-        except:
+        except Exception:
             return None
 
     def run(self):

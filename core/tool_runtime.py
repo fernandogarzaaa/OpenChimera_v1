@@ -1,17 +1,14 @@
 from __future__ import annotations
 
 import json
-import logging
 import time
-import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, List
+from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
 
-from core.tool_executor import ToolExecutor, ToolPermissionError, ToolExecutionError
+from core.tool_executor import ToolExecutionError, ToolExecutor
 from services.hook_pipeline import HookPipeline
-
 
 # ---------------------------------------------------------------------------
 # ToolMetadata / ToolResult — structured capability descriptors

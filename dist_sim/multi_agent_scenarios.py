@@ -16,10 +16,8 @@ All scenarios are async, self-contained, and portable (no hardcoded paths).
 from __future__ import annotations
 
 import asyncio
-import time
 from typing import Any, Callable, Dict, List
 
-from core.agent_pool import AgentPool, AgentRole, AgentSpec, create_pool
 from core.quantum_engine import (
     AgentReputation,
     ConsensusResult,
@@ -29,7 +27,6 @@ from core.quantum_engine import (
 from .cluster import SimCluster
 from .harness import run_concurrent_scenario, run_sim_scenario
 from .node import SimNode
-
 
 # ---------------------------------------------------------------------------
 # Realistic agent callables (simulate domain expertise)

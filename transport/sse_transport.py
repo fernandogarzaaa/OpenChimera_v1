@@ -2,9 +2,12 @@
 """
 SSETransport: Server-Sent Events transport for OpenChimera using FastAPI StreamingResponse.
 """
-from typing import Any, Dict, AsyncGenerator
+from typing import Any, AsyncGenerator, Dict
+
 from fastapi.responses import StreamingResponse
+
 from .base import ChimeraTransport
+
 
 class SSETransport(ChimeraTransport):
     async def send_event(self, event_type: str, data: Dict[str, Any]) -> StreamingResponse:

@@ -10,12 +10,10 @@ Provides:
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 import platform
 import secrets
-import signal
 import subprocess
 import sys
 import time

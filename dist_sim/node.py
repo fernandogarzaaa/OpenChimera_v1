@@ -5,7 +5,7 @@ import asyncio
 import time
 from typing import Any, Callable, Dict, Optional
 
-from core.quantum_engine import AgentReputation, ConsensusResult, QuantumEngine
+from core.quantum_engine import ConsensusResult, QuantumEngine
 
 
 class SimNode:

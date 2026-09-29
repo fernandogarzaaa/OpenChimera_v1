@@ -8,11 +8,9 @@ Provides:
 """
 from __future__ import annotations
 
-import math
 import os
 import time
-from typing import Any, Dict, List, Optional
-
+from typing import List
 
 # ---------------------------------------------------------------------------
 # Canvas State Generator
@@ -101,7 +99,6 @@ def register_visual_routes(app) -> None:
     """Register visual interface routes on a FastAPI/Starlette app."""
     try:
         from fastapi import APIRouter
-        from fastapi.responses import JSONResponse
 
         router = APIRouter(prefix="/api/v1", tags=["visual"])
 

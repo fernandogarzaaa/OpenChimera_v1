@@ -6,8 +6,8 @@ import threading
 import time
 from typing import Any
 
-from core.api_server import OpenChimeraAPIServer
 from core.aether_service import AetherService
+from core.api_server import OpenChimeraAPIServer
 from core.bus import EventBus
 from core.causal_reasoning import CausalReasoning
 from core.config import build_identity_snapshot, get_watch_files
@@ -20,15 +20,14 @@ from core.goal_planner import GoalPlanner
 from core.knowledge_base import KnowledgeBase
 from core.meta_learning import MetaLearning
 from core.personality import Personality
+from core.plan_mode import PlanMode
 from core.provider import OpenChimeraProvider
+from core.safety_layer import SafetyLayer
 from core.self_model import SelfModel
 from core.social_cognition import SocialCognition
 from core.transfer_learning import TransferLearning
-from core.safety_layer import SafetyLayer
-from core.plan_mode import PlanMode
 from core.world_model import SystemWorldModel
 from core.wraith_service import WraithService
-
 
 LOGGER = logging.getLogger(__name__)
 

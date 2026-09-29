@@ -118,7 +118,7 @@ class OrchestratorAgent:
                 runner=lambda ctx: self._stage_audit(run_id, ctx),
                 artifact_file=run_dir / "audit_report.json",
             )
-        except StageAbortedError as e:
+        except StageAbortedError:
             overall_verdict = "aborted"
             return self._finalize_report(run_id, timestamp_start, overall_verdict, current_trust, run_dir)
 

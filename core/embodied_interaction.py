@@ -25,8 +25,6 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from core._bus_fallback import EventBus
-
 log = logging.getLogger(__name__)
 
 

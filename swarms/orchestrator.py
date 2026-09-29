@@ -101,7 +101,7 @@ class SwarmOrchestrator:
         if use_consensus:
             try:
                 answer, confidence, outputs = await self._quantum_dispatch(task, selected, context or {})
-            except Exception as exc:
+            except Exception:
                 answer, confidence, outputs = await self._simple_dispatch(task, selected, context or {})
                 confidence = max(0.0, confidence - 0.1)
         else:

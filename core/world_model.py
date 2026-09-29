@@ -18,10 +18,8 @@ import json
 import logging
 import threading
 import time
-from pathlib import Path
 from typing import Any
 
-from core._bus_fallback import EventBus
 from core.causal_reasoning import CausalReasoning
 from core.config import ROOT
 

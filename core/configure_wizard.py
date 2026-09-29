@@ -16,13 +16,9 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import Any
 
 from core.quantum_capabilities import (
     BUILT_IN_CAPABILITIES,
-    CATEGORY_CHANNEL,
-    CATEGORY_INFERENCE,
-    CapabilitySpec,
     QuantumCapabilityRegistry,
     get_registry,
 )

@@ -10,7 +10,6 @@ from typing import Any, Iterator
 
 from core.config import ROOT
 
-
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PACKAGED_MIGRATIONS_PATH = PACKAGE_ROOT / "migrations"
 LEGACY_MIGRATIONS_PATH = ROOT / "data" / "migrations"

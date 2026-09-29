@@ -13,13 +13,12 @@ import hashlib
 import io
 import logging
 import os
-import queue
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +152,7 @@ class TTSEngine:
     def _edge_tts_synthesize(self, text: str) -> TTSResult:
         try:
             import asyncio
+
             import edge_tts  # type: ignore
             async def _run():
                 communicate = edge_tts.Communicate(text, self.config.voice_id or "en-US-JennyNeural")
@@ -278,9 +278,9 @@ class TranscriptionEngine:
 
     def _whisper_transcribe(self, audio_bytes: bytes, language: str) -> TranscriptionResult:
         try:
-            import whisper  # type: ignore
             import tempfile
-            import numpy as np
+
+            import whisper  # type: ignore
             model = whisper.load_model("base")
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
                 f.write(audio_bytes)

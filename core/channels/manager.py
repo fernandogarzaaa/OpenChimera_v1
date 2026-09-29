@@ -10,7 +10,6 @@ from core.config import ROOT
 from core.database import DatabaseManager
 from core.resilience import retry_call
 
-
 SUPPORTED_CHANNELS = {"filesystem", "webhook", "slack", "discord", "telegram"}
 MAX_DELIVERY_HISTORY = 100
 

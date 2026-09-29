@@ -7,12 +7,12 @@ Usage::
 from __future__ import annotations
 
 from core.self_model import (  # noqa: F401
-    HealthStatus,
-    TrendDirection,
     CapabilitySnapshot,
+    HealthStatus,
     PerformanceDelta,
-    SubsystemHealth,
     SelfModel,
+    SubsystemHealth,
+    TrendDirection,
 )
 
 __all__ = [
