@@ -26,6 +26,10 @@ curl http://127.0.0.1:8787/v1/models
 curl -X POST http://127.0.0.1:8787/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"mock","messages":[{"role":"user","content":"hello"}]}'
+curl -N -X POST http://127.0.0.1:8787/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"mock","stream":true,"messages":[{"role":"user","content":"hello"}]}'
+# The streaming endpoint emits OpenAI-compatible SSE chunks ending in `data: [DONE]`.
 ```
 
 Do not commit API keys, tokens, private model paths, or local credentials. Use environment variables or `config/local.yaml` for local overrides.
