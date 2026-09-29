@@ -217,7 +217,7 @@ class OnboardingManager:
         return self.status()
 
     def reset(self) -> dict[str, Any]:
-        state = {
+        state: dict[str, Any] = {
             "started_at": int(time.time()),
             "last_applied_at": None,
             "last_payload": {},

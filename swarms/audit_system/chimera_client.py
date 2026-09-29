@@ -39,7 +39,7 @@ _FALLBACK_CONFIDENT = {"passed": True, "confidence": 1.0, "fallback": True}
 _FALLBACK_AUDIT = {"trust_score": 1.0, "anomalies": [], "fallback": True}
 _FALLBACK_PROVE = {"proof": "", "valid": True, "fallback": True}
 _FALLBACK_GATE = {"passed": True, "confidence": 1.0, "fallback": True}
-_FALLBACK_EXPLORE = {"consensus": None, "paths": [], "fallback": True}
+_FALLBACK_EXPLORE: dict[str, Any] = {"consensus": None, "paths": [], "fallback": True}
 _FALLBACK_CONSTRAIN = {"satisfied": True, "violations": [], "fallback": True}
 
 

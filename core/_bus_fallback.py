@@ -11,7 +11,7 @@ LOGGER = logging.getLogger("core.bus")
 class EventBus:
     def __init__(self, history_size: int = 256):
         self._subscribers: dict[str, list[Callable[[Any], None]]] = {}
-        self._history = deque(maxlen=history_size)
+        self._history: deque[Any] = deque(maxlen=history_size)
         self._lock = threading.RLock()
 
     def subscribe(self, topic: str, callback: Callable[[Any], None]) -> None:

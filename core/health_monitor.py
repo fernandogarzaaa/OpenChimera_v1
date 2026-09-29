@@ -193,7 +193,7 @@ class HealthMonitor:
     def status(self) -> dict[str, Any]:
         """Get health monitor status."""
         with self._lock:
-            status_counts = {}
+            status_counts: dict[str, int] = {}
             for record in self._current.values():
                 status_counts[record.status] = status_counts.get(record.status, 0) + 1
 

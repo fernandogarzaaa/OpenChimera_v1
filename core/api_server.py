@@ -9,7 +9,7 @@ import time
 import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
 from pydantic import ValidationError
@@ -55,7 +55,7 @@ class _ProviderHTTPServer(ThreadingHTTPServer):
         self,
         server_address: tuple[str, int],
         provider: OpenChimeraProvider,
-        system_status_provider: callable | None = None,
+        system_status_provider: Callable[..., Any] | None = None,
         rate_limiter: RateLimiter | None = None,
     ):
         super().__init__(server_address, _ProviderRequestHandler)
@@ -1151,7 +1151,7 @@ class OpenChimeraAPIServer:
         provider: OpenChimeraProvider,
         host: str | None = None,
         port: int | None = None,
-        system_status_provider: callable | None = None,
+        system_status_provider: Callable[..., Any] | None = None,
         rate_limiter: RateLimiter | None = None,
     ):
         self.provider = provider

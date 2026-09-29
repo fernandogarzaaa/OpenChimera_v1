@@ -171,7 +171,7 @@ class DeviceManager:
 
     def status(self) -> dict:
         active = sum(1 for d in self._devices.values() if d.status == DeviceStatus.ACTIVE)
-        by_platform = {}
+        by_platform: dict[str, int] = {}
         for d in self._devices.values():
             by_platform[d.platform.value] = by_platform.get(d.platform.value, 0) + 1
         return {
