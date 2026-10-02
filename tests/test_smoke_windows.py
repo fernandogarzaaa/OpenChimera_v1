@@ -129,6 +129,10 @@ class WindowsSmokeTests(unittest.TestCase):
                         },
                     },
                     token="admin-token",
+                    # First boot performs config writes plus provider/channel
+                    # setup; Windows CI runners regularly need more than the
+                    # 5s default (flaked 2026-10-02 on an otherwise-green tree).
+                    timeout=30.0,
                 )
                 self.assertEqual(applied.status_code, 200)
                 self.assertTrue(applied.payload["completed"])
