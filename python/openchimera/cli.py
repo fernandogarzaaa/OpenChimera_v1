@@ -17,6 +17,18 @@ from rich.table import Table
 from openchimera.config import load_settings
 from openchimera.server import start_server
 
+if sys.platform == "win32":  # pragma: no cover - platform-specific
+    # The CLI prints emoji status markers; under output redirection the
+    # console code page is often cp1252, which cannot encode them and
+    # crashes commands like `serve`. Prefer UTF-8 streams when possible.
+    for _stream_name in ("stdout", "stderr"):
+        try:
+            _stream = getattr(sys, _stream_name)
+            if _stream is not None and hasattr(_stream, "reconfigure"):
+                _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:  # noqa: BLE001 - best effort; startup must not fail here
+            pass
+
 console = Console()
 
 
