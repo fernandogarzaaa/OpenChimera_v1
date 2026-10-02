@@ -34,11 +34,11 @@ click==8.3.1
     #   pip-tools
     #   typer
     #   uvicorn
-cuda-bindings==13.2.0; sys_platform != "darwin"
+cuda-bindings==13.2.0
     # via torch
-cuda-pathfinder==1.5.3; sys_platform != "darwin"
+cuda-pathfinder==1.5.3
     # via cuda-bindings
-cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.3.0; sys_platform != "darwin"
+cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.3.0
     # via torch
 distlib==0.4.0
     # via virtualenv
@@ -112,46 +112,46 @@ numpy==2.4.4
     #   scipy
     #   sentence-transformers
     #   transformers
-nvidia-cublas==13.1.1.3; sys_platform != "darwin"
+nvidia-cublas==13.1.1.3
     # via
     #   cuda-toolkit
     #   nvidia-cudnn-cu13
     #   nvidia-cusolver
-nvidia-cuda-cupti==13.0.85; sys_platform != "darwin"
+nvidia-cuda-cupti==13.0.85
     # via cuda-toolkit
-nvidia-cuda-nvrtc==13.0.88; sys_platform != "darwin"
+nvidia-cuda-nvrtc==13.0.88
     # via
     #   cuda-toolkit
     #   nvidia-cublas
-nvidia-cuda-runtime==13.0.96; sys_platform != "darwin"
+nvidia-cuda-runtime==13.0.96
     # via cuda-toolkit
-nvidia-cudnn-cu13==9.20.0.48; sys_platform != "darwin"
+nvidia-cudnn-cu13==9.20.0.48
     # via torch
-nvidia-cufft==12.0.0.61; sys_platform != "darwin"
+nvidia-cufft==12.0.0.61
     # via cuda-toolkit
-nvidia-cufile==1.15.1.6; sys_platform != "darwin"
+nvidia-cufile==1.15.1.6
     # via cuda-toolkit
-nvidia-curand==10.4.0.35; sys_platform != "darwin"
+nvidia-curand==10.4.0.35
     # via cuda-toolkit
-nvidia-cusolver==12.0.4.66; sys_platform != "darwin"
+nvidia-cusolver==12.0.4.66
     # via cuda-toolkit
-nvidia-cusparse==12.6.3.3; sys_platform != "darwin"
+nvidia-cusparse==12.6.3.3
     # via
     #   cuda-toolkit
     #   nvidia-cusolver
-nvidia-cusparselt-cu13==0.8.1; sys_platform != "darwin"
+nvidia-cusparselt-cu13==0.8.1
     # via torch
-nvidia-nccl-cu13==2.29.7; sys_platform != "darwin"
+nvidia-nccl-cu13==2.29.7
     # via torch
-nvidia-nvjitlink==13.0.88; sys_platform != "darwin"
+nvidia-nvjitlink==13.0.88
     # via
     #   cuda-toolkit
     #   nvidia-cufft
     #   nvidia-cusolver
     #   nvidia-cusparse
-nvidia-nvshmem-cu13==3.4.5; sys_platform != "darwin"
+nvidia-nvshmem-cu13==3.4.5
     # via torch
-nvidia-nvtx==13.0.85; sys_platform != "darwin"
+nvidia-nvtx==13.0.85
     # via cuda-toolkit
 openai==2.41.1
     # via
@@ -170,9 +170,7 @@ pandas==2.3.3
 pip-tools==7.6.0
     # via -r requirements-dev.in
 platformdirs==4.9.4
-    # via
-    #   python-discovery
-    #   virtualenv
+    # via virtualenv
 pre-commit==4.6.1
     # via -r requirements-dev.in
 psutil==7.2.2
@@ -192,7 +190,7 @@ pyproject-hooks==1.2.0
     #   pip-tools
 python-dateutil==2.9.0.post0
     # via pandas
-python-discovery==1.2.1
+python-discovery==1.6.1
     # via virtualenv
 python-dotenv==1.2.2
     # via uvicorn
@@ -256,7 +254,7 @@ tqdm==4.67.3
     #   transformers
 transformers==5.5.4
     # via sentence-transformers
-triton==3.7.1; sys_platform != "darwin"
+triton==3.7.1
     # via torch
 typer==0.24.1
     # via
@@ -288,7 +286,7 @@ uvicorn[standard]==0.49.0
     #   -r requirements.in
 uvloop==0.22.1
     # via uvicorn
-virtualenv==21.2.0
+virtualenv==21.7.13
     # via pre-commit
 watchfiles==1.1.1
     # via uvicorn
