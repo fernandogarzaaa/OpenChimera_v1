@@ -1,6 +1,6 @@
-## Description
+## Summary
 
-Brief description of what this PR does and why.
+Brief description of the changes in this PR.
 
 ## Type of Change
 
@@ -9,25 +9,19 @@ Brief description of what this PR does and why.
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
 - [ ] Refactoring (no functional changes)
-- [ ] Performance improvement
 - [ ] CI/CD or tooling update
 
-## Testing
+## Testing Done
 
-- [ ] All existing tests pass (`pytest tests/ -q`)
-- [ ] New tests added for new functionality (coverage target: 80%)
+- [ ] All existing tests pass (`python -m pytest tests/`)
+- [ ] New tests added for new functionality
 - [ ] Quantum engine simulation verified (`python scripts/quantum_sim_verify.py`)
-- [ ] Rust chimera-core builds (`cargo build` in `chimera-core/`, if applicable)
-- [ ] `openchimera doctor` reports no new degraded states
-- [ ] `python run.py validate` passes locally
+- [ ] Distributed simulation scenarios pass (if applicable)
+- [ ] Rust chimera-core builds (`cargo build`, if applicable)
 
 ## Breaking Changes
 
 Describe any breaking changes and migration steps, or write "None".
-
-## Screenshots / Logs
-
-If the change affects CLI output, API responses, or UI, paste a relevant snippet or screenshot here. Otherwise, remove this section.
 
 ## Linked Issues
 
@@ -35,8 +29,7 @@ Closes #___
 
 ## Checklist
 
-- [ ] My code follows the project's coding style (Black, ruff, mypy)
+- [ ] My code follows the project's coding style
 - [ ] I have added/updated tests as appropriate
 - [ ] I have updated documentation as needed
-- [ ] No secrets, tokens, or credentials are included in this PR
-- [ ] I have read [CONTRIBUTING.md](../CONTRIBUTING.md) and the [Code of Conduct](../CODE_OF_CONDUCT.md)
+- [ ] I have read [CONTRIBUTING.md](../CONTRIBUTING.md)
