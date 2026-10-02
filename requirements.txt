@@ -99,7 +99,7 @@ nvidia-cuda-nvrtc==13.0.88
     #   nvidia-cublas
 nvidia-cuda-runtime==13.0.96
     # via cuda-toolkit
-nvidia-cudnn-cu13==9.20.0.48
+nvidia-cudnn-cu13==9.24.0.43
     # via torch
 nvidia-cufft==12.0.0.61
     # via cuda-toolkit
@@ -115,7 +115,7 @@ nvidia-cusparse==12.6.3.3
     #   nvidia-cusolver
 nvidia-cusparselt-cu13==0.8.1
     # via torch
-nvidia-nccl-cu13==2.29.7
+nvidia-nccl-cu13==2.30.7
     # via torch
 nvidia-nvjitlink==13.0.88
     # via
@@ -189,7 +189,7 @@ threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.22.2
     # via transformers
-torch==2.13.0
+torch==2.14.1
     # via
     #   -r requirements.in
     #   sentence-transformers
@@ -201,7 +201,7 @@ tqdm==4.67.3
     #   transformers
 transformers==4.57.6
     # via sentence-transformers
-triton==3.7.1
+triton==3.8.0
     # via torch
 typing-extensions==4.15.0
     # via
