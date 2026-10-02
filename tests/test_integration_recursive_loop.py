@@ -11,6 +11,11 @@ import struct
 import tempfile
 import unittest
 
+import pytest
+
+pytest.importorskip("networkx", reason="requires the [all] extras")
+pytest.importorskip("numpy", reason="requires the [all] extras")
+
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
 from core.deliberation_engine import DeliberationEngine
