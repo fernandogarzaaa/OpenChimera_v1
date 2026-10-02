@@ -2,6 +2,11 @@ from __future__ import annotations
 
 import unittest
 
+import pytest
+
+pytest.importorskip("networkx", reason="requires the [all] extras")
+pytest.importorskip("numpy", reason="requires the [all] extras")
+
 from core._bus_fallback import EventBus
 from core.deliberation import Contradiction, DeliberationGraph, Hypothesis
 from core.deliberation_engine import (
