@@ -1,6 +1,6 @@
 # Core web framework
-Django==4.2.29
-djangorestframework==3.15.2
+Django==5.2.17
+djangorestframework==3.17.2
 django-cors-headers==3.14.0
 django-environ==0.10.0
 django-extensions==3.2.1
@@ -19,12 +19,12 @@ bcrypt==4.0.1
 # HTTP and API clients
 requests==2.33.0
 httpx==0.24.1
-urllib3==2.7.0
+urllib3==2.8.0
 
 # Data processing and analysis
 pandas==2.0.1
 numpy==1.24.3
-Pillow==12.2.0
+Pillow==12.3.0
 openpyxl==3.1.2
 
 # Monitoring and logging
