@@ -170,9 +170,7 @@ pandas==2.3.3
 pip-tools==7.6.0
     # via -r requirements-dev.in
 platformdirs==4.9.4
-    # via
-    #   python-discovery
-    #   virtualenv
+    # via virtualenv
 pre-commit==4.6.1
     # via -r requirements-dev.in
 psutil==7.2.2
@@ -192,7 +190,7 @@ pyproject-hooks==1.2.0
     #   pip-tools
 python-dateutil==2.9.0.post0
     # via pandas
-python-discovery==1.2.1
+python-discovery==1.6.1
     # via virtualenv
 python-dotenv==1.2.2
     # via uvicorn
@@ -288,7 +286,7 @@ uvicorn[standard]==0.49.0
     #   -r requirements.in
 uvloop==0.22.1
     # via uvicorn
-virtualenv==21.2.0
+virtualenv==21.7.13
     # via pre-commit
 watchfiles==1.1.1
     # via uvicorn
