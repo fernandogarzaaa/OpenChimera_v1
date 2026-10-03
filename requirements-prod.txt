@@ -183,7 +183,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==5.6.0
+sentence-transformers==6.1.0
     # via -r requirements.in
 shellingham==1.5.4
     # via typer
@@ -198,7 +198,9 @@ sympy==1.14.0
 threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.22.2
-    # via transformers
+    # via
+    #   sentence-transformers
+    #   transformers
 torch==2.13.0
     # via
     #   -r requirements.in
