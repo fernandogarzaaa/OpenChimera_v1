@@ -26,10 +26,30 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-prod.lock
-          python -m pip install -r requirements-dev.txt
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            python -m pip install -r requirements-dev.txt
+          else
+            # CUDA-only wheels (cuda-*, nvidia-*, triton) publish no macOS
+            # builds, and newer revisions (e.g. nvidia-cufile 1.15.1.6) also
+            # ship no Windows builds, while pip-compile/dependabot
+            # regenerations drop the darwin markers kept in
+            # requirements-dev.txt. Filter them here, where the exclusion
+            # cannot silently regress; the CPU test-suite needs none of them.
+            grep -v -E '^(cuda-|nvidia-|triton==)' requirements-dev.txt > /tmp/requirements-ci-nocuda.txt
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              # uvloop ships no Windows wheels either (uvicorn itself
+              # excludes it on win32); same treatment.
+              grep -v -E '^uvloop==' /tmp/requirements-ci-nocuda.txt > /tmp/requirements-ci-win.txt
+              DEV_REQ=/tmp/requirements-ci-win.txt
+            else
+              DEV_REQ=/tmp/requirements-ci-nocuda.txt
+            fi
+            python -m pip install -r "$DEV_REQ"
+          fi
           python -m pip install -e ".[dev]"
           python -m pip install pip-audit
 
