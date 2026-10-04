@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Server & API Config
@@ -247,8 +251,73 @@ def load_settings(force_reload: bool = False) -> Settings:
 
     settings = Settings(**merged)
     settings.config_path = paths[0]
+    _apply_env_overrides(settings)
     _SETTINGS_CACHE = settings
     return settings
+
+
+ENV_PREFIX = "OPENCHIMERA_"
+ENV_NESTED_SEPARATOR = "__"
+
+
+def _apply_env_overrides(settings: Settings) -> None:
+    """Overlay `OPENCHIMERA_*__*` environment variables onto loaded settings.
+
+    Layered YAML files are passed to Settings as explicit init values, which
+    pydantic-settings prioritizes over the environment — so without this,
+    documented env vars (e.g. enabling a provider) are silently ignored
+    whenever a config file sets the same keys. Explicitly-set environment
+    wins here instead: command-line flags > environment > config files.
+    Unparseable values warn and keep the file-derived value.
+    """
+    for key, raw in os.environ.items():
+        if not key.upper().startswith(ENV_PREFIX):
+            continue
+        if key.upper() == "OPENCHIMERA_CONFIG":
+            continue  # loader control (config path), not a setting
+        parts = key[len(ENV_PREFIX):].split(ENV_NESTED_SEPARATOR)
+        parts = [part for part in parts if part]
+        if not parts:
+            continue
+        _apply_env_path(settings, parts, raw)
+
+
+def _apply_env_path(settings: Settings, parts: list[str], raw: str) -> None:
+    target: Any = settings
+    resolved: list[str] = []
+    for part in parts:
+        if not isinstance(target, BaseModel):
+            return
+        fields = type(target).model_fields
+        match = next((name for name in fields if name.lower() == part.lower()), None)
+        if match is None:
+            return
+        resolved.append(match)
+        if len(resolved) < len(parts):
+            target = getattr(target, match)
+        else:
+            annotation = fields[match].annotation
+            try:
+                value = _coerce_env_value(raw, annotation)
+            except Exception as exc:  # noqa: BLE001 - report and keep file value
+                logger.warning("Ignoring %s: cannot parse %r (%s)", "_".join(["OPENCHIMERA", *parts]), raw, exc)
+                return
+            try:
+                setattr(target, match, value)
+            except Exception as exc:  # noqa: BLE001 - frozen models etc.
+                logger.warning("Ignoring %s: cannot assign (%s)", "_".join(["OPENCHIMERA", *parts]), exc)
+
+
+def _coerce_env_value(raw: str, annotation: Any) -> Any:
+    """Coerce an env string to a field type: raw string first (so "123"
+    stays a string for str fields), then JSON for collections/bools/numbers.
+    """
+    adapter = TypeAdapter(annotation if annotation is not None else Any)
+    try:
+        return adapter.validate_python(raw)
+    except Exception:
+        pass
+    return adapter.validate_python(json.loads(raw))
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
