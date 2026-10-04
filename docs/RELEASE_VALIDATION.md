@@ -50,6 +50,10 @@ With auth enabled, every API route except `/health` (and CORS preflights)
 requires `Authorization: Bearer <token>` (`OPENCHIMERA_API__AUTH__TOKEN` or
 `...__ADMIN_TOKEN`) and returns 401 otherwise.
 
+Precedence is flags > environment > config files: explicitly-set
+`OPENCHIMERA_*__*` variables override `config/default.yaml` (and
+`config/local.yaml`), which only fill the gaps.
+
 ## TUI and cross-platform checks
 
 The packaged CLI includes a non-interactive TUI preflight check:

@@ -143,3 +143,26 @@ with TestClient(app) as client:
 """
     result = _run_packaged_python(code)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_env_overrides_config_files() -> None:
+    default_yaml = (REPO_ROOT / "config" / "default.yaml").as_posix()
+    code = f"""
+import os
+os.environ['OPENCHIMERA_CONFIG'] = '{default_yaml}'
+os.environ['OPENCHIMERA_PROVIDERS__OLLAMA__ENABLED'] = 'true'
+os.environ['OPENCHIMERA_PROVIDERS__OLLAMA__DEFAULT_MODEL'] = 'qwen2.5:0.5b'
+os.environ['OPENCHIMERA_SERVER__PORT'] = '9999'
+os.environ['OPENCHIMERA_BOGUS__NOPE'] = 'ignored'
+from openchimera.config import load_settings
+s = load_settings(force_reload=True)
+# Environment wins over the config file (bool, str, and int coercion).
+assert s.providers.ollama.enabled is True
+assert s.providers.ollama.default_model == 'qwen2.5:0.5b'
+assert s.server.port == 9999
+# Config-file values still fill every gap the environment leaves.
+assert s.server.host == '127.0.0.1'
+assert s.providers.openai.enabled is False
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
