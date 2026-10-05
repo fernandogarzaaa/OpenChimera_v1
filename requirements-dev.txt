@@ -104,7 +104,7 @@ networkx==3.6.1
     #   torch
 nodeenv==1.10.0
     # via pre-commit
-numpy==2.4.4
+numpy==2.4.6
     # via
     #   -r requirements.in
     #   pandas
