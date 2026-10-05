@@ -175,6 +175,15 @@ npm run dev
 
 ## 🛠️ Development
 
+> **Repo-root import warning:** the legacy v1 package at `openchimera/` sits in the
+> repo root, so any Python process started with the repo root as its working directory
+> (or with the root on `PYTHONPATH`) imports the legacy v1 tree instead of the
+> wheel-packaged v2 tree (`python/openchimera/`, the package `pip install` ships).
+> Run installed commands (`openchimera ...`) or `pytest` from the root as documented;
+> do not run Python tooling expecting the v2 package from a plain interpreter
+> session without the package installed. The root-level tree is kept only as an
+> archival reference and is not the shipped package.
+
 ```bash
 # Python
 pip install -e ".[all,dev]"
