@@ -173,7 +173,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==5.6.0
+sentence-transformers==6.1.0
     # via -r requirements.in
 six==1.17.0
     # via python-dateutil
