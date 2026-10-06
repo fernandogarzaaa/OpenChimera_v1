@@ -54,7 +54,7 @@ filelock==3.25.2
     #   python-discovery
     #   torch
     #   virtualenv
-fsspec==2026.3.0
+fsspec==2026.6.0
     # via
     #   huggingface-hub
     #   torch
@@ -253,7 +253,9 @@ tqdm==4.67.3
     #   sentence-transformers
     #   transformers
 transformers==5.5.4
-    # via sentence-transformers
+    # via
+    #   -r requirements.in
+    #   sentence-transformers
 triton==3.7.1
     # via torch
 typer==0.24.1
