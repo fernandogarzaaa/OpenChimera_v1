@@ -16,7 +16,6 @@ venv/
 dist/
 build/
 target/
-Cargo.lock
 node_modules/
 *.log
 *.local
