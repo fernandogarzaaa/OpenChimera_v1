@@ -20,3 +20,8 @@ Cargo.lock
 node_modules/
 *.log
 *.local
+
+# Test-run state files (tests write these into the repo root)
+chimera_kb.json
+rag_storage.json
+memory/
