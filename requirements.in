@@ -10,6 +10,7 @@ uvicorn[standard]>=0.49.0,<1
 
 # ML/NLP dependencies
 sentence-transformers>=5.5.1,<7
+transformers>=5.0,<6  # security floor: CVE-2026-4372, CVE-2026-5241, CVE-2026-9856
 torch>=2.13.0,<3
 scikit-learn>=1.4,<2
 pandas>=2.2,<3
