@@ -42,20 +42,6 @@ updates:
       day: monday
     open-pull-requests-limit: 3
 
-  - package-ecosystem: npm
-    directory: "/skills/engineering-team/playwright-pro/integrations/browserstack-mcp"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-
-  - package-ecosystem: npm
-    directory: "/skills/engineering-team/playwright-pro/integrations/testrail-mcp"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-
   # NOTE: /skills/dependency-auditor/test-project is intentionally a
   # deliberately-vulnerable sample fixture used by the dependency-auditor
   # skill to demonstrate vulnerability scanning. It is never installed or
