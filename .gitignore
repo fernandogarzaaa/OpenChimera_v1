@@ -2,6 +2,8 @@
 /data/
 /logs/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 .env
 config/local.yaml
