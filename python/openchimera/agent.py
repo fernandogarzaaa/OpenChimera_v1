@@ -10,6 +10,8 @@ from openchimera.tools.registry import ToolRegistry
 
 
 class AgentOrchestrator:
+    MAX_TOOL_ROUNDS = 4
+
     def __init__(self, providers: ProviderManager, tools: ToolRegistry) -> None:
         self.providers = providers
         self.tools = tools
@@ -47,7 +49,10 @@ class AgentOrchestrator:
         self._session_counter += 1
         session_id = f"sess-{uuid.uuid4().hex[:8]}"
 
-        prov = self.providers.get(provider) if provider else self.providers.get_default()
+        try:
+            prov = self.providers.get(provider) if provider else self.providers.get_default()
+        except RuntimeError:
+            prov = None
         if not prov:
             return {
                 "session_id": session_id,
@@ -57,42 +62,81 @@ class AgentOrchestrator:
                 "tools": [],
             }
 
-        messages = [{"role": "user", "content": text}]
-        tool_schemas = []
+        messages: list[dict[str, Any]] = [{"role": "user", "content": text}]
+        tool_schemas: list[dict[str, Any]] = []
+        # OpenAI-style function names must match ^[a-zA-Z0-9_-]{1,64}$, so the
+        # dotted registry ids (``file.read``) are sent as ``file__read`` and
+        # mapped back when the model calls them.
+        name_map: dict[str, str] = {}
 
         if execute_tools:
             for t in self.tools.list_tools():
-                schema = t.get("schema", {})
+                schema = t.get("schema") or {"type": "object", "properties": {}}
+                wire_name = _wire_tool_name(t["id"])
+                name_map[wire_name] = t["id"]
                 tool_schemas.append({
                     "type": "function",
                     "function": {
-                        "name": t["id"],
+                        "name": wire_name,
                         "description": t["description"],
                         "parameters": schema,
                     },
                 })
 
-        result = await prov.chat(
-            messages,
-            model=model,
-            tools=tool_schemas if tool_schemas else None,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        tools_executed: list[dict[str, Any]] = []
+        usage: Any = None
+        result: dict[str, Any] = {}
+        # Tool-result follow-up turns use the OpenAI message format, which only
+        # OpenAI-compatible providers accept; others keep single-shot behaviour.
+        can_loop = bool(tool_schemas) and _speaks_openai_tool_messages(prov)
+        max_rounds = self.MAX_TOOL_ROUNDS if can_loop else 1
 
-        tools_executed = []
-        for tc in result.get("tool_calls", []):
-            if isinstance(tc, dict):
-                fn = tc.get("function", {})
-                tid = fn.get("name") or tc.get("name", "")
+        for _round in range(max_rounds):
+            result = await prov.chat(
+                messages,
+                model=model,
+                tools=tool_schemas if tool_schemas else None,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            usage = result.get("usage", usage)
+            calls = [tc for tc in result.get("tool_calls", []) or [] if isinstance(tc, dict)]
+            if not calls:
+                break
+
+            round_outputs: list[tuple[str, str, str, Any]] = []
+            for idx, tc in enumerate(calls):
+                fn = tc.get("function", {}) or {}
+                wire = fn.get("name") or tc.get("name", "")
+                tid = name_map.get(wire, wire)
                 args = fn.get("arguments", {})
                 if isinstance(args, str):
                     try:
-                        args = json.loads(args)
+                        args = json.loads(args) if args.strip() else {}
                     except Exception:
                         args = {}
+                if not isinstance(args, dict):
+                    args = {}
                 tool_result = await self.tools.execute(tid, args)
-                tools_executed.append({"tool": tid, "result": tool_result})
+                tools_executed.append({"tool": tid, "arguments": args, "result": tool_result})
+                round_outputs.append((tc.get("id") or f"call_{_round}_{idx}", wire, json.dumps(args), tool_result))
+
+            if not can_loop:
+                break
+            messages.append({
+                "role": "assistant",
+                "content": result.get("text") or None,
+                "tool_calls": [
+                    {"id": call_id, "type": "function", "function": {"name": wire, "arguments": args_json}}
+                    for call_id, wire, args_json, _res in round_outputs
+                ],
+            })
+            for call_id, _wire, _args, tool_result in round_outputs:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call_id,
+                    "content": _truncate(json.dumps(tool_result, default=str)),
+                })
 
         return {
             "session_id": session_id,
@@ -101,8 +145,22 @@ class AgentOrchestrator:
             "model": model or prov.default_model,
             "tools": [t["tool"] for t in tools_executed],
             "tool_results": tools_executed,
-            "usage": result.get("usage"),
+            "usage": usage,
         }
+
+
+def _wire_tool_name(tool_id: str) -> str:
+    return tool_id.replace(".", "__")[:64]
+
+
+def _truncate(text: str, limit: int = 8000) -> str:
+    return text if len(text) <= limit else text[:limit] + "...[truncated]"
+
+
+def _speaks_openai_tool_messages(provider: Any) -> bool:
+    from openchimera.providers.manager import OpenAICompatibleProvider
+
+    return isinstance(provider, OpenAICompatibleProvider)
 
 
 import json  # noqa: E402
