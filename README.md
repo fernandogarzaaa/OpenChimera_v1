@@ -52,6 +52,32 @@ openchimera ask "What is the capital of France?" --provider openai
 openchimera status
 ```
 
+> `.[all]` pulls in `sentence-transformers` (→ PyTorch), ChromaDB and Playwright —
+> several GB. For a lean install that still runs every chat provider, use
+> `pip install -e ".[providers]"` (core already includes the `openai` client used by
+> all OpenAI-compatible providers).
+
+### Run fully local (no API key)
+
+Any OpenAI-compatible server works — llama.cpp's `llama-server`, vLLM, LM Studio:
+
+```bash
+# e.g. llama.cpp with a tiny model
+llama-server -m qwen2.5-0.5b-instruct-q4_k_m.gguf --port 8080 --jinja
+
+export OPENAI_API_KEY=local-dummy                  # any non-empty value enables the provider
+export OPENAI_BASE_URL=http://127.0.0.1:8080/v1    # <VENDOR>_BASE_URL is honoured for every key-based provider
+export NO_PROXY=127.0.0.1,localhost                # only if you have HTTP(S)_PROXY set
+
+openchimera ask "What is the capital of France?" --model qwen2.5-0.5b
+openchimera ask --tools "What files are in ./config?"   # model calls tools, sees results, answers
+```
+
+Setting a standard key variable (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`,
+…) enables that provider automatically; `OPENCHIMERA_PROVIDERS__<NAME>__*` variables
+still take precedence. Run commands from the repo root (config is read from
+`./config/default.yaml`) or point `OPENCHIMERA_CONFIG` at a config file.
+
 ---
 
 ## 🏗️ Architecture
