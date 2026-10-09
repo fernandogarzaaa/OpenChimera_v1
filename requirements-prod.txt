@@ -157,7 +157,7 @@ pygments==2.20.0
     # via rich
 python-dateutil==2.9.0.post0
     # via pandas
-python-dotenv==1.2.2
+python-dotenv==1.2.4
     # via uvicorn
 pytz==2026.1.post1
     # via pandas
@@ -210,7 +210,9 @@ tqdm==4.67.3
     #   sentence-transformers
     #   transformers
 transformers==5.10.1
-    # via sentence-transformers
+    # via
+    #   -r requirements.in
+    #   sentence-transformers
 triton==3.7.1
     # via torch
 typer==0.24.1
