@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "last_cycle_timestamp": 1775790880.305128,
+  "last_cycle_timestamp": 1791535744.1521764,
   "cycles": [
     {
       "cycle_id": 1,
@@ -35,6 +35,18 @@
       "engine_status": "ok",
       "report": "data/evolution_reports/cycle_0003.md",
       "copilot_available": true,
+      "dpo_pairs": 0,
+      "adapter_id": null
+    },
+    {
+      "cycle_id": 4,
+      "timestamp": 1791535744.1521764,
+      "iso_timestamp": "2026-10-09T08:49:04Z",
+      "run_id": "37907079234",
+      "sha": "d4abdb1b",
+      "engine_status": "ok",
+      "report": "data/evolution_reports/cycle_0004.md",
+      "copilot_available": false,
       "dpo_pairs": 0,
       "adapter_id": null
     }
