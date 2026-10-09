@@ -23,7 +23,13 @@ class OpenAICompatibleProvider(BaseProvider):
 
     def _get_client(self):
         if self._client is None:
-            import openai
+            try:
+                import openai
+            except ImportError as exc:  # pragma: no cover - depends on install extras
+                raise RuntimeError(
+                    "The 'openai' package is required for OpenAI-compatible providers. "
+                    "Install it with: pip install 'openchimera[providers]'"
+                ) from exc
             base = self.base_url or (self.profile.base_url if self.profile else "https://api.openai.com/v1")
             kwargs: dict[str, Any] = {"api_key": self.api_key, "base_url": base}
             if self.profile and self.profile.default_headers:
@@ -40,10 +46,10 @@ class OpenAICompatibleProvider(BaseProvider):
         max_tokens: int | None = None,
         stream: bool = False,
     ) -> dict[str, Any]:
-        client = self._get_client()
         start = time.perf_counter()
         m = model or self.default_model
         try:
+            client = self._get_client()
             kwargs: dict[str, Any] = {"model": m, "messages": messages}
             if tools:
                 kwargs["tools"] = tools
