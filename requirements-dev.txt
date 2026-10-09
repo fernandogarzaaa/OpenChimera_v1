@@ -16,7 +16,7 @@ anyio==4.14.2
     #   openai
     #   starlette
     #   watchfiles
-build==1.5.0
+build==1.6.1
     # via
     #   -r requirements-dev.in
     #   pip-tools
@@ -104,7 +104,7 @@ networkx==3.6.1
     #   torch
 nodeenv==1.10.0
     # via pre-commit
-numpy==2.4.4
+numpy==2.4.6
     # via
     #   -r requirements.in
     #   pandas
@@ -167,20 +167,20 @@ pandas==2.3.3
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
-pip-tools==7.6.0
+pip-tools==7.6.1
     # via -r requirements-dev.in
 platformdirs==4.9.4
     # via virtualenv
-pre-commit==4.6.1
+pre-commit==4.6.2
     # via -r requirements-dev.in
 psutil==7.2.2
     # via -r requirements.in
-pydantic==2.13.4
+pydantic==2.13.5
     # via
     #   -r requirements.in
     #   fastapi
     #   openai
-pydantic-core==2.46.4
+pydantic-core==2.46.5
     # via pydantic
 pygments==2.20.0
     # via rich
@@ -252,10 +252,8 @@ tqdm==4.67.3
     #   openai
     #   sentence-transformers
     #   transformers
-transformers==5.5.4
-    # via
-    #   -r requirements.in
-    #   sentence-transformers
+transformers==5.10.1
+    # via sentence-transformers
 triton==3.7.1
     # via torch
 typer==0.24.1
@@ -294,7 +292,7 @@ watchfiles==1.1.1
     # via uvicorn
 websockets==16.0
     # via uvicorn
-wheel==0.47.0
+wheel==0.48.0
     # via
     #   -r requirements-dev.in
     #   pip-tools
