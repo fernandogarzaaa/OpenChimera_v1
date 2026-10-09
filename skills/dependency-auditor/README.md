@@ -7,7 +7,7 @@ A comprehensive toolkit for analyzing, auditing, and managing dependencies acros
 The Dependency Auditor skill consists of three main Python scripts that work together to provide complete dependency management capabilities:
 
 - **`dep_scanner.py`**: Vulnerability scanning and dependency analysis
-- **`license_checker.py`**: License compliance and conflict detection  
+- **`license_checker.py`**: License compliance and conflict detection
 - **`upgrade_planner.py`**: Upgrade path planning and risk assessment
 
 ## Features
@@ -92,7 +92,7 @@ The dependency scanner parses project files to extract dependencies and check th
 
 #### Supported File Formats
 - **JavaScript/Node.js**: package.json, package-lock.json, yarn.lock
-- **Python**: requirements.txt, pyproject.toml, Pipfile.lock, poetry.lock  
+- **Python**: requirements.txt, pyproject.toml, Pipfile.lock, poetry.lock
 - **Go**: go.mod, go.sum
 - **Rust**: Cargo.toml, Cargo.lock
 - **Ruby**: Gemfile, Gemfile.lock
@@ -190,7 +190,7 @@ Required Arguments:
 
 Optional Arguments:
   --inventory FILE      Path to dependency inventory JSON file
-  --format {text,json}  Output format (default: text)  
+  --format {text,json}  Output format (default: text)
   --output FILE         Output file path (default: stdout)
   --policy {permissive,strict}  License policy strictness (default: permissive)
   --warn-conflicts      Show warnings for potential conflicts
@@ -259,7 +259,7 @@ Upgrades are classified by risk level:
 The tool creates three-phase upgrade plans:
 
 1. **Phase 1 (30% of timeline)**: Security fixes and safe updates
-2. **Phase 2 (40% of timeline)**: Regular maintenance updates  
+2. **Phase 2 (40% of timeline)**: Regular maintenance updates
 3. **Phase 3 (30% of timeline)**: Major updates requiring careful planning
 
 ## Integration Examples
@@ -277,25 +277,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      
+
       - name: Run Vulnerability Scan
         run: |
           python scripts/dep_scanner.py . --format json --output scan.json
           python scripts/dep_scanner.py . --fail-on-high
-      
+
       - name: Check License Compliance
         run: |
           python scripts/license_checker.py . --inventory scan.json --policy strict
-      
+
       - name: Generate Upgrade Plan
         run: |
           python scripts/upgrade_planner.py scan.json --output upgrade-plan.txt
-      
+
       - name: Upload Reports
         uses: actions/upload-artifact@v3
         with:
@@ -310,30 +310,30 @@ jobs:
 ```groovy
 pipeline {
     agent any
-    
+
     stages {
         stage('Dependency Audit') {
             steps {
                 script {
                     // Vulnerability scan
                     sh 'python scripts/dep_scanner.py . --format json --output scan.json'
-                    
+
                     // License compliance
                     sh 'python scripts/license_checker.py . --inventory scan.json --format json --output compliance.json'
-                    
+
                     // Upgrade planning
                     sh 'python scripts/upgrade_planner.py scan.json --format json --output upgrades.json'
                 }
-                
+
                 // Archive reports
                 archiveArtifacts artifacts: '*.json', fingerprint: true
-                
+
                 // Fail build on high-severity vulnerabilities
                 sh 'python scripts/dep_scanner.py . --fail-on-high'
             }
         }
     }
-    
+
     post {
         always {
             // Publish reports
@@ -371,18 +371,18 @@ python scripts/upgrade_planner.py current-scan.json --security-only --output sec
 # Check if security updates are available
 if grep -q "URGENT" security-upgrades.txt; then
     echo "Security updates found! Creating automated PR..."
-    
+
     # Create branch
     git checkout -b "automated-security-updates-$(date +%Y%m%d)"
-    
+
     # Apply updates (example for npm)
     npm audit fix --only=prod
-    
+
     # Commit and push
     git add .
     git commit -m "chore: automated security dependency updates"
     git push origin HEAD
-    
+
     # Create PR (using GitHub CLI)
     gh pr create \
         --title "Automated Security Updates" \
@@ -413,14 +413,14 @@ You can extend the built-in vulnerability database by modifying the `_load_vulne
 def _load_vulnerability_database(self):
     """Load vulnerability database from multiple sources."""
     db = self._load_builtin_database()
-    
+
     # Load custom vulnerabilities
     custom_db_path = os.environ.get('CUSTOM_VULN_DB')
     if custom_db_path and os.path.exists(custom_db_path):
         with open(custom_db_path, 'r') as f:
             custom_vulns = json.load(f)
             db.update(custom_vulns)
-    
+
     return db
 ```
 
@@ -456,13 +456,13 @@ results = {}
 
 for project in projects:
     project_name = Path(project).name
-    
+
     # Run vulnerability scan
     scan_result = subprocess.run([
-        'python', 'scripts/dep_scanner.py', 
+        'python', 'scripts/dep_scanner.py',
         project, '--format', 'json'
     ], capture_output=True, text=True)
-    
+
     if scan_result.returncode == 0:
         results[project_name] = json.loads(scan_result.stdout)
 

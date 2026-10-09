@@ -385,8 +385,8 @@ def write_insights_report(
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     content = f"""# OpenChimera Self-Evolution Cycle {cycle_id}
 
-**Timestamp:** {ts}  
-**Run ID:** {os.environ.get("GITHUB_RUN_ID", "local")}  
+**Timestamp:** {ts}
+**Run ID:** {os.environ.get("GITHUB_RUN_ID", "local")}
 **Commit:** {os.environ.get("GITHUB_SHA", "unknown")[:8]}
 
 ## System Health Snapshot

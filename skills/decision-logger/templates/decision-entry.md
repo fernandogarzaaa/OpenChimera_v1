@@ -14,10 +14,10 @@ Copy this block and fill it in after each approved board decision.
 **Review:** [YYYY-MM-DD — when to check. Usually 2–4 weeks after deadline.]
 **Rationale:** [Why this over alternatives. 1-2 sentences. No fluff.]
 
-**User Override:** 
+**User Override:**
 <!-- Leave blank if founder approved the agent recommendation.
      Fill in if founder changed something:
-     "Founder rejected [agent recommendation] because [reason]. 
+     "Founder rejected [agent recommendation] because [reason].
       Actual decision: [what founder decided instead]." -->
 
 **Rejected:**

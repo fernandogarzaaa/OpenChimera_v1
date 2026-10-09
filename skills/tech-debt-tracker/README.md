@@ -40,7 +40,7 @@ Takes debt inventory and creates prioritized backlog using proven prioritization
 
 **Features:**
 - Multiple prioritization frameworks (Cost of Delay, WSJF, RICE)
-- Business impact analysis with ROI calculations  
+- Business impact analysis with ROI calculations
 - Sprint allocation recommendations
 - Effort estimation with risk adjustment
 - Executive and engineering reports
@@ -154,7 +154,7 @@ Try the tools on sample data:
 # Test scanner
 python scripts/debt_scanner.py assets/sample_codebase
 
-# Test prioritizer  
+# Test prioritizer
 python scripts/debt_prioritizer.py assets/sample_debt_inventory.json
 
 # Test dashboard

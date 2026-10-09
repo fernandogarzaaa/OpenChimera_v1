@@ -4,7 +4,6 @@ import html
 import json
 from typing import Any
 
-
 ROUTE_CATALOG: dict[str, dict[str, dict[str, Any]]] = {
     "/health": {"get": {"summary": "Runtime health", "tag": "system", "public": True}},
     "/v1/system/readiness": {"get": {"summary": "Readiness probe", "tag": "system", "public": True}},

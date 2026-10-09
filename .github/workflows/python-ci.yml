@@ -13,24 +13,44 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.12"]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements-prod.lock
-          python -m pip install -r requirements-dev.txt
-          python -m pip install -e .
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            python -m pip install -r requirements-dev.txt
+          else
+            # CUDA-only wheels (cuda-*, nvidia-*, triton) publish no macOS
+            # builds, and newer revisions (e.g. nvidia-cufile 1.15.1.6) also
+            # ship no Windows builds, while pip-compile/dependabot
+            # regenerations drop the darwin markers kept in
+            # requirements-dev.txt. Filter them here, where the exclusion
+            # cannot silently regress; the CPU test-suite needs none of them.
+            grep -v -E '^(cuda-|nvidia-|triton==)' requirements-dev.txt > /tmp/requirements-ci-nocuda.txt
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              # uvloop ships no Windows wheels either (uvicorn itself
+              # excludes it on win32); same treatment.
+              grep -v -E '^uvloop==' /tmp/requirements-ci-nocuda.txt > /tmp/requirements-ci-win.txt
+              DEV_REQ=/tmp/requirements-ci-win.txt
+            else
+              DEV_REQ=/tmp/requirements-ci-nocuda.txt
+            fi
+            python -m pip install -r "$DEV_REQ"
+          fi
+          python -m pip install -e ".[dev]"
           python -m pip install pip-audit
 
       - name: Audit Python dependencies for CVEs
@@ -47,6 +67,7 @@ jobs:
         run: python scripts/quantum_sim_verify.py
 
       - name: Run pytest with coverage
+        shell: bash
         run: |
           python -m pytest tests/ --ignore=tests/test_local_llm_quality.py \
             --cov=core --cov-report=term-missing --cov-fail-under=60 -q
@@ -61,10 +82,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -73,7 +94,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-prod.lock
           python -m pip install -r requirements-dev.txt
-          python -m pip install -e .
+          python -m pip install -e ".[dev]"
 
       - name: Run full unittest discovery sweep
         run: python run.py validate --pattern test_*.py
@@ -85,10 +106,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -101,7 +122,7 @@ jobs:
         run: python -m build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openchimera-dist-ci
           path: dist/*
@@ -113,16 +134,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: openchimera-dist-ci
           path: dist

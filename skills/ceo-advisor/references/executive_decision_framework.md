@@ -4,12 +4,12 @@
 
 ### The DECIDE Framework
 
-**D** - Define the problem clearly  
-**E** - Establish criteria for solutions  
-**C** - Consider alternatives  
-**I** - Identify best alternatives  
-**D** - Develop and implement action plan  
-**E** - Evaluate and monitor solution  
+**D** - Define the problem clearly
+**E** - Establish criteria for solutions
+**C** - Consider alternatives
+**I** - Identify best alternatives
+**D** - Develop and implement action plan
+**E** - Evaluate and monitor solution
 
 ## Strategic Decision Categories
 
@@ -48,17 +48,17 @@
    - Synergies identification
    - Cultural alignment
    - Market position enhancement
-   
+
 2. **Financial Analysis**
    - Valuation models (DCF, Multiples, Precedent)
    - ROI projections
    - Integration costs
-   
+
 3. **Risk Assessment**
    - Legal/regulatory issues
    - Technology compatibility
    - Talent retention
-   
+
 4. **Integration Planning**
    - 100-day plan
    - Communication strategy
@@ -169,7 +169,7 @@ Is it required for operations?
          Internal →
     ↓    Strengths (S)    Weaknesses (W)
 External
-         
+
 O        SO Strategies    WO Strategies
 p        (Leverage)       (Improve)
 p

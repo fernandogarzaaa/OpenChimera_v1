@@ -7,6 +7,12 @@
         "mcp",
         "--serve"
       ]
+    },
+    "chimeralang": {
+      "command": "uvx",
+      "args": [
+        "chimeralang-mcp"
+      ]
     }
   }
 }

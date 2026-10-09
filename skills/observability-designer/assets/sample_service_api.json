@@ -32,7 +32,7 @@
     },
     {
       "path": "/api/v1/payments/{id}",
-      "method": "GET", 
+      "method": "GET",
       "sla_latency_ms": 200,
       "expected_tps": 500
     },
@@ -76,7 +76,7 @@
   ],
   "tags": [
     "payment",
-    "transaction", 
+    "transaction",
     "critical-path",
     "revenue-generating"
   ]

@@ -5,10 +5,10 @@ description: "Incident Commander Skill"
 
 # Incident Commander Skill
 
-**Category:** Engineering Team  
-**Tier:** POWERFUL  
-**Author:** Claude Skills Team  
-**Version:** 1.0.0  
+**Category:** Engineering Team
+**Tier:** POWERFUL
+**Author:** Claude Skills Team
+**Version:** 1.0.0
 **Last Updated:** February 2026
 
 ## Overview
@@ -209,14 +209,14 @@ Executive Summary:
 
 Key Metrics:
 - Time to Detection: {X minutes}
-- Time to Engagement: {X minutes} 
+- Time to Engagement: {X minutes}
 - Estimated Customer Impact: {number/percentage}
 - Current Status: {status}
 - ETA to Resolution: {time or "investigating"}
 
 Leadership Actions Required:
 - [ ] Customer communication approval
-- [ ] PR/Communications coordination  
+- [ ] PR/Communications coordination
 - [ ] Resource allocation decisions
 - [ ] External vendor engagement
 
@@ -230,7 +230,7 @@ This is an automated alert from our incident response system.
 #### Customer Communication Template
 
 ```
-We are currently experiencing {brief description of issue} affecting {scope of impact}. 
+We are currently experiencing {brief description of issue} affecting {scope of impact}.
 
 Our engineering team was alerted at {time} and is actively working to resolve the issue. We will provide updates every {frequency} until resolved.
 

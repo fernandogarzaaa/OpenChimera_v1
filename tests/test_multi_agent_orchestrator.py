@@ -24,9 +24,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-import pytest
-
-from core.agent_pool import AgentPool, AgentRole, AgentSpec, create_pool
+from core.agent_pool import AgentPool, AgentRole, AgentSpec
 from core.multi_agent_orchestrator import (
     MultiAgentOrchestrator,
     OrchestratorResult,

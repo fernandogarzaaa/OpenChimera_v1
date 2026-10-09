@@ -170,7 +170,7 @@ def main():
 Examples:
   %(prog)s --handles @user1 @user2
   %(prog)s --import competitors.json
-  
+
   JSON format for --import:
   [{"handle": "@user1", "followers": 50000, "posts_per_week": 14, ...}]
         """)

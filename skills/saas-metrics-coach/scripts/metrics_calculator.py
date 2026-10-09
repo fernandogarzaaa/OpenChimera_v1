@@ -156,7 +156,7 @@ def _ask(prompt, required=False):
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="SaaS Metrics Calculator")
     parser.add_argument("--mrr", type=float, help="Current MRR")
     parser.add_argument("--mrr-last", type=float, help="MRR last month")
@@ -170,9 +170,9 @@ if __name__ == "__main__":
     parser.add_argument("--contraction-mrr", type=float, default=0, help="Contraction MRR")
     parser.add_argument("--profit-margin", type=float, help="Net profit margin %%")
     parser.add_argument("--json", action="store_true", help="Output JSON format")
-    
+
     args = parser.parse_args()
-    
+
     # CLI mode
     if args.mrr is not None:
         inputs = {
@@ -189,13 +189,13 @@ if __name__ == "__main__":
             "profit_margin": args.profit_margin,
         }
         result = calculate(**inputs)
-        
+
         if args.json:
             print(json.dumps(result, indent=2))
         else:
             print("\n" + report(result))
         sys.exit(0)
-    
+
     # Interactive mode
     print("\nSaaS Metrics Calculator  (press Enter to skip)\n")
 

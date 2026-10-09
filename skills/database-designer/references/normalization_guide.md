@@ -170,7 +170,7 @@ CREATE TABLE employees (
 **Problem: Determinant that's not a candidate key**
 ```sql
 -- BAD: Student advisor relationship with BCNF violation
--- Assumption: Each student has one advisor per subject, 
+-- Assumption: Each student has one advisor per subject,
 -- each advisor teaches only one subject, but can advise multiple students
 CREATE TABLE student_advisor (
     student_id INT,
@@ -292,10 +292,10 @@ CREATE TRIGGER update_order_total
 AFTER INSERT OR UPDATE OR DELETE ON order_items
 FOR EACH ROW
 BEGIN
-    UPDATE orders 
+    UPDATE orders
     SET order_total = (
-        SELECT SUM(quantity * unit_price) 
-        FROM order_items 
+        SELECT SUM(quantity * unit_price)
+        FROM order_items
         WHERE order_id = NEW.order_id
     )
     WHERE order_id = NEW.order_id;
@@ -306,7 +306,7 @@ END;
 ```sql
 -- Materialized view for complex aggregations
 CREATE MATERIALIZED VIEW customer_summary AS
-SELECT 
+SELECT
     c.customer_id,
     c.customer_name,
     COUNT(o.order_id) as order_count,

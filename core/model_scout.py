@@ -13,7 +13,7 @@ import json
 import logging
 import re
 from typing import Any
-from urllib import error, request
+from urllib import request
 
 from core.hardware_detector import hardware_tier
 

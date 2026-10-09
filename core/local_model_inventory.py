@@ -8,7 +8,6 @@ from urllib import error, request
 
 from core.config import ROOT, get_appforge_root, get_legacy_workspace_root
 
-
 LOGGER = logging.getLogger(__name__)
 
 

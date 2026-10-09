@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from core.config import ROOT
-
 
 # ======================================================================
 # Phase 1: Installation & Bootstrap
@@ -42,12 +41,12 @@ class TestPhase1_InstallationBootstrap(unittest.TestCase):
     def test_package_is_importable(self):
         """Core modules should be importable without errors."""
         import core
-        import core.config
+        import core.api_server
         import core.bus
+        import core.config
         import core.kernel
         import core.provider
         import core.query_engine
-        import core.api_server
         self.assertTrue(hasattr(core, "__name__"))
 
     def test_bootstrap_workspace_creates_required_dirs(self):
@@ -63,7 +62,7 @@ class TestPhase1_InstallationBootstrap(unittest.TestCase):
         """The CLI should accept --help without crashing."""
         import subprocess
         result = subprocess.run(
-            ["python", "-c", "from run import main; import sys; sys.argv=['openchimera', '--help']; main()"],
+            [sys.executable, "-c", "from run import main; import sys; sys.argv=['openchimera', '--help']; main()"],
             capture_output=True, text=True, timeout=10,
             cwd=str(ROOT),
         )
@@ -155,9 +154,9 @@ class TestPhase2_ConfigurationSetup(unittest.TestCase):
 
     def test_model_roles_resolve_with_local_models(self):
         """Model roles should pick local models for code_model when available."""
+        from core import config
         from core.model_registry import ModelRegistry
         from core.model_roles import ModelRoleManager
-        from core import config
         with tempfile.TemporaryDirectory() as tmp:
             profile_path = Path(tmp) / "runtime_profile.json"
             profile_path.write_text(json.dumps({
@@ -183,8 +182,8 @@ class TestPhase2_ConfigurationSetup(unittest.TestCase):
 
     def test_credential_store_works_with_fresh_db(self):
         """CredentialStore should init with a fresh database."""
-        from core.database import DatabaseManager
         from core.credential_store import CredentialStore
+        from core.database import DatabaseManager
         with tempfile.TemporaryDirectory() as tmp:
             db = DatabaseManager(db_path=str(Path(tmp) / "creds.db"))
             db.initialize()
@@ -331,7 +330,7 @@ class TestPhase4_AGICognitiveFeatures(unittest.TestCase):
 
     def test_transfer_learning_finds_cross_domain_patterns(self):
         """Transfer learning should find relevant patterns across domains."""
-        from core.transfer_learning import TransferLearning, PatternType
+        from core.transfer_learning import PatternType, TransferLearning
         tl = TransferLearning(bus=self.bus)
         tl.register_pattern(
             source_domain="math",
@@ -455,7 +454,8 @@ class TestPhase5_MultiAgentConsensus(unittest.TestCase):
     def test_consensus_with_agents(self):
         """Full consensus cycle should work with registered agents."""
         import asyncio
-        from core.agent_pool import AgentPool, AgentSpec, AgentRole
+
+        from core.agent_pool import AgentPool, AgentRole, AgentSpec
         from core.multi_agent_orchestrator import MultiAgentOrchestrator
 
         async def _mock_agent(task, context):
@@ -580,8 +580,9 @@ class TestPhase8_ObservabilityHealth(unittest.TestCase):
 
     def test_kernel_boot(self):
         """Kernel should instantiate without crashing."""
+        from unittest.mock import patch
+
         from core.kernel import OpenChimeraKernel
-        from unittest.mock import patch, MagicMock
         with patch("core.kernel.OpenChimeraAPIServer") as mock_server:
             mock_server.return_value = MagicMock()
             kernel = OpenChimeraKernel()
@@ -607,8 +608,8 @@ class TestPhase9_PermissionEnforcement(unittest.TestCase):
 
     def test_tool_executor_permission_gating(self):
         """ToolExecutor should enforce permission checks via execute_with_gating."""
-        from core.tool_executor import ToolExecutor, ToolPermissionError
         from core.bus import EventBus
+        from core.tool_executor import ToolExecutor, ToolPermissionError
         bus = EventBus()
         executor = ToolExecutor(bus=bus)
 
@@ -623,8 +624,8 @@ class TestPhase9_PermissionEnforcement(unittest.TestCase):
 
     def test_tool_executor_user_can_run_safe_tools(self):
         """User-level permission should allow safe tools."""
-        from core.tool_executor import ToolExecutor
         from core.bus import EventBus
+        from core.tool_executor import ToolExecutor
         bus = EventBus()
         executor = ToolExecutor(bus=bus)
         result = executor.execute_with_gating(
@@ -650,7 +651,7 @@ class TestPhase10_HierarchicalConfig(unittest.TestCase):
         from core.config import normalize_runtime_profile, validate_runtime_profile
         partial = {"providers": {"enabled": ["openai"]}}
         normalized, warnings = normalize_runtime_profile(partial)
-        errors = validate_runtime_profile(normalized)
+        _errors =validate_runtime_profile(normalized)
         # Should not have critical errors
         self.assertIsInstance(normalized, dict)
         self.assertIn("providers", normalized)
@@ -704,7 +705,7 @@ class TestPhase11_SessionPersistence(unittest.TestCase):
                 sessions_path=Path(tmp) / "sessions.json",
                 tool_history_path=Path(tmp) / "tool_history.json",
             )
-            result = qe.run_query(query="Test persistence", permission_scope="user")
+            _result =qe.run_query(query="Test persistence", permission_scope="user")
             sessions = qe.list_sessions()
             self.assertGreater(len(sessions), 0)
 
@@ -735,13 +736,13 @@ class TestPhase12_FullAGILoop(unittest.TestCase):
 
     def test_full_cognitive_pipeline(self):
         """Memory → Causal → Transfer → Meta → Ethical → Plan."""
-        from core.memory_system import MemorySystem
         from core.causal_reasoning import CausalReasoning
-        from core.transfer_learning import TransferLearning, PatternType
-        from core.meta_learning import MetaLearning
         from core.ethical_reasoning import EthicalReasoning
-        from core.plan_mode import PlanMode, PlanStatus, StepStatus
+        from core.memory_system import MemorySystem
+        from core.meta_learning import MetaLearning
+        from core.plan_mode import PlanMode, StepStatus
         from core.self_model import SelfModel
+        from core.transfer_learning import PatternType, TransferLearning
 
         # 1. Memory: record learning experience
         mem = MemorySystem(db=self.db, bus=self.bus, working_max_size=64)

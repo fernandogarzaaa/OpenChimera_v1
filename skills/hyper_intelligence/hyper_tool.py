@@ -39,16 +39,16 @@ def generate_divergent_thoughts(query: str) -> list[str]:
     print("  [>] Generating 3 Divergent Quantum State Hypotheses...")
     prompt = f"Analyze this query: '{query}'. Provide exactly 3 fundamentally different, valid approaches or hypotheses to solve this. Separate each approach with '---APPROACH---'."
     response = query_local_llm(prompt, temp=0.9)
-    
+
     approaches = [a.strip() for a in response.split("---APPROACH---") if len(a.strip()) > 10]
-    
+
     # Ensure we have at least 2, pad if necessary
     if len(approaches) == 0:
         return ["Approach 1: Direct logical deduction.", "Approach 2: Lateral thinking and edge case analysis.", "Approach 3: Systems-level architectural review."]
     elif len(approaches) == 1:
         approaches.append("Approach 2: Inverse problem-solving (starting from the goal backward).")
         approaches.append("Approach 3: First-principles reduction.")
-        
+
     return approaches[:3] # Keep exactly 3
 
 def expand_thought(query: str, thought: str, index: int) -> str:
@@ -75,33 +75,33 @@ def main():
         if not input_data.strip():
             print(json.dumps({"error": "No input provided on stdin"}))
             return
-            
+
         params = json.loads(input_data)
         query = params.get("query", "")
-        
+
         if not query:
             print(json.dumps({"error": "Query parameter is missing"}))
             return
-            
+
         print("\n" + "="*50)
         print(" --- HYPER INTELLIGENCE Q-ToT (Tree of Thoughts) --- ")
         print("="*50 + "\n")
-        
+
         print(f"Query Input: {query}\n")
-        
+
         # Phase 1: Superposition (Divergent Generation)
         print("[PHASE 1] Initializing Quantum Superposition (Thought Generation)...")
         hypotheses = generate_divergent_thoughts(query)
         for i, hyp in enumerate(hypotheses):
             preview = hyp.split('\n')[0][:80] + "..." if len(hyp) > 80 else hyp
             print(f"  |ψ_{i}⟩: {preview}")
-            
+
         # Phase 2: Entanglement Analysis
         print("\n[PHASE 2] Calculating Multi-Dimensional Semantic Entanglement...")
         entanglements = entanglement_detector.detect(hypotheses)
         for ent in entanglements:
             print(f"  Fidelity: {ent['fidelity']:.4f} -> {ent['type']}")
-            
+
         # Phase 3: Parallel Expansion
         print("\n[PHASE 3] Executing Parallel Deep Expansion...")
         expansions = []
@@ -109,24 +109,24 @@ def main():
             futures = [executor.submit(expand_thought, query, hyp, i) for i, hyp in enumerate(hypotheses)]
             for future in concurrent.futures.as_completed(futures):
                 expansions.append(future.result())
-                
+
         # Phase 4: Quantum Collapse (Consensus Voting via Qiskit/SciPy)
         print("\n[PHASE 4] Wave Function Collapse (Quantum Consensus Voting)...")
-        
+
         # Run the consensus vote!
         consensus_result = quantum_consensus.vote(expansions, scoring_fn=score_expansion, n_iterations=100)
-        
+
         winner = consensus_result['winner']
         confidence = consensus_result['confidence']
         engine_used = consensus_result.get('engine', 'unknown')
-        
+
         print(f"  Collapse complete. Engine: {engine_used.upper()}")
         print(f"  Mathematical Confidence Level: {confidence:.2%}")
-        
+
         print("\n" + "="*50)
         print(" --- ULTIMATE TRUTH (Final Output) --- ")
         print("="*50 + "\n")
-        
+
         print(winner)
         print("\n" + "="*50)
 

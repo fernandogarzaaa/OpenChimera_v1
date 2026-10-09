@@ -8,7 +8,6 @@ must use ROOT from core.config instead.
 """
 from __future__ import annotations
 
-import importlib
 import sys
 import types
 import unittest

@@ -21,7 +21,7 @@ Well-designed alerts are the difference between a reliable system and 3 AM pages
 - Security breach detected
 - SLO burn rate indicates imminent SLO violation
 
-#### Warning Alerts  
+#### Warning Alerts
 - Service degradation affecting some users
 - Approaching resource limits
 - Dependent service issues
@@ -74,7 +74,7 @@ Alert based on error budget consumption rate:
 
 ```yaml
 # Fast burn: 2% of monthly budget in 1 hour
-- alert: ErrorBudgetFastBurn  
+- alert: ErrorBudgetFastBurn
   expr: (
     error_rate_5m > (14.4 * error_budget_slo)
     and
@@ -83,12 +83,12 @@ Alert based on error budget consumption rate:
   for: 2m
   labels:
     severity: critical
-    
+
 # Slow burn: 10% of monthly budget in 3 days
 - alert: ErrorBudgetSlowBurn
   expr: (
     error_rate_6h > (1.0 * error_budget_slo)
-    and  
+    and
     error_rate_3d > (1.0 * error_budget_slo)
   )
   for: 15m
@@ -104,7 +104,7 @@ Use different thresholds for firing and resolving to prevent flapping:
 - alert: HighErrorRate
   expr: error_rate > 0.05  # Fire at 5%
   for: 5m
-  
+
 # Resolution happens automatically when error_rate < 0.03 (3%)
 # This prevents flapping around the 5% threshold
 ```
@@ -119,7 +119,7 @@ Alert when multiple conditions indicate a problem:
     (latency_p95 > latency_threshold)
     or
     (error_rate > error_threshold)
-    or 
+    or
     (availability < availability_threshold)
   ) and (
     request_rate > min_request_rate  # Only alert if we have traffic
@@ -157,7 +157,7 @@ route:
     receiver: 'payment-team-pager'
     continue: true
   - match:
-      service: 'payment-api' 
+      service: 'payment-api'
       severity: 'warning'
     receiver: 'payment-team-slack'
 ```
@@ -188,7 +188,7 @@ receivers:
   pagerduty_configs:
   - escalation_policy: 'P1-Escalation'
     # 0 min: Primary on-call
-    # 5 min: Secondary on-call  
+    # 5 min: Secondary on-call
     # 15 min: Engineering manager
     # 30 min: Director of engineering
 ```
@@ -199,7 +199,7 @@ receivers:
 - match:
     severity: 'critical'
   receiver: 'critical-escalation'
-  
+
 # Warning: Team-first escalation
 - match:
     severity: 'warning'
@@ -222,7 +222,7 @@ route:
 ```yaml
 - alert: ServiceDown
   expr: up == 0
-  
+
 - alert: HighLatency
   expr: latency_p95 > 1
   # This alert is suppressed when ServiceDown is firing
@@ -271,7 +271,7 @@ route:
 
 ## Investigation Steps
 1. Check logs for errors in the last 30 minutes
-2. Verify dependent services are healthy  
+2. Verify dependent services are healthy
 3. Check resource utilization (CPU, memory, disk)
 4. Review recent alerts for patterns
 
@@ -282,7 +282,7 @@ route:
 
 ## Escalation
 - Primary: @team-oncall
-- Secondary: @engineering-manager  
+- Secondary: @engineering-manager
 - Emergency: @site-reliability-team
 ```
 
@@ -307,7 +307,7 @@ annotations:
 def test_alert_during_cpu_spike():
     with chaos.cpu_spike(target='payment-api', duration='2m'):
         assert wait_for_alert('HighCPU', timeout=180)
-        
+
 def test_alert_during_network_partition():
     with chaos.network_partition(target='database'):
         assert wait_for_alert('DatabaseUnreachable', timeout=60)
@@ -361,7 +361,7 @@ sum(alerts_acked_within_15m) / sum(alerts_fired) * 100
 ```yaml
 - alert: AnomalousTraffic
   expr: |
-    abs(request_rate - predict_linear(request_rate[1h], 300)) / 
+    abs(request_rate - predict_linear(request_rate[1h], 300)) /
     stddev_over_time(request_rate[1h]) > 3
   for: 10m
   annotations:
@@ -383,13 +383,13 @@ sum(alerts_acked_within_15m) / sum(alerts_fired) * 100
 
 ```yaml
 # Different thresholds for business vs off hours
-- alert: HighLatencyBusinessHours  
+- alert: HighLatencyBusinessHours
   expr: latency_p95 > 0.2  # Stricter during business hours
   for: 2m
   # Active 9 AM - 5 PM weekdays
-  
+
 - alert: HighLatencyOffHours
-  expr: latency_p95 > 0.5  # More lenient after hours  
+  expr: latency_p95 > 0.5  # More lenient after hours
   for: 5m
   # Active nights and weekends
 ```
@@ -403,14 +403,14 @@ sum(alerts_acked_within_15m) / sum(alerts_fired) * 100
   for: 5m
   labels:
     severity: info
-    
+
 - alert: ServiceLatencyHigh
   expr: latency_p95 > 0.5
   for: 15m  # Same condition, longer duration
   labels:
     severity: warning
-    
-- alert: ServiceLatencyCritical  
+
+- alert: ServiceLatencyCritical
   expr: latency_p95 > 0.5
   for: 30m  # Same condition, even longer duration
   labels:
@@ -454,7 +454,7 @@ sum(alerts_acked_within_15m) / sum(alerts_fired) * 100
 - [ ] Severity and routing configured
 - [ ] Context and suggested actions included
 
-### Post-Implementation  
+### Post-Implementation
 - [ ] Monitor alert precision and recall
 - [ ] Regular review of alert fatigue metrics
 - [ ] Quarterly alert effectiveness review

@@ -359,7 +359,7 @@ skill-name/
    ```bash
    # For Python scripts
    pip install -r requirements.txt
-   
+
    # For Node.js tools
    npm install
    ```

@@ -538,7 +538,7 @@ Use Fishbone to identify causes, then Bow Tie to develop comprehensive preventio
 ## Quality Checklist
 
 - [ ] Root causes address systemic issues, not symptoms
-- [ ] Analysis is backed by evidence, not assumptions  
+- [ ] Analysis is backed by evidence, not assumptions
 - [ ] Multiple perspectives considered (technical, process, human)
 - [ ] Recommendations are specific and actionable
 - [ ] Analysis focuses on prevention, not blame
@@ -557,6 +557,6 @@ Use Fishbone to identify causes, then Bow Tie to develop comprehensive preventio
 
 ---
 
-**Last Updated:** February 2026  
-**Next Review:** August 2026  
+**Last Updated:** February 2026
+**Next Review:** August 2026
 **Owner:** SRE Team + Engineering Leadership

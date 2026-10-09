@@ -25,17 +25,14 @@ import os
 import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
-
-import pytest
+from typing import List
+from unittest.mock import patch
 
 from core.agent_pool import (
-    AgentPool,
-    AgentRole,
-    AgentSpec,
     _LLM_ROLE_PROMPTS,
     _LLM_ROLE_TEMPERATURES,
+    AgentRole,
+    AgentSpec,
     _call_ollama_chat,
     _discover_available_models,
     create_llm_pool,

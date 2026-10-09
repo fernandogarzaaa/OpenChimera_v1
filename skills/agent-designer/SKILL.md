@@ -5,8 +5,8 @@ description: "Agent Designer - Multi-Agent System Architecture"
 
 # Agent Designer - Multi-Agent System Architecture
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Tags:** AI agents, architecture, system design, orchestration, multi-agent systems
 
 ## Overview

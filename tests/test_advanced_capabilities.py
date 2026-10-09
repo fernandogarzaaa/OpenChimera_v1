@@ -258,4 +258,3 @@ class AegisServiceAdvancedTests(unittest.TestCase):
             any("No concrete repair actions" in r for r in result["recommended_actions"]),
             f"Expected default recommendation, got: {result['recommended_actions']}",
         )
-

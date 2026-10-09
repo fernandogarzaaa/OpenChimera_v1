@@ -73,7 +73,7 @@ python scripts/quality_scorer.py engineering/my-skill --detailed --json
 
 ### Quality Assessment
 - Documentation quality scoring (25%)
-- Code quality evaluation (25%)  
+- Code quality evaluation (25%)
 - Completeness assessment (25%)
 - Usability analysis (25%)
 - Letter grade assignment (A+ to F)
@@ -88,7 +88,7 @@ name: Skill Quality Gate
 on:
   pull_request:
     paths: ['engineering/**']
-    
+
 jobs:
   validate-skills:
     runs-on: ubuntu-latest
@@ -177,7 +177,7 @@ python scripts/quality_scorer.py engineering/my-skill --minimum-score 80
 
 All scripts provide comprehensive error handling:
 - **File System Errors** - Missing files, permission issues, invalid paths
-- **Content Errors** - Malformed YAML, invalid JSON, encoding issues  
+- **Content Errors** - Malformed YAML, invalid JSON, encoding issues
 - **Execution Errors** - Script timeouts, runtime failures, import errors
 - **Validation Errors** - Standards violations, compliance failures
 
@@ -219,7 +219,7 @@ SUGGESTIONS:
 ## Requirements
 
 - **Python 3.7+** - No external dependencies required
-- **File System Access** - Read access to skill directories  
+- **File System Access** - Read access to skill directories
 - **Execution Permissions** - Ability to run Python scripts for testing
 
 ## Contributing

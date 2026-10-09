@@ -151,7 +151,7 @@ git push
    class MyCapability:
        def __init__(self, bus: Any | None = None) -> None:
            self._bus = bus
-       
+
        def execute(self, params: dict[str, Any]) -> dict[str, Any]:
            # Implementation
            return {"status": "success"}
@@ -160,7 +160,7 @@ git push
 2. Register in `core/capabilities.py`:
    ```python
    from core.my_capability import MyCapability
-   
+
    capability = MyCapability(bus=self.bus)
    self.register_capability("my_capability", capability)
    ```

@@ -12,7 +12,7 @@ from core.transactions import atomic_write_json
 
 def load_subsystem_definitions(root: Path | None = None) -> list[dict[str, Any]]:
     """Load subsystem definitions from config/subsystems.json.
-    
+
     Returns a list of subsystem dicts with id, name, description, category.
     Falls back to an empty list if the file is missing or invalid.
     """
@@ -55,15 +55,15 @@ class ManagedSubsystemRegistry:
 
     def snapshot(self) -> dict[str, Any]:
         audit = self.integration_audit.build_report().get("engines", {})
-        
+
         # Load subsystem definitions from config
         subsystem_defs = load_subsystem_definitions()
         subsystems = []
-        
+
         for spec in subsystem_defs:
             subsystem_id = spec["id"]
             audit_entry = audit.get(subsystem_id, {})
-            
+
             # Special case for minimind — inject detected=True if not in audit
             if subsystem_id == "minimind" and not audit_entry.get("detected"):
                 audit_entry = {
@@ -73,7 +73,7 @@ class ManagedSubsystemRegistry:
                     "root": str(ROOT / "data" / "minimind"),
                     "evidence": [],
                 }
-            
+
             subsystems.append(
                 self._build_subsystem_entry(
                     subsystem_id,
@@ -81,7 +81,7 @@ class ManagedSubsystemRegistry:
                     spec["description"],
                 )
             )
-        
+
         return {
             "generated_at": int(time.time()),
             "subsystems": subsystems,

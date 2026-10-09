@@ -63,7 +63,7 @@
           "comment": "When email was verified"
         },
         "phone_verified_at": {
-          "type": "timestamp", 
+          "type": "timestamp",
           "nullable": true,
           "comment": "When phone was verified"
         },

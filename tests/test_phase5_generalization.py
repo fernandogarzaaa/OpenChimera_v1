@@ -12,26 +12,22 @@ from __future__ import annotations
 
 import os
 import tempfile
-import time
 
 import pytest
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
+from core.active_inquiry import ActiveInquiry
 from core.causal_reasoning import (
-    CausalEdge,
     CausalReasoning,
     ConfidenceLevel,
+    CounterfactualReasoner,
     EdgeType,
 )
-from core.causal_reasoning import CounterfactualReasoner
-from core.active_inquiry import ActiveInquiry
-from core.memory.semantic import SemanticMemory
 from core.memory.episodic import EpisodicMemory
-from core.transfer_learning import PatternType, TransferLearning
-from core.transfer_learning import SkillSynthesizer
+from core.memory.semantic import SemanticMemory
+from core.transfer_learning import PatternType, SkillSynthesizer, TransferLearning
 from swarms.god_swarm import EmergentSwarm
-
 
 # ---------------------------------------------------------------------------
 # Shared helpers

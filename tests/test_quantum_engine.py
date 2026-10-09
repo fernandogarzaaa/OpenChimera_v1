@@ -18,16 +18,18 @@ import asyncio
 import json
 from unittest.mock import patch
 
-import numpy as np
 import pytest
+
+pytest.importorskip("networkx", reason="requires the [all] extras")
+pytest.importorskip("numpy", reason="requires the [all] extras")
+
+import numpy as np
 
 from core.quantum_engine import (
     AgentReputation,
     ConsensusFailure,
-    ConsensusProfiler,
     QuantumEngine,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. Confidence parsed from dict response

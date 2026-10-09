@@ -25,7 +25,7 @@
       "expr": "up{service=\"payment-service\"} == 0",
       "labels": {
         "severity": "critical",
-        "service": "payment-service", 
+        "service": "payment-service",
         "team": "payments"
       },
       "annotations": {
@@ -78,7 +78,7 @@
       }
     },
     {
-      "alert": "HighMemoryUsage", 
+      "alert": "HighMemoryUsage",
       "expr": "process_resident_memory_bytes{service=\"payment-service\"} / process_virtual_memory_max_bytes{service=\"payment-service\"} * 100 > 85",
       "labels": {
         "severity": "info",
@@ -137,7 +137,7 @@
     {
       "alert": "HighLatencyDuplicate",
       "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service=\"payment-service\"}[5m])) > 0.5",
-      "for": "5m", 
+      "for": "5m",
       "labels": {
         "severity": "warning",
         "service": "payment-service",
@@ -198,14 +198,14 @@
       "team": "payments"
     },
     {
-      "name": "user-service", 
+      "name": "user-service",
       "type": "api",
       "criticality": "high",
       "team": "identity"
     },
     {
       "name": "notification-service",
-      "type": "api", 
+      "type": "api",
       "criticality": "medium",
       "team": "communications"
     }
@@ -227,7 +227,7 @@
         },
         "receiver": "slack-warnings",
         "group_wait": "30s",
-        "group_interval": "5m", 
+        "group_interval": "5m",
         "repeat_interval": "1h"
       },
       {

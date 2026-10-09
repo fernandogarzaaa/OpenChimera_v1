@@ -15,19 +15,23 @@ import struct
 import tempfile
 import unittest
 
+import pytest
+
+pytest.importorskip("networkx", reason="requires the [all] extras")
+pytest.importorskip("numpy", reason="requires the [all] extras")
+
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
-from core.agent_pool import AgentPool, AgentRole, AgentSpec, create_pool
-from core.causal_reasoning import CausalReasoning, EdgeType
+from core.agent_pool import AgentPool, AgentRole, AgentSpec
+from core.causal_reasoning import CausalReasoning
 from core.deliberation_engine import DeliberationEngine
 from core.ethical_reasoning import EthicalReasoning, Severity
 from core.evolution import EvolutionEngine
 from core.goal_planner import GoalPlanner, GoalStatus
 from core.memory_system import MemorySystem
-from core.meta_learning import MetaLearning, AdaptationReason
+from core.meta_learning import MetaLearning
 from core.metacognition import MetacognitionEngine
 from core.multi_agent_orchestrator import MultiAgentOrchestrator
-from core.quantum_engine import QuantumEngine, ConsensusResult
 from core.self_model import HealthStatus, SelfModel
 from core.transfer_learning import PatternType, TransferLearning
 
@@ -126,7 +130,7 @@ class TestAGICompleteRecursiveLoop(_TempDBMixin, unittest.TestCase):
         self.assertAlmostEqual(snap.value, 0.85)
 
         # 7. Transfer learning: register and find patterns
-        pat = transfer.register_pattern(
+        _pat =transfer.register_pattern(
             source_domain="reasoning",
             pattern_type=PatternType.HEURISTIC,
             description="Ensemble voting improves accuracy",

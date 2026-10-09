@@ -156,19 +156,19 @@ CREATE TABLE customer_statistics (
 ```sql
 -- Query pattern determines optimal column order
 -- Query: WHERE status = 'active' AND created_date > '2023-01-01' ORDER BY priority DESC
-CREATE INDEX idx_task_status_date_priority 
+CREATE INDEX idx_task_status_date_priority
 ON tasks (status, created_date, priority DESC);
 
 -- Query: WHERE user_id = 123 AND category IN ('A', 'B') AND date_field BETWEEN '...' AND '...'
-CREATE INDEX idx_user_category_date 
+CREATE INDEX idx_user_category_date
 ON user_activities (user_id, category, date_field);
 ```
 
 ### Covering Indexes
 ```sql
 -- Include additional columns to avoid table lookups
-CREATE INDEX idx_user_email_covering 
-ON users (email) 
+CREATE INDEX idx_user_email_covering
+ON users (email)
 INCLUDE (first_name, last_name, status);
 
 -- Query can be satisfied entirely from the index
@@ -178,13 +178,13 @@ INCLUDE (first_name, last_name, status);
 ### Partial Indexes
 ```sql
 -- Index only relevant subset of data
-CREATE INDEX idx_active_users_email 
-ON users (email) 
+CREATE INDEX idx_active_users_email
+ON users (email)
 WHERE status = 'active';
 
 -- Index for recent orders only
-CREATE INDEX idx_recent_orders_customer 
-ON orders (customer_id, created_at) 
+CREATE INDEX idx_recent_orders_customer
+ON orders (customer_id, created_at)
 WHERE created_at > CURRENT_DATE - INTERVAL '30 days';
 ```
 
@@ -264,11 +264,11 @@ CREATE TABLE documents (
 );
 
 -- Index on JSON properties
-CREATE INDEX idx_documents_user_id 
+CREATE INDEX idx_documents_user_id
 ON documents USING GIN ((data->>'user_id'));
 
-CREATE INDEX idx_documents_status 
-ON documents ((data->>'status')) 
+CREATE INDEX idx_documents_status
+ON documents ((data->>'status'))
 WHERE document_type = 'order';
 ```
 

@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import copy
 import json
 import os
 import re
 import subprocess
 import threading
 import time
-import copy
 from pathlib import Path
 from typing import Any
 from urllib import request
 
-from core.harness_port import HarnessPortAdapter
 from core.config import (
     ROOT,
     get_minimind_api_base_url,
@@ -22,6 +21,7 @@ from core.config import (
     get_minimind_training_output_dir,
     load_runtime_profile,
 )
+from core.harness_port import HarnessPortAdapter
 from core.resilience import retry_call
 from core.transactions import atomic_write_json, atomic_write_jsonl
 

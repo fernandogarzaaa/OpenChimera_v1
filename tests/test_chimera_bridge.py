@@ -20,15 +20,15 @@ Covers:
 """
 from __future__ import annotations
 
-import sys
 import os
+import sys
+
 import pytest
 
 # Make ChimeraLang importable for low-level VM tests
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "external", "chimeralang"))
 
 from core.chimera_bridge import ChimeraLangBridge, get_bridge
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -621,4 +621,3 @@ def test_status_capabilities_include_new_features(bridge):
     assert "for_loops" in caps, f"for_loops missing from capabilities: {caps}"
     assert "match_expressions" in caps, f"match_expressions missing: {caps}"
     assert "map_literals" in caps, f"map_literals missing: {caps}"
-

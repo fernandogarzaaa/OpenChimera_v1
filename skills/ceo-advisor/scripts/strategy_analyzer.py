@@ -32,11 +32,11 @@ class StrategyAnalyzer:
                 'factors': ['market_size', 'expansion_opportunities', 'product_pipeline', 'partnerships']
             }
         }
-        
+
         self.strategic_frameworks = {
             'porter_five_forces': [
                 'competitive_rivalry',
-                'supplier_power', 
+                'supplier_power',
                 'buyer_power',
                 'threat_of_substitution',
                 'threat_of_new_entry'
@@ -45,7 +45,7 @@ class StrategyAnalyzer:
             'bcg_matrix': ['stars', 'cash_cows', 'question_marks', 'dogs'],
             'ansoff_matrix': ['market_penetration', 'market_development', 'product_development', 'diversification']
         }
-    
+
     def analyze_strategic_position(self, company_data: Dict) -> Dict:
         """Comprehensive strategic analysis"""
         results = {
@@ -59,7 +59,7 @@ class StrategyAnalyzer:
             'recommendations': [],
             'roadmap': {}
         }
-        
+
         # Analyze strategic pillars
         total_score = 0
         for pillar, config in self.strategic_pillars.items():
@@ -75,55 +75,55 @@ class StrategyAnalyzer:
                 'factors': self._get_pillar_details(company_data.get(pillar, {}), config['factors'])
             }
             total_score += weighted_score
-        
+
         results['strategic_health_score'] = round(total_score, 1)
-        
+
         # Framework analysis
         results['framework_analysis'] = self._apply_frameworks(company_data)
-        
+
         # Generate strategic options
         results['strategic_options'] = self._generate_strategic_options(
             results['pillar_analysis'],
             company_data.get('context', {})
         )
-        
+
         # Risk assessment
         results['risk_assessment'] = self._assess_strategic_risks(
             company_data,
             results['strategic_options']
         )
-        
+
         # Generate roadmap
         results['roadmap'] = self._create_strategic_roadmap(
             results['strategic_options'],
             company_data.get('timeline', 12)
         )
-        
+
         # Generate recommendations
         results['recommendations'] = self._generate_recommendations(results)
-        
+
         return results
-    
+
     def _analyze_pillar(self, pillar_data: Dict, factors: List) -> float:
         """Analyze a strategic pillar"""
         if not pillar_data:
             return 50.0
-        
+
         total_score = 0
         count = 0
-        
+
         for factor in factors:
             if factor in pillar_data:
                 score = pillar_data[factor]
                 total_score += score
                 count += 1
-        
+
         return (total_score / count) if count > 0 else 50.0
-    
+
     def _get_pillar_details(self, pillar_data: Dict, factors: List) -> List[Dict]:
         """Get detailed factor analysis"""
         details = []
-        
+
         for factor in factors:
             score = pillar_data.get(factor, 50)
             details.append({
@@ -131,9 +131,9 @@ class StrategyAnalyzer:
                 'score': score,
                 'status': 'Strong' if score >= 70 else 'Adequate' if score >= 40 else 'Weak'
             })
-        
+
         return details
-    
+
     def _get_level(self, score: float) -> str:
         """Convert score to level"""
         if score >= 80:
@@ -146,11 +146,11 @@ class StrategyAnalyzer:
             return 'Weak'
         else:
             return 'Critical'
-    
+
     def _apply_frameworks(self, company_data: Dict) -> Dict:
         """Apply strategic frameworks"""
         frameworks = {}
-        
+
         # SWOT Analysis
         swot_data = company_data.get('swot', {})
         frameworks['swot'] = {
@@ -175,7 +175,7 @@ class StrategyAnalyzer:
                 'Economic uncertainty'
             ])
         }
-        
+
         # Porter's Five Forces
         forces = company_data.get('competitive_forces', {})
         frameworks['porter_analysis'] = {
@@ -186,13 +186,13 @@ class StrategyAnalyzer:
             'threat_of_new_entrants': forces.get('new_entrants', 45),
             'overall_attractiveness': self._calculate_industry_attractiveness(forces)
         }
-        
+
         # BCG Matrix for product portfolio
         products = company_data.get('products', [])
         frameworks['portfolio_analysis'] = self._analyze_portfolio(products)
-        
+
         return frameworks
-    
+
     def _calculate_industry_attractiveness(self, forces: Dict) -> float:
         """Calculate industry attractiveness from Porter's forces"""
         # Lower forces = more attractive industry
@@ -201,10 +201,10 @@ class StrategyAnalyzer:
         buyer = 100 - forces.get('buyers', 50)
         substitutes = 100 - forces.get('substitutes', 50)
         new_entrants = 100 - forces.get('new_entrants', 50)
-        
+
         avg = (rivalry + supplier + buyer + substitutes + new_entrants) / 5
         return round(avg, 1)
-    
+
     def _analyze_portfolio(self, products: List) -> Dict:
         """Analyze product portfolio using BCG matrix"""
         portfolio = {
@@ -213,11 +213,11 @@ class StrategyAnalyzer:
             'question_marks': [],
             'dogs': []
         }
-        
+
         for product in products:
             growth = product.get('market_growth', 0)
             share = product.get('market_share', 0)
-            
+
             if growth > 10 and share > 50:
                 portfolio['stars'].append(product.get('name', 'Product'))
             elif growth <= 10 and share > 50:
@@ -226,13 +226,13 @@ class StrategyAnalyzer:
                 portfolio['question_marks'].append(product.get('name', 'Product'))
             else:
                 portfolio['dogs'].append(product.get('name', 'Product'))
-        
+
         return portfolio
-    
+
     def _generate_strategic_options(self, pillar_analysis: Dict, context: Dict) -> List[Dict]:
         """Generate strategic options based on analysis"""
         options = []
-        
+
         # Check market position
         market_score = pillar_analysis['market_position']['score']
         if market_score < 60:
@@ -245,7 +245,7 @@ class StrategyAnalyzer:
                 'expected_impact': 'Increase market share by 10-15%',
                 'priority': 9
             })
-        
+
         # Check financial health
         financial_score = pillar_analysis['financial_health']['score']
         if financial_score < 50:
@@ -258,7 +258,7 @@ class StrategyAnalyzer:
                 'expected_impact': 'Improve margins by 5-8%',
                 'priority': 10
             })
-        
+
         # Check growth potential
         growth_score = pillar_analysis['growth_potential']['score']
         if growth_score > 70:
@@ -271,7 +271,7 @@ class StrategyAnalyzer:
                 'expected_impact': 'Revenue growth of 30-40%',
                 'priority': 8
             })
-        
+
         # Innovation opportunities
         if context.get('industry_disruption', False):
             options.append({
@@ -283,7 +283,7 @@ class StrategyAnalyzer:
                 'expected_impact': 'Future-proof business model',
                 'priority': 9
             })
-        
+
         # M&A opportunities
         if context.get('cash_available', 0) > 100000000:
             options.append({
@@ -295,12 +295,12 @@ class StrategyAnalyzer:
                 'expected_impact': 'Instant scale and capability',
                 'priority': 7
             })
-        
+
         # Sort by priority
         options.sort(key=lambda x: x['priority'], reverse=True)
-        
+
         return options[:5]  # Top 5 strategic options
-    
+
     def _assess_strategic_risks(self, company_data: Dict, strategic_options: List) -> Dict:
         """Assess strategic risks"""
         risks = {
@@ -312,7 +312,7 @@ class StrategyAnalyzer:
             'overall_risk': 0,
             'mitigation_strategies': []
         }
-        
+
         # Calculate overall risk
         risk_values = [
             risks['execution_risk'],
@@ -322,72 +322,72 @@ class StrategyAnalyzer:
             risks['regulatory_risk']
         ]
         risks['overall_risk'] = sum(risk_values) / len(risk_values)
-        
+
         # Generate mitigation strategies
         if risks['execution_risk'] > 60:
             risks['mitigation_strategies'].append({
                 'risk': 'Execution',
                 'strategy': 'Strengthen PMO, hire experienced executives, implement OKRs'
             })
-        
+
         if risks['market_risk'] > 60:
             risks['mitigation_strategies'].append({
                 'risk': 'Market',
                 'strategy': 'Diversify revenue streams, build strategic partnerships'
             })
-        
+
         if risks['financial_risk'] > 60:
             risks['mitigation_strategies'].append({
                 'risk': 'Financial',
                 'strategy': 'Improve cash management, secure credit facilities, optimize working capital'
             })
-        
+
         return risks
-    
+
     def _calculate_execution_risk(self, data: Dict) -> float:
         """Calculate execution risk"""
         org_capability = data.get('organizational_capability', {})
-        
+
         factors = [
             100 - org_capability.get('leadership', 50),
             100 - org_capability.get('talent', 50),
             100 - org_capability.get('agility', 50),
             data.get('complexity_score', 50)
         ]
-        
+
         return sum(factors) / len(factors)
-    
+
     def _calculate_market_risk(self, data: Dict) -> float:
         """Calculate market risk"""
         market = data.get('market_position', {})
-        
+
         factors = [
             100 - market.get('market_share', 50),
             data.get('market_volatility', 50),
             data.get('customer_concentration', 50)
         ]
-        
+
         return sum(factors) / len(factors)
-    
+
     def _calculate_financial_risk(self, data: Dict) -> float:
         """Calculate financial risk"""
         financial = data.get('financial_health', {})
-        
+
         factors = [
             100 - financial.get('cash_flow', 50),
             100 - financial.get('profitability', 50),
             data.get('debt_ratio', 50),
             data.get('burn_rate', 50) if 'burn_rate' in data else 30
         ]
-        
+
         return sum(factors) / len(factors)
-    
+
     def _calculate_competitive_risk(self, data: Dict) -> float:
         """Calculate competitive risk"""
         forces = data.get('competitive_forces', {})
-        
+
         return (forces.get('rivalry', 50) + forces.get('new_entrants', 50)) / 2
-    
+
     def _create_strategic_roadmap(self, options: List, timeline_months: int) -> Dict:
         """Create implementation roadmap"""
         roadmap = {
@@ -396,7 +396,7 @@ class StrategyAnalyzer:
             'resource_requirements': {},
             'success_metrics': []
         }
-        
+
         # Define phases
         phases = [
             {
@@ -424,7 +424,7 @@ class StrategyAnalyzer:
                 'initiatives': []
             }
         ]
-        
+
         # Assign initiatives to phases
         for i, option in enumerate(options[:4]):
             if i == 0:
@@ -435,9 +435,9 @@ class StrategyAnalyzer:
                 phases[2]['initiatives'].append(option['name'])
             else:
                 phases[3]['initiatives'].append(option['name'])
-        
+
         roadmap['phases'] = phases
-        
+
         # Define key milestones
         roadmap['milestones'] = [
             {'month': 3, 'milestone': 'Complete foundation phase', 'success_criteria': 'Core team hired, processes defined'},
@@ -445,7 +445,7 @@ class StrategyAnalyzer:
             {'month': 12, 'milestone': 'Strategic review', 'success_criteria': 'ROI demonstrated, strategy validated'},
             {'month': 18, 'milestone': 'Scale achievement', 'success_criteria': 'Market position improved, financial targets met'}
         ]
-        
+
         # Resource requirements
         roadmap['resource_requirements'] = {
             'leadership': 'C-suite alignment and commitment',
@@ -454,7 +454,7 @@ class StrategyAnalyzer:
             'technology': 'Platform upgrades and new tools',
             'external': 'Consultants and advisors as needed'
         }
-        
+
         # Success metrics
         roadmap['success_metrics'] = [
             'Revenue growth: 25% YoY',
@@ -463,13 +463,13 @@ class StrategyAnalyzer:
             'Customer NPS: >70',
             'Employee engagement: >80%'
         ]
-        
+
         return roadmap
-    
+
     def _generate_recommendations(self, results: Dict) -> List[str]:
         """Generate strategic recommendations"""
         recommendations = []
-        
+
         # Based on overall score
         score = results['strategic_health_score']
         if score < 40:
@@ -484,7 +484,7 @@ class StrategyAnalyzer:
         else:
             recommendations.append('⭐ Excellent position - maintain momentum and explore bold moves')
             recommendations.append('Consider industry disruption or category creation')
-        
+
         # Based on specific weaknesses
         for pillar, analysis in results['pillar_analysis'].items():
             if analysis['score'] < 50:
@@ -494,22 +494,22 @@ class StrategyAnalyzer:
                     recommendations.append(f'Improve {pillar}: Implement profitability improvement plan')
                 elif pillar == 'organizational_capability':
                     recommendations.append(f'Build {pillar}: Invest in talent and culture transformation')
-        
+
         # Based on opportunities
         if results['framework_analysis']['porter_analysis']['overall_attractiveness'] > 70:
             recommendations.append('Industry is attractive - consider aggressive expansion')
-        
+
         # Risk-based recommendations
         if results['risk_assessment']['overall_risk'] > 60:
             recommendations.append('High risk profile - implement comprehensive risk management')
-        
+
         return recommendations
 
 def analyze_strategy(company_data: Dict) -> str:
     """Main function to analyze strategy"""
     analyzer = StrategyAnalyzer()
     results = analyzer.analyze_strategic_position(company_data)
-    
+
     # Format output
     output = [
         f"=== Strategic Analysis Report ===",
@@ -520,24 +520,24 @@ def analyze_strategy(company_data: Dict) -> str:
         f"",
         "Strategic Pillars:"
     ]
-    
+
     for pillar, analysis in results['pillar_analysis'].items():
         output.append(f"  {pillar.replace('_', ' ').title()}: {analysis['score']:.1f} ({analysis['level']})")
         for factor in analysis['factors'][:2]:  # Show top 2 factors
             output.append(f"    • {factor['factor']}: {factor['status']}")
-    
+
     output.extend([
         f"",
         "Strategic Options:"
     ])
-    
+
     for i, option in enumerate(results['strategic_options'][:3], 1):
         output.append(f"\n{i}. {option['name']} (Priority: {option['priority']}/10)")
         output.append(f"   Type: {option['type']}")
         output.append(f"   Investment: {option['investment']}")
         output.append(f"   Timeframe: {option['timeframe']}")
         output.append(f"   Impact: {option['expected_impact']}")
-    
+
     output.extend([
         f"",
         f"Risk Assessment:",
@@ -548,20 +548,20 @@ def analyze_strategy(company_data: Dict) -> str:
         f"",
         "Strategic Roadmap:"
     ])
-    
+
     for phase in results['roadmap']['phases'][:3]:
         output.append(f"  {phase['phase']} ({phase['months']}): {phase['focus']}")
         for initiative in phase['initiatives']:
             output.append(f"    • {initiative}")
-    
+
     output.extend([
         f"",
         "Key Recommendations:"
     ])
-    
+
     for rec in results['recommendations'][:5]:
         output.append(f"  • {rec}")
-    
+
     return '\n'.join(output)
 
 if __name__ == "__main__":
@@ -605,5 +605,5 @@ if __name__ == "__main__":
         },
         'timeline': 18
     }
-    
+
     print(analyze_strategy(example_company))

@@ -20,12 +20,10 @@ Test structure:
 
 from __future__ import annotations
 
-import asyncio
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from core._bus_fallback import EventBus
 from core._database_fallback import DatabaseManager
@@ -405,8 +403,8 @@ class TestProviderAGIEndpoints(unittest.TestCase):
     """Verify provider exposes AGI completeness endpoint."""
 
     def test_provider_agi_completeness(self):
-        from core.provider import OpenChimeraProvider
         from core.personality import Personality
+        from core.provider import OpenChimeraProvider
         bus = EventBus()
         personality = Personality()
         with patch.dict("os.environ", {"OPENCHIMERA_API_TOKEN": "test", "OPENCHIMERA_ADMIN_TOKEN": "admin"}):
@@ -418,8 +416,8 @@ class TestProviderAGIEndpoints(unittest.TestCase):
             self.assertEqual(result["total"], 10)
 
     def test_provider_embodied_status(self):
-        from core.provider import OpenChimeraProvider
         from core.personality import Personality
+        from core.provider import OpenChimeraProvider
         bus = EventBus()
         personality = Personality()
         with patch.dict("os.environ", {"OPENCHIMERA_API_TOKEN": "test", "OPENCHIMERA_ADMIN_TOKEN": "admin"}):
@@ -428,8 +426,8 @@ class TestProviderAGIEndpoints(unittest.TestCase):
             self.assertIsInstance(result, dict)
 
     def test_provider_social_status(self):
-        from core.provider import OpenChimeraProvider
         from core.personality import Personality
+        from core.provider import OpenChimeraProvider
         bus = EventBus()
         personality = Personality()
         with patch.dict("os.environ", {"OPENCHIMERA_API_TOKEN": "test", "OPENCHIMERA_ADMIN_TOKEN": "admin"}):

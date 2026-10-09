@@ -266,7 +266,7 @@ Subject: ⚠️ [SEV2] [Service] - Major Performance Impact
 Major service degradation affecting user experience
 
 Service: [Service Name]
-Start Time: [Timestamp] 
+Start Time: [Timestamp]
 Impact: [Description of user impact]
 Scope: [Affected functionality/users]
 
@@ -287,6 +287,6 @@ This severity matrix should be reviewed quarterly and updated based on:
 - Regulatory requirement changes
 - Customer feedback and SLA updates
 
-**Last Updated:** February 2026  
-**Next Review:** May 2026  
+**Last Updated:** February 2026
+**Next Review:** May 2026
 **Owner:** Engineering Leadership

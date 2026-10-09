@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Callable, Dict, List
+from typing import Any, Dict, List
 
-from core.quantum_engine import ConsensusFailure, ConsensusResult
+from core.quantum_engine import ConsensusFailure
 
 from .cluster import SimCluster
 

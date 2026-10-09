@@ -5,9 +5,9 @@ description: "Codebase Onboarding"
 
 # Codebase Onboarding
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
-**Domain:** Documentation / Developer Experience  
+**Tier:** POWERFUL
+**Category:** Engineering
+**Domain:** Documentation / Developer Experience
 
 ---
 
@@ -85,8 +85,8 @@ pnpm test:ci --coverage 2>&1 | tail -20
 
 [2-3 sentences: problem it solves, who uses it, current state]
 
-**Live:** https://myapp.com  
-**Staging:** https://staging.myapp.com  
+**Live:** https://myapp.com
+**Staging:** https://staging.myapp.com
 **Docs:** https://docs.myapp.com
 
 ---
@@ -151,7 +151,7 @@ Browser / Mobile
     ├──→ [PostgreSQL] (primary data store)
     ├──→ [Redis] (sessions, job queue)
     └──→ [S3] (file uploads)
-         
+
 Background:
 [BullMQ workers] ←── Redis queue
     └──→ [External APIs: Stripe, SendGrid]
@@ -219,11 +219,11 @@ export async function GET(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  
+
   const data = await db.query.myResource.findMany({
     where: (r, { eq }) => eq(r.userId, session.user.id),
   })
-  
+
   return NextResponse.json({ data })
 }
 ```

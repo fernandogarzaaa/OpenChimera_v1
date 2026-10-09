@@ -9,12 +9,10 @@ from core._bus_fallback import EventBus
 from core.self_model import (
     CapabilitySnapshot,
     HealthStatus,
-    PerformanceDelta,
     SelfModel,
     SubsystemHealth,
     TrendDirection,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

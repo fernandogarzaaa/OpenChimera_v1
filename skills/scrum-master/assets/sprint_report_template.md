@@ -1,21 +1,21 @@
 # Sprint [NUMBER] - [SPRINT_NAME] Report
-**Team:** [TEAM_NAME]  
-**Scrum Master:** [SCRUM_MASTER_NAME]  
-**Sprint Period:** [START_DATE] to [END_DATE]  
+**Team:** [TEAM_NAME]
+**Scrum Master:** [SCRUM_MASTER_NAME]
+**Sprint Period:** [START_DATE] to [END_DATE]
 **Report Date:** [REPORT_DATE]
 
 ---
 
 ## Executive Summary
 
-**Sprint Goal Achievement:** [ACHIEVED/PARTIALLY_ACHIEVED/NOT_ACHIEVED]  
-**Overall Health Grade:** [EXCELLENT/GOOD/FAIR/POOR] ([HEALTH_SCORE]/100)  
-**Velocity:** [COMPLETED_POINTS] points ([VELOCITY_TREND] from previous sprint)  
+**Sprint Goal Achievement:** [ACHIEVED/PARTIALLY_ACHIEVED/NOT_ACHIEVED]
+**Overall Health Grade:** [EXCELLENT/GOOD/FAIR/POOR] ([HEALTH_SCORE]/100)
+**Velocity:** [COMPLETED_POINTS] points ([VELOCITY_TREND] from previous sprint)
 **Commitment Ratio:** [COMMITMENT_PERCENTAGE]% of planned work completed
 
 ### Key Highlights
 - [KEY_ACHIEVEMENT_1]
-- [KEY_ACHIEVEMENT_2] 
+- [KEY_ACHIEVEMENT_2]
 - [KEY_CHALLENGE_1]
 - [KEY_CHALLENGE_2]
 
@@ -93,7 +93,7 @@
 ### Velocity Trend
 ```
 Sprint [N-2]: [VELOCITY_N2] points
-Sprint [N-1]: [VELOCITY_N1] points  
+Sprint [N-1]: [VELOCITY_N1] points
 Sprint [N]:   [VELOCITY_N] points
 Trend: [IMPROVING/STABLE/DECLINING] ([TREND_PERCENTAGE]% change)
 ```
@@ -121,7 +121,7 @@ Trend: [IMPROVING/STABLE/DECLINING] ([TREND_PERCENTAGE]% change)
 - [WENT_WELL_2]
 - [WENT_WELL_3]
 
-### Areas for Improvement  
+### Areas for Improvement
 - [IMPROVE_1]
 - [IMPROVE_2]
 - [IMPROVE_3]
@@ -157,7 +157,7 @@ Trend: [IMPROVING/STABLE/DECLINING] ([TREND_PERCENTAGE]% change)
 
 ### Sprint Goals
 1. [GOAL_1]
-2. [GOAL_2] 
+2. [GOAL_2]
 3. [GOAL_3]
 
 ### Planned Capacity
@@ -183,7 +183,7 @@ Trend: [IMPROVING/STABLE/DECLINING] ([TREND_PERCENTAGE]% change)
 1. **[HIGH_PRIORITY_ACTION_1]** - [DESCRIPTION] (Owner: [OWNER], Due: [DATE])
 2. **[HIGH_PRIORITY_ACTION_2]** - [DESCRIPTION] (Owner: [OWNER], Due: [DATE])
 
-### Process Improvements (Next 2-3 Sprints)  
+### Process Improvements (Next 2-3 Sprints)
 1. **[PROCESS_IMPROVEMENT_1]** - [DESCRIPTION]
 2. **[PROCESS_IMPROVEMENT_2]** - [DESCRIPTION]
 
@@ -206,8 +206,8 @@ Trend: [IMPROVING/STABLE/DECLINING] ([TREND_PERCENTAGE]% change)
 
 ---
 
-**Report prepared by:** [SCRUM_MASTER_NAME]  
-**Next review date:** [NEXT_REVIEW_DATE]  
+**Report prepared by:** [SCRUM_MASTER_NAME]
+**Next review date:** [NEXT_REVIEW_DATE]
 **Distribution:** Product Owner, Development Team, Stakeholders
 
 ---

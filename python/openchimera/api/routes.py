@@ -1,0 +1,434 @@
+"""FastAPI routes for OpenChimera v2 — full production API."""
+
+from __future__ import annotations
+
+import hmac
+import json
+import logging
+import time
+import uuid
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from typing import AsyncIterator
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+
+from openchimera.agent import AgentOrchestrator
+from openchimera.cognitive.bridge import CognitiveBridge
+from openchimera.config import load_settings
+from openchimera.providers.manager import ProviderManager
+from openchimera.rag.engine import get_engine
+from openchimera.tools.registry import ToolRegistry
+
+logger = logging.getLogger(__name__)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Pydantic Models
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class StatusResponse(BaseModel):
+    version: str
+    uptime_seconds: int
+    state: str
+    providers_online: int
+    providers_total: int
+    active_agents: int
+    queued_tasks: int
+    memory_used_mb: int
+    cpu_percent: float
+
+
+class CognitiveStatusResponse(BaseModel):
+    axiom: dict
+    eve: dict
+    adam: dict
+
+
+class QueryRequest(BaseModel):
+    text: str
+    provider: str | None = None
+    model: str | None = None
+    execute_tools: bool = False
+    temperature: float | None = None
+    max_tokens: int | None = None
+
+
+
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatCompletionRequest(BaseModel):
+    model: str | None = None
+    messages: list[ChatMessage]
+    temperature: float | None = None
+    max_tokens: int | None = None
+    stream: bool = False
+
+class QueryResponse(BaseModel):
+    session_id: str
+    response_text: str
+    provider_used: str
+    model_used: str
+    tools_executed: list[str]
+    duration_ms: int
+    usage: dict | None = None
+
+
+class SpawnAgentRequest(BaseModel):
+    name: str = "unnamed"
+    prompt: str = ""
+
+
+class ToolExecuteRequest(BaseModel):
+    tool_id: str
+    arguments: dict = {}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Lifespan
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings = load_settings()
+    app.state.settings = settings
+    app.state.providers = ProviderManager(settings)
+    app.state.tools = ToolRegistry(settings)
+    app.state.cognitive = CognitiveBridge(settings)
+    app.state.orchestrator = AgentOrchestrator(app.state.providers, app.state.tools)
+    app.state.started_at = datetime.now(UTC)
+    yield
+
+
+app = FastAPI(
+    title="OpenChimera v2",
+    version="2.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+settings = load_settings()
+if settings.api.cors.enabled:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.api.cors.origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# API authentication (bearer tokens — enforced only when explicitly enabled)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+AUTH_EXEMPT_PATHS = frozenset({"/health"})
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """Enforce bearer-token auth when `api.auth.enabled` is set.
+
+    Fail-open only when auth is disabled (the default loopback posture) or
+    the app state has no settings yet. CORS preflights (OPTIONS) and the
+    liveness probe (/health) never require credentials.
+    """
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint):
+        if request.method == "OPTIONS" or request.url.path in AUTH_EXEMPT_PATHS:
+            return await call_next(request)
+        settings = getattr(request.app.state, "settings", None)
+        auth = settings.api.auth if settings is not None else None
+        if auth is None or not auth.enabled:
+            return await call_next(request)
+        expected = [token for token in (auth.token, auth.admin_token) if token]
+        if not expected:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "API auth is enabled but no token is configured"},
+            )
+        scheme, _, credential = request.headers.get("authorization", "").partition(" ")
+        presented_ok = scheme.lower() == "bearer" and _token_matches(credential, expected)
+        if not presented_ok:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API token"},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await call_next(request)
+
+
+def _token_matches(credential: str, expected: list[str]) -> bool:
+    """Constant-time token comparison that never raises on odd input."""
+    if not credential.isascii():
+        return False
+    for token in expected:
+        if not token.isascii():
+            continue
+        if hmac.compare_digest(credential, token):
+            return True
+    return False
+
+
+app.add_middleware(AuthMiddleware)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Routes
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/health")
+def health() -> dict:
+    return {"status": "ok", "version": "2.0.0"}
+
+
+@app.get("/v1/models")
+async def openai_models() -> dict:
+    """OpenAI-compatible model listing for local/app-team smoke tests."""
+    data = []
+    for provider_name, provider in app.state.providers._providers.items():
+        try:
+            models = await provider.list_models()
+        except Exception:  # noqa: BLE001 - provider adapters may raise SDK-specific exceptions
+            models = []
+        for model in models or [provider.default_model]:
+            if model:
+                data.append({
+                    "id": model,
+                    "object": "model",
+                    "owned_by": provider_name,
+                })
+    return {"object": "list", "data": data}
+
+
+async def _stream_chat_completion(
+    completion_id: str, created: int, model: str, pieces: list[str]
+) -> AsyncIterator[str]:
+    """Yield OpenAI-compatible SSE chat.completion chunks.
+
+    The orchestrator currently resolves the whole response before we emit,
+    so each event carries a genuine slice of the final text (today: one
+    slice). The framing — role delta, content deltas, stop chunk, [DONE] —
+    is spec-shaped so SSE clients work unchanged when token streaming lands.
+    """
+
+    def _event(delta: dict, finish_reason: str | None) -> str:
+        return (
+            "data: "
+            + json.dumps({
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [{"index": 0, "delta": delta, "finish_reason": finish_reason}],
+            })
+            + "\n\n"
+        )
+
+    yield _event({"role": "assistant"}, None)
+    for piece in pieces:
+        yield _event({"content": piece}, None)
+    yield _event({}, "stop")
+    yield "data: [DONE]\n\n"
+
+
+@app.post("/v1/chat/completions")
+async def openai_chat_completions(req: ChatCompletionRequest):
+    """OpenAI-compatible chat completions endpoint with SSE streaming support."""
+    if not req.messages:
+        raise HTTPException(status_code=400, detail="messages must contain at least one message")
+    text = "\n".join(message.content for message in req.messages if message.role == "user").strip()
+    try:
+        result = await app.state.orchestrator.query(
+            text=text,
+            provider=None,
+            model=req.model,
+            execute_tools=False,
+            temperature=req.temperature,
+            max_tokens=req.max_tokens,
+        )
+    except RuntimeError as exc:
+        # Never expose exception internals to API consumers; log server-side instead.
+        logger.warning("chat completions no-provider fallback: %s", exc)
+        result = {
+            "text": "No provider available. Run `openchimera onboard` to configure providers.",
+            "model": req.model or "none",
+            "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+        }
+    created = int(time.time())
+    content = result.get("text", "")
+    model = result.get("model") or req.model or "unknown"
+    if req.stream:
+        return StreamingResponse(
+            _stream_chat_completion(
+                completion_id=f"chatcmpl-{uuid.uuid4().hex[:12]}",
+                created=created,
+                model=model,
+                pieces=[content] if content else [],
+            ),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    return {
+        "id": f"chatcmpl-{uuid.uuid4().hex[:12]}",
+        "object": "chat.completion",
+        "created": created,
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": result.get("usage") or {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
+
+
+@app.get("/api/v2/status", response_model=StatusResponse)
+def api_status() -> StatusResponse:
+    import psutil
+    proc = psutil.Process()
+    uptime = int((datetime.now(UTC) - app.state.started_at).total_seconds())
+    providers = app.state.providers.get_all_status()
+    online = sum(1 for p in providers if p.get("healthy"))
+    agents = app.state.orchestrator.list_agents()
+    return StatusResponse(
+        version="2.0.0",
+        uptime_seconds=uptime,
+        state="online",
+        providers_online=online,
+        providers_total=len(providers),
+        active_agents=len([a for a in agents if a.get("status") == "running"]),
+        queued_tasks=len([a for a in agents if a.get("status") == "queued"]),
+        memory_used_mb=proc.memory_info().rss // (1024 * 1024),
+        cpu_percent=proc.cpu_percent(),
+    )
+
+
+@app.get("/api/v2/providers")
+def api_providers() -> list[dict]:
+    return app.state.providers.get_all_status()
+
+
+@app.post("/api/v2/providers/health-check")
+async def api_providers_health_check() -> dict:
+    await app.state.providers.health_check_all()
+    return {"status": "completed", "providers": app.state.providers.get_all_status()}
+
+
+@app.get("/api/v2/cognitive/status")
+def api_cognitive() -> CognitiveStatusResponse:
+    return CognitiveStatusResponse(
+        axiom=app.state.cognitive.axiom_status(),
+        eve=app.state.cognitive.eve_status(),
+        adam=app.state.cognitive.adam_status(),
+    )
+
+
+@app.post("/api/v2/cognitive/axiom/recall")
+async def api_axiom_recall(request: dict) -> dict:
+    query = request.get("query", "")
+    return await app.state.cognitive.axiom_recall(query)
+
+
+@app.post("/api/v2/cognitive/eve/predict")
+async def api_eve_predict(request: dict) -> dict:
+    feature = request.get("feature", "")
+    return await app.state.cognitive.eve_predict(feature)
+
+
+@app.get("/api/v2/cognitive/adam/genome")
+async def api_adam_genome() -> dict:
+    return await app.state.cognitive.adam_read_genome()
+
+
+@app.post("/api/v2/query", response_model=QueryResponse)
+async def api_query(req: QueryRequest) -> QueryResponse:
+    import time
+    import uuid
+    start = time.perf_counter()
+    result = await app.state.orchestrator.query(
+        text=req.text,
+        provider=req.provider,
+        model=req.model,
+        execute_tools=req.execute_tools,
+        temperature=req.temperature,
+        max_tokens=req.max_tokens,
+    )
+    duration = int((time.perf_counter() - start) * 1000)
+    return QueryResponse(
+        session_id=result.get("session_id", str(uuid.uuid4())),
+        response_text=result.get("text", ""),
+        provider_used=result.get("provider", "unknown"),
+        model_used=result.get("model", "unknown"),
+        tools_executed=result.get("tools", []),
+        duration_ms=duration,
+        usage=result.get("usage"),
+    )
+
+
+@app.get("/api/v2/tools")
+def api_tools() -> list[dict]:
+    return app.state.tools.list_tools()
+
+
+@app.post("/api/v2/tools/execute")
+async def api_tool_execute(req: ToolExecuteRequest) -> dict:
+    result = await app.state.tools.execute(req.tool_id, req.arguments)
+    return {"tool_id": req.tool_id, "result": result}
+
+
+@app.get("/api/v2/agents")
+def api_agents() -> list[dict]:
+    return app.state.orchestrator.list_agents()
+
+
+@app.post("/api/v2/agents/spawn")
+async def api_spawn_agent(req: SpawnAgentRequest) -> dict:
+    agent = await app.state.orchestrator.spawn_agent(req.name, req.prompt)
+    return agent
+
+
+@app.get("/api/v2/rag/status")
+def api_rag_status() -> dict:
+    engine = get_engine()
+    return engine.get_stats()
+
+
+@app.post("/api/v2/rag/query")
+async def api_rag_query(request: dict) -> dict:
+    engine = get_engine()
+    results = engine.query(request.get("query", ""), top_k=request.get("top_k", 5))
+    return {"results": results}
+
+
+@app.post("/api/v2/rag/add")
+async def api_rag_add(request: dict) -> dict:
+    engine = get_engine()
+    texts = request.get("texts", [])
+    metadatas = request.get("metadatas")
+    engine.add_documents(texts, metadatas)
+    return {"added": len(texts)}
+
+
+@app.get("/api/v2/models")
+def api_models() -> list[dict]:
+    """List all available models across all configured providers."""
+    results = []
+    for name, prov in app.state.providers._providers.items():
+        status = prov.to_status()
+        results.append({
+            "provider": name,
+            "models": status.get("models", []),
+            "default_model": status.get("default_model", ""),
+            "healthy": status.get("healthy", False),
+        })
+    return results

@@ -109,11 +109,11 @@ class ArchitectureDesign:
 
 class AgentPlanner:
     """Multi-agent system architecture planner"""
-    
+
     def __init__(self):
         self.common_tools = self._define_common_tools()
         self.pattern_heuristics = self._define_pattern_heuristics()
-    
+
     def _define_common_tools(self) -> Dict[str, Tool]:
         """Define commonly used tools across agents"""
         return {
@@ -163,7 +163,7 @@ class AgentPlanner:
                 latency="medium"
             )
         }
-    
+
     def _define_pattern_heuristics(self) -> Dict[AgentArchitecturePattern, Dict[str, Any]]:
         """Define heuristics for selecting architecture patterns"""
         return {
@@ -203,26 +203,26 @@ class AgentPlanner:
                 "scaling_limit": "medium"
             }
         }
-    
+
     def select_architecture_pattern(self, requirements: SystemRequirements) -> AgentArchitecturePattern:
         """Select the most appropriate architecture pattern based on requirements"""
         team_size = requirements.team_size
         task_count = len(requirements.tasks)
         performance_reqs = requirements.performance_requirements
-        
+
         # Score each pattern based on requirements
         pattern_scores = {}
-        
+
         for pattern, heuristics in self.pattern_heuristics.items():
             score = 0
-            
+
             # Team size fit
             min_size, max_size = heuristics["team_size_range"]
             if min_size <= team_size <= max_size:
                 score += 3
             elif abs(team_size - min_size) <= 2 or abs(team_size - max_size) <= 2:
                 score += 1
-            
+
             # Task complexity assessment
             complexity_indicators = [
                 "parallel" in requirements.description.lower(),
@@ -232,9 +232,9 @@ class AgentPlanner:
                 task_count > 5,
                 len(requirements.constraints) > 3
             ]
-            
+
             complexity_score = sum(complexity_indicators)
-            
+
             if pattern == AgentArchitecturePattern.SINGLE_AGENT and complexity_score <= 2:
                 score += 2
             elif pattern == AgentArchitecturePattern.SUPERVISOR and 2 <= complexity_score <= 4:
@@ -245,7 +245,7 @@ class AgentPlanner:
                 score += 3
             elif pattern == AgentArchitecturePattern.HIERARCHICAL and complexity_score >= 4:
                 score += 2
-            
+
             # Performance requirements
             if performance_reqs.get("high_throughput", False) and pattern in [AgentArchitecturePattern.SWARM, AgentArchitecturePattern.PIPELINE]:
                 score += 2
@@ -253,17 +253,17 @@ class AgentPlanner:
                 score += 2
             if performance_reqs.get("low_latency", False) and pattern in [AgentArchitecturePattern.SINGLE_AGENT, AgentArchitecturePattern.PIPELINE]:
                 score += 1
-            
+
             pattern_scores[pattern] = score
-        
+
         # Select the highest scoring pattern
         best_pattern = max(pattern_scores.items(), key=lambda x: x[1])[0]
         return best_pattern
-    
+
     def design_agents(self, requirements: SystemRequirements, pattern: AgentArchitecturePattern) -> List[AgentDefinition]:
         """Design individual agents based on requirements and architecture pattern"""
         agents = []
-        
+
         if pattern == AgentArchitecturePattern.SINGLE_AGENT:
             agents = self._design_single_agent(requirements)
         elif pattern == AgentArchitecturePattern.SUPERVISOR:
@@ -274,13 +274,13 @@ class AgentPlanner:
             agents = self._design_hierarchical_agents(requirements)
         elif pattern == AgentArchitecturePattern.PIPELINE:
             agents = self._design_pipeline_agents(requirements)
-        
+
         return agents
-    
+
     def _design_single_agent(self, requirements: SystemRequirements) -> List[AgentDefinition]:
         """Design a single general-purpose agent"""
         all_tools = list(self.common_tools.values())
-        
+
         agent = AgentDefinition(
             name="universal_agent",
             role="Universal Task Handler",
@@ -297,13 +297,13 @@ class AgentPlanner:
             success_criteria=["complete all assigned tasks", "maintain quality standards", "respond within time limits"],
             dependencies=[]
         )
-        
+
         return [agent]
-    
+
     def _design_supervisor_agents(self, requirements: SystemRequirements) -> List[AgentDefinition]:
         """Design supervisor pattern agents"""
         agents = []
-        
+
         # Create supervisor agent
         supervisor = AgentDefinition(
             name="supervisor_agent",
@@ -327,7 +327,7 @@ class AgentPlanner:
             dependencies=[]
         )
         agents.append(supervisor)
-        
+
         # Create specialist agents based on task domains
         task_domains = self._identify_task_domains(requirements.tasks)
         for i, domain in enumerate(task_domains[:requirements.team_size - 1]):
@@ -347,17 +347,17 @@ class AgentPlanner:
                 dependencies=["supervisor_agent"]
             )
             agents.append(specialist)
-        
+
         return agents
-    
+
     def _design_swarm_agents(self, requirements: SystemRequirements) -> List[AgentDefinition]:
         """Design swarm pattern agents"""
         agents = []
-        
+
         # Create peer agents with overlapping capabilities
         agent_count = min(requirements.team_size, 10)  # Reasonable swarm size
         base_capabilities = ["collaboration", "consensus", "adaptation", "peer_communication"]
-        
+
         for i in range(agent_count):
             agent = AgentDefinition(
                 name=f"swarm_agent_{i+1}",
@@ -376,17 +376,17 @@ class AgentPlanner:
                 dependencies=[f"swarm_agent_{j+1}" for j in range(agent_count) if j != i]
             )
             agents.append(agent)
-        
+
         return agents
-    
+
     def _design_hierarchical_agents(self, requirements: SystemRequirements) -> List[AgentDefinition]:
         """Design hierarchical pattern agents"""
         agents = []
-        
+
         # Create management hierarchy
         levels = min(3, requirements.team_size // 3)  # Reasonable hierarchy depth
         agents_per_level = requirements.team_size // levels
-        
+
         # Top level manager
         manager = AgentDefinition(
             name="executive_manager",
@@ -401,7 +401,7 @@ class AgentPlanner:
             dependencies=[]
         )
         agents.append(manager)
-        
+
         # Middle managers
         for i in range(agents_per_level - 1):
             middle_manager = AgentDefinition(
@@ -417,7 +417,7 @@ class AgentPlanner:
                 dependencies=["executive_manager"]
             )
             agents.append(middle_manager)
-        
+
         # Workers
         remaining_agents = requirements.team_size - len(agents)
         for i in range(remaining_agents):
@@ -434,16 +434,16 @@ class AgentPlanner:
                 dependencies=[f"team_manager_{(i // 3) + 1}"]
             )
             agents.append(worker)
-        
+
         return agents
-    
+
     def _design_pipeline_agents(self, requirements: SystemRequirements) -> List[AgentDefinition]:
         """Design pipeline pattern agents"""
         agents = []
-        
+
         # Create sequential processing stages
         pipeline_stages = self._identify_pipeline_stages(requirements.tasks)
-        
+
         for i, stage in enumerate(pipeline_stages):
             agent = AgentDefinition(
                 name=f"pipeline_stage_{i+1}_{stage}",
@@ -462,9 +462,9 @@ class AgentPlanner:
                 dependencies=[f"pipeline_stage_{i}_{pipeline_stages[i-1]}"] if i > 0 else []
             )
             agents.append(agent)
-        
+
         return agents
-    
+
     def _identify_task_domains(self, tasks: List[str]) -> List[str]:
         """Identify distinct domains from task list"""
         domains = []
@@ -475,22 +475,22 @@ class AgentPlanner:
             "communication": ["write", "send", "message", "communicate", "report"],
             "file": ["file", "document", "save", "load", "manage"]
         }
-        
+
         for domain, keywords in domain_keywords.items():
             if any(keyword in " ".join(tasks).lower() for keyword in keywords):
                 domains.append(domain)
-        
+
         return domains[:5]  # Limit to 5 domains
-    
+
     def _identify_pipeline_stages(self, tasks: List[str]) -> List[str]:
         """Identify pipeline stages from task list"""
         # Common pipeline patterns
         common_stages = ["input", "process", "transform", "validate", "output"]
-        
+
         # Try to infer stages from tasks
         stages = []
         task_text = " ".join(tasks).lower()
-        
+
         if "collect" in task_text or "gather" in task_text:
             stages.append("collection")
         if "process" in task_text or "transform" in task_text:
@@ -501,10 +501,10 @@ class AgentPlanner:
             stages.append("validation")
         if "output" in task_text or "deliver" in task_text or "report" in task_text:
             stages.append("output")
-        
+
         # Default to common stages if none identified
         return stages if stages else common_stages[:min(5, len(tasks))]
-    
+
     def _select_tools_for_domain(self, domain: str) -> List[Tool]:
         """Select appropriate tools for a specific domain"""
         domain_tools = {
@@ -514,9 +514,9 @@ class AgentPlanner:
             "communication": [self.common_tools["api_client"], self.common_tools["file_manager"]],
             "file": [self.common_tools["file_manager"]]
         }
-        
+
         return domain_tools.get(domain, [self.common_tools["api_client"]])
-    
+
     def _select_tools_for_stage(self, stage: str) -> List[Tool]:
         """Select appropriate tools for a pipeline stage"""
         stage_tools = {
@@ -530,9 +530,9 @@ class AgentPlanner:
             "validation": [self.common_tools["data_analyzer"]],
             "output": [self.common_tools["file_manager"], self.common_tools["api_client"]]
         }
-        
+
         return stage_tools.get(stage, [self.common_tools["file_manager"]])
-    
+
     def _select_diverse_tools(self) -> List[Tool]:
         """Select a diverse set of tools for general purpose agents"""
         return [
@@ -540,19 +540,19 @@ class AgentPlanner:
             self.common_tools["code_executor"],
             self.common_tools["data_analyzer"]
         ]
-    
+
     def design_communication_topology(self, agents: List[AgentDefinition], pattern: AgentArchitecturePattern) -> List[CommunicationLink]:
         """Design communication links between agents"""
         links = []
-        
+
         if pattern == AgentArchitecturePattern.SINGLE_AGENT:
             # No inter-agent communication needed
             return []
-        
+
         elif pattern == AgentArchitecturePattern.SUPERVISOR:
             supervisor = next(agent for agent in agents if agent.archetype == AgentRole.COORDINATOR)
             specialists = [agent for agent in agents if agent.archetype == AgentRole.SPECIALIST]
-            
+
             for specialist in specialists:
                 # Bidirectional communication with supervisor
                 links.append(CommunicationLink(
@@ -571,7 +571,7 @@ class AgentPlanner:
                     frequency="on_completion",
                     criticality="high"
                 ))
-        
+
         elif pattern == AgentArchitecturePattern.SWARM:
             # All-to-all communication for swarm
             for i, agent1 in enumerate(agents):
@@ -585,7 +585,7 @@ class AgentPlanner:
                             frequency="periodic",
                             criticality="medium"
                         ))
-        
+
         elif pattern == AgentArchitecturePattern.HIERARCHICAL:
             # Hierarchical communication based on dependencies
             for agent in agents:
@@ -607,7 +607,7 @@ class AgentPlanner:
                             frequency="on_completion",
                             criticality="high"
                         ))
-        
+
         elif pattern == AgentArchitecturePattern.PIPELINE:
             # Sequential pipeline communication
             for i in range(len(agents) - 1):
@@ -619,23 +619,23 @@ class AgentPlanner:
                     frequency="continuous",
                     criticality="high"
                 ))
-        
+
         return links
-    
+
     def generate_mermaid_diagram(self, design: ArchitectureDesign) -> str:
         """Generate Mermaid diagram for the architecture"""
         diagram = ["graph TD"]
-        
+
         # Add agent nodes
         for agent in design.agents:
             node_style = self._get_node_style(agent.archetype)
             diagram.append(f"    {agent.name}[{agent.role}]{node_style}")
-        
+
         # Add communication links
         for link in design.communication_topology:
             arrow_style = self._get_arrow_style(link.pattern, link.criticality)
             diagram.append(f"    {link.from_agent} {arrow_style} {link.to_agent}")
-        
+
         # Add styling
         diagram.extend([
             "",
@@ -644,24 +644,24 @@ class AgentPlanner:
             "    classDef interface fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px",
             "    classDef monitor fill:#fff3e0,stroke:#e65100,stroke-width:2px"
         ])
-        
+
         # Apply classes to nodes
         for agent in design.agents:
             class_name = agent.archetype.value
             diagram.append(f"    class {agent.name} {class_name}")
-        
+
         return "\n".join(diagram)
-    
+
     def _get_node_style(self, archetype: AgentRole) -> str:
         """Get node styling based on archetype"""
         styles = {
             AgentRole.COORDINATOR: ":::coordinator",
-            AgentRole.SPECIALIST: ":::specialist", 
+            AgentRole.SPECIALIST: ":::specialist",
             AgentRole.INTERFACE: ":::interface",
             AgentRole.MONITOR: ":::monitor"
         }
         return styles.get(archetype, "")
-    
+
     def _get_arrow_style(self, pattern: CommunicationPattern, criticality: str) -> str:
         """Get arrow styling based on communication pattern and criticality"""
         base_arrows = {
@@ -670,9 +670,9 @@ class AgentPlanner:
             CommunicationPattern.EVENT_DRIVEN: "===>",
             CommunicationPattern.MESSAGE_QUEUE: "==="
         }
-        
+
         arrow = base_arrows.get(pattern, "-->")
-        
+
         # Modify for criticality
         if criticality == "high":
             return arrow
@@ -680,11 +680,11 @@ class AgentPlanner:
             return arrow.replace("-", ".")
         else:
             return arrow.replace("-", ":")
-    
+
     def generate_implementation_roadmap(self, design: ArchitectureDesign, requirements: SystemRequirements) -> Dict[str, Any]:
         """Generate implementation roadmap"""
         phases = []
-        
+
         # Phase 1: Core Infrastructure
         phases.append({
             "phase": 1,
@@ -703,7 +703,7 @@ class AgentPlanner:
                 "Basic monitoring dashboard"
             ]
         })
-        
+
         # Phase 2: Agent Implementation
         phases.append({
             "phase": 2,
@@ -722,7 +722,7 @@ class AgentPlanner:
                 "Configuration management"
             ]
         })
-        
+
         # Phase 3: Integration and Testing
         phases.append({
             "phase": 3,
@@ -742,7 +742,7 @@ class AgentPlanner:
                 "Security audit report"
             ]
         })
-        
+
         # Phase 4: Deployment and Monitoring
         phases.append({
             "phase": 4,
@@ -762,13 +762,13 @@ class AgentPlanner:
                 "Training materials"
             ]
         })
-        
+
         return {
             "total_duration": "8-12 weeks",
             "phases": phases,
             "critical_path": [
                 "Agent framework implementation",
-                "Communication layer development", 
+                "Communication layer development",
                 "Integration testing",
                 "Production deployment"
             ],
@@ -796,18 +796,18 @@ class AgentPlanner:
                 "Error rate below 1%"
             ]
         }
-    
+
     def plan_system(self, requirements: SystemRequirements) -> Tuple[ArchitectureDesign, str, Dict[str, Any]]:
         """Main planning function"""
         # Select architecture pattern
         pattern = self.select_architecture_pattern(requirements)
-        
+
         # Design agents
         agents = self.design_agents(requirements, pattern)
-        
+
         # Design communication topology
         communication_topology = self.design_communication_topology(agents, pattern)
-        
+
         # Create complete design
         design = ArchitectureDesign(
             pattern=pattern,
@@ -834,13 +834,13 @@ class AgentPlanner:
                 "fallback_strategies": ["graceful_degradation", "human_escalation"]
             }
         )
-        
+
         # Generate Mermaid diagram
         mermaid_diagram = self.generate_mermaid_diagram(design)
-        
+
         # Generate implementation roadmap
         roadmap = self.generate_implementation_roadmap(design, requirements)
-        
+
         return design, mermaid_diagram, roadmap
 
 
@@ -848,22 +848,22 @@ def main():
     parser = argparse.ArgumentParser(description="Multi-Agent System Architecture Planner")
     parser.add_argument("input_file", help="JSON file with system requirements")
     parser.add_argument("-o", "--output", help="Output file prefix (default: agent_architecture)")
-    parser.add_argument("--format", choices=["json", "yaml", "both"], default="both", 
+    parser.add_argument("--format", choices=["json", "yaml", "both"], default="both",
                        help="Output format")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load requirements
         with open(args.input_file, 'r') as f:
             requirements_data = json.load(f)
-        
+
         requirements = SystemRequirements(**requirements_data)
-        
+
         # Plan the system
         planner = AgentPlanner()
         design, mermaid_diagram, roadmap = planner.plan_system(requirements)
-        
+
         # Prepare output
         output_data = {
             "architecture_design": asdict(design),
@@ -876,32 +876,32 @@ def main():
                 "agent_count": len(design.agents)
             }
         }
-        
+
         # Output files
         output_prefix = args.output or "agent_architecture"
-        
+
         if args.format in ["json", "both"]:
             with open(f"{output_prefix}.json", 'w') as f:
                 json.dump(output_data, f, indent=2, default=str)
             print(f"JSON output written to {output_prefix}.json")
-        
+
         if args.format in ["both"]:
             # Also create separate files for key components
             with open(f"{output_prefix}_diagram.mmd", 'w') as f:
                 f.write(mermaid_diagram)
             print(f"Mermaid diagram written to {output_prefix}_diagram.mmd")
-            
+
             with open(f"{output_prefix}_roadmap.json", 'w') as f:
                 json.dump(roadmap, f, indent=2)
             print(f"Implementation roadmap written to {output_prefix}_roadmap.json")
-        
+
         # Print summary
         print(f"\nArchitecture Summary:")
         print(f"Pattern: {design.pattern.value}")
         print(f"Agents: {len(design.agents)}")
         print(f"Communication Links: {len(design.communication_topology)}")
         print(f"Estimated Duration: {roadmap['total_duration']}")
-        
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

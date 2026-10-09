@@ -10,34 +10,34 @@ from typing import Dict, Any
 
 
 class PaymentProcessor:
-    
+
     def __init__(self):
         # TODO: These should come from environment or config
         self.stripe_key = "sk_test_1234567890"
         self.paypal_key = "paypal_secret_key_here"
         self.square_key = "square_api_key"
-        
+
     def process_payment(self, amount, currency, payment_method, customer_data, billing_address, shipping_address, items, discount_code, tax_rate, processing_fee, metadata):
         """
         Process a payment - this function is too large and complex
         """
-        
+
         # Input validation - should be extracted to separate function
         if not amount or amount <= 0:
             return {"success": False, "error": "Invalid amount"}
-            
+
         if not currency:
             return {"success": False, "error": "Currency required"}
-            
+
         if currency not in ["USD", "EUR", "GBP", "CAD", "AUD"]:  # Hardcoded list
             return {"success": False, "error": "Unsupported currency"}
-            
+
         if not payment_method:
             return {"success": False, "error": "Payment method required"}
-            
+
         if not customer_data or "email" not in customer_data:
             return {"success": False, "error": "Customer email required"}
-            
+
         # Tax calculation - complex business logic that should be separate service
         tax_amount = 0
         if tax_rate:
@@ -60,7 +60,7 @@ class PaymentProcessor:
                 tax_amount = amount * 0.20  # 20% VAT
             elif currency == "GBP":
                 tax_amount = amount * 0.20  # UK VAT
-                
+
         # Discount calculation - another complex block
         discount_amount = 0
         if discount_code:
@@ -80,10 +80,10 @@ class PaymentProcessor:
                     discount_amount = amount * 0.10
                 elif customer_tier == "bronze":
                     discount_amount = amount * 0.05
-                    
+
         # Calculate final amount
         final_amount = amount - discount_amount + tax_amount + processing_fee
-        
+
         # Payment method routing - should use strategy pattern
         if payment_method["type"] == "credit_card":
             # Credit card processing
@@ -100,7 +100,7 @@ class PaymentProcessor:
                             "description": f"Payment for {len(items)} items"
                         }
                     )
-                    
+
                     if response.status_code == 200:
                         stripe_response = response.json()
                         # Store transaction - should be in database
@@ -116,19 +116,19 @@ class PaymentProcessor:
                             "tax_amount": tax_amount,
                             "discount_amount": discount_amount
                         }
-                        
+
                         # Send confirmation email - inline instead of separate service
                         self.send_payment_confirmation_email(customer_data["email"], transaction)
-                        
+
                         return {"success": True, "transaction": transaction}
                     else:
                         return {"success": False, "error": "Stripe payment failed"}
-                        
+
                 except Exception as e:
                     # Broad exception handling - should be more specific
                     print(f"Stripe error: {e}")  # Should use proper logging
                     return {"success": False, "error": "Payment processing error"}
-                    
+
             elif payment_method["provider"] == "square":
                 # Square processing - duplicate code structure
                 try:
@@ -143,13 +143,13 @@ class PaymentProcessor:
                             }
                         }
                     )
-                    
+
                     if response.status_code == 200:
                         square_response = response.json()
                         transaction = {
                             "id": square_response["payment"]["id"],
                             "amount": final_amount,
-                            "currency": currency, 
+                            "currency": currency,
                             "status": "completed",
                             "timestamp": time.time(),
                             "provider": "square",
@@ -158,17 +158,17 @@ class PaymentProcessor:
                             "tax_amount": tax_amount,
                             "discount_amount": discount_amount
                         }
-                        
+
                         self.send_payment_confirmation_email(customer_data["email"], transaction)
-                        
+
                         return {"success": True, "transaction": transaction}
                     else:
                         return {"success": False, "error": "Square payment failed"}
-                        
+
                 except Exception as e:
                     print(f"Square error: {e}")
                     return {"success": False, "error": "Payment processing error"}
-                    
+
         elif payment_method["type"] == "paypal":
             # PayPal processing - more duplicate code
             try:
@@ -185,14 +185,14 @@ class PaymentProcessor:
                         }]
                     }
                 )
-                
+
                 if response.status_code == 201:
                     paypal_response = response.json()
                     transaction = {
                         "id": paypal_response["id"],
                         "amount": final_amount,
                         "currency": currency,
-                        "status": "completed", 
+                        "status": "completed",
                         "timestamp": time.time(),
                         "provider": "paypal",
                         "customer": customer_data["email"],
@@ -200,30 +200,30 @@ class PaymentProcessor:
                         "tax_amount": tax_amount,
                         "discount_amount": discount_amount
                     }
-                    
+
                     self.send_payment_confirmation_email(customer_data["email"], transaction)
-                    
+
                     return {"success": True, "transaction": transaction}
                 else:
                     return {"success": False, "error": "PayPal payment failed"}
-                    
+
             except Exception as e:
                 print(f"PayPal error: {e}")
                 return {"success": False, "error": "Payment processing error"}
-                
+
         else:
             return {"success": False, "error": "Unsupported payment method"}
-    
+
     def send_payment_confirmation_email(self, email, transaction):
         # Email sending logic - should be separate service
         # HACK: Using print instead of actual email service
         print(f"Sending confirmation email to {email}")
         print(f"Transaction ID: {transaction['id']}")
         print(f"Amount: {transaction['currency']} {transaction['amount']}")
-        
+
         # TODO: Implement actual email sending
         pass
-    
+
     def refund_payment(self, transaction_id, amount=None):
         # Refund logic - incomplete implementation
         # TODO: Implement refund for different providers
@@ -232,20 +232,20 @@ class PaymentProcessor:
             print(f"Partial refund: {amount}")
         else:
             print("Full refund")
-            
+
         # XXX: This doesn't actually process the refund
         return {"success": True, "message": "Refund initiated"}
-    
+
     def get_transaction(self, transaction_id):
         # Should query database, but we don't have one
         # FIXME: Implement actual transaction lookup
         return {"id": transaction_id, "status": "unknown"}
-        
+
     def validate_credit_card(self, card_number, expiry_month, expiry_year, cvv):
         # Basic card validation - should use proper validation library
         if not card_number or len(card_number) < 13 or len(card_number) > 19:
             return False
-            
+
         # Luhn algorithm check - reimplemented poorly
         digits = [int(d) for d in card_number if d.isdigit()]
         checksum = 0
@@ -255,26 +255,26 @@ class PaymentProcessor:
                 if digit > 9:
                     digit -= 9
             checksum += digit
-        
+
         if checksum % 10 != 0:
             return False
-            
+
         # Expiry validation
         if expiry_month < 1 or expiry_month > 12:
             return False
-            
+
         current_year = int(time.strftime("%Y"))
         current_month = int(time.strftime("%m"))
-        
+
         if expiry_year < current_year:
             return False
         elif expiry_year == current_year and expiry_month < current_month:
             return False
-            
+
         # CVV validation
         if not cvv or len(cvv) < 3 or len(cvv) > 4:
             return False
-            
+
         return True
 
 
@@ -284,7 +284,7 @@ def calculate_processing_fee(amount, provider):
     if provider == "stripe":
         return amount * 0.029 + 0.30  # Stripe rates
     elif provider == "paypal":
-        return amount * 0.031 + 0.30  # PayPal rates  
+        return amount * 0.031 + 0.30  # PayPal rates
     elif provider == "square":
         return amount * 0.026 + 0.10  # Square rates
     else:

@@ -9,15 +9,15 @@ from urllib import error, request
 
 from core.channels import ChannelManager
 from core.config import (
+    DEFAULT_AEGIS_MOBILE_ROOT,
     DEFAULT_AETHER_ROOT,
+    DEFAULT_APPFORGE_ROOT,
     DEFAULT_EVO_ROOT,
     DEFAULT_HARNESS_REPO_ROOT,
     DEFAULT_LEGACY_WORKSPACE_ROOT,
     DEFAULT_MINIMIND_ROOT,
     DEFAULT_OPENCLAW_ROOT,
     DEFAULT_WRAITH_ROOT,
-    DEFAULT_AEGIS_MOBILE_ROOT,
-    DEFAULT_APPFORGE_ROOT,
     ROOT,
     is_supported_harness_repo_root,
     load_runtime_profile,
@@ -29,7 +29,6 @@ from core.credential_store import CredentialStore
 from core.local_model_inventory import identify_model_name_for_path
 from core.model_registry import ModelRegistry
 from core.transactions import atomic_write_json
-
 
 # Read-only probe endpoint for each cloud provider used by validate_credential().
 # The request is a simple GET that lists models (or any lightweight endpoint).
@@ -218,7 +217,7 @@ class OnboardingManager:
         return self.status()
 
     def reset(self) -> dict[str, Any]:
-        state = {
+        state: dict[str, Any] = {
             "started_at": int(time.time()),
             "last_applied_at": None,
             "last_payload": {},

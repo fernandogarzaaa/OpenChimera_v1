@@ -7,7 +7,6 @@ from pathlib import Path
 
 from core.capabilities import CapabilityRegistry
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

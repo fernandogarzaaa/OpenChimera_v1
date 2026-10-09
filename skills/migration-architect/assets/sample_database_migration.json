@@ -61,7 +61,7 @@
           "nullable": true
         },
         {
-          "type": "add_column", 
+          "type": "add_column",
           "column": "phone_verified_at",
           "data_type": "timestamp",
           "nullable": true
@@ -94,7 +94,7 @@
   "business_continuity": {
     "critical_business_hours": {
       "start": "08:00",
-      "end": "18:00", 
+      "end": "18:00",
       "timezone": "UTC"
     },
     "preferred_migration_window": {

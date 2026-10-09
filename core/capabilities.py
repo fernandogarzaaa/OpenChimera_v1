@@ -8,7 +8,6 @@ from typing import Any
 from core.config import ROOT, get_provider_base_url
 from core.mcp_registry import list_mcp_registry
 
-
 _FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 _DESCRIPTION_HEADING_RE = re.compile(
     r"^##\s+Description\s*$\n(?P<body>.*?)(?=^##\s+|\Z)",

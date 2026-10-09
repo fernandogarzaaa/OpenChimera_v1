@@ -245,7 +245,7 @@ def upgrade() -> None:
         name='task_status'
     )
     task_status.create(op.get_bind())
-    
+
     op.create_table(
         'tasks',
         sa.Column('id', sa.Text(), primary_key=True),
@@ -263,7 +263,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text('NOW()')),
         sa.Column('deleted_at', sa.TIMESTAMP(timezone=True)),
     )
-    
+
     # Indexes
     op.create_index('tasks_project_id_idx', 'tasks', ['project_id'])
     op.create_index('tasks_project_status_idx', 'tasks', ['project_id', 'status'])

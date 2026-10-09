@@ -119,12 +119,12 @@ class RollbackRunbook:
 
 class RollbackGenerator:
     """Main rollback generator class"""
-    
+
     def __init__(self):
         self.rollback_templates = self._load_rollback_templates()
         self.validation_templates = self._load_validation_templates()
         self.communication_templates = self._load_communication_templates()
-    
+
     def _load_rollback_templates(self) -> Dict[str, Any]:
         """Load rollback script templates for different migration types"""
         return {
@@ -171,7 +171,7 @@ class RollbackGenerator:
                 }
             }
         }
-    
+
     def _load_validation_templates(self) -> Dict[str, List[str]]:
         """Load validation command templates"""
         return {
@@ -195,7 +195,7 @@ class RollbackGenerator:
                 "aws elbv2 describe-target-health --target-group-arn {target_group_arn}"
             ]
         }
-    
+
     def _load_communication_templates(self) -> Dict[str, Dict[str, str]]:
         """Load communication templates"""
         return {
@@ -286,37 +286,37 @@ Incident Commander: {incident_commander}
                 }
             }
         }
-    
+
     def generate_rollback_runbook(self, migration_plan: Dict[str, Any]) -> RollbackRunbook:
         """Generate comprehensive rollback runbook from migration plan"""
         runbook_id = f"rb_{hashlib.md5(str(migration_plan).encode()).hexdigest()[:8]}"
         migration_id = migration_plan.get("migration_id", "unknown")
         migration_type = migration_plan.get("migration_type", "unknown")
-        
+
         # Generate rollback phases (reverse order of migration phases)
         rollback_phases = self._generate_rollback_phases(migration_plan)
-        
+
         # Generate trigger conditions
         trigger_conditions = self._generate_trigger_conditions(migration_plan)
-        
+
         # Generate data recovery plan
         data_recovery_plan = self._generate_data_recovery_plan(migration_plan)
-        
+
         # Generate communication templates
         communication_templates = self._generate_communication_templates(migration_plan)
-        
+
         # Generate escalation matrix
         escalation_matrix = self._generate_escalation_matrix(migration_plan)
-        
+
         # Generate validation checklist
         validation_checklist = self._generate_validation_checklist(migration_plan)
-        
+
         # Generate post-rollback procedures
         post_rollback_procedures = self._generate_post_rollback_procedures(migration_plan)
-        
+
         # Generate emergency contacts
         emergency_contacts = self._generate_emergency_contacts(migration_plan)
-        
+
         return RollbackRunbook(
             runbook_id=runbook_id,
             migration_id=migration_id,
@@ -330,13 +330,13 @@ Incident Commander: {incident_commander}
             post_rollback_procedures=post_rollback_procedures,
             emergency_contacts=emergency_contacts
         )
-    
+
     def _generate_rollback_phases(self, migration_plan: Dict[str, Any]) -> List[RollbackPhase]:
         """Generate rollback phases from migration plan"""
         migration_phases = migration_plan.get("phases", [])
         migration_type = migration_plan.get("migration_type", "unknown")
         rollback_phases = []
-        
+
         # Reverse the order of migration phases for rollback
         for i, phase in enumerate(reversed(migration_phases)):
             if isinstance(phase, dict):
@@ -347,9 +347,9 @@ Incident Commander: {incident_commander}
                 phase_name = str(phase)
                 phase_duration = 120  # Default 2 hours
                 phase_risk = "medium"
-            
+
             rollback_steps = self._generate_rollback_steps(phase_name, migration_type, i)
-            
+
             rollback_phase = RollbackPhase(
                 phase_name=f"rollback_{phase_name}",
                 description=f"Rollback changes made during {phase_name} phase",
@@ -361,16 +361,16 @@ Incident Commander: {incident_commander}
                 communication_requirements=self._get_communication_requirements(phase_name, phase_risk),
                 risk_level=phase_risk
             )
-            
+
             rollback_phases.append(rollback_phase)
-        
+
         return rollback_phases
-    
+
     def _generate_rollback_steps(self, phase_name: str, migration_type: str, phase_index: int) -> List[RollbackStep]:
         """Generate specific rollback steps for a phase"""
         steps = []
         templates = self.rollback_templates.get(migration_type, {})
-        
+
         if migration_type == "database":
             if "migration" in phase_name.lower() or "cutover" in phase_name.lower():
                 # Data rollback steps
@@ -402,7 +402,7 @@ Incident Commander: {incident_commander}
                         rollback_order=2
                     )
                 ])
-            
+
             if "preparation" in phase_name.lower():
                 # Schema rollback steps
                 steps.append(
@@ -420,7 +420,7 @@ Incident Commander: {incident_commander}
                         rollback_order=1
                     )
                 )
-        
+
         elif migration_type == "service":
             if "cutover" in phase_name.lower():
                 # Service rollback steps
@@ -452,7 +452,7 @@ Incident Commander: {incident_commander}
                         rollback_order=2
                     )
                 ])
-        
+
         elif migration_type == "infrastructure":
             steps.extend([
                 RollbackStep(
@@ -482,7 +482,7 @@ Incident Commander: {incident_commander}
                     rollback_order=2
                 )
             ])
-        
+
         # Add generic validation step for all migration types
         steps.append(
             RollbackStep(
@@ -499,14 +499,14 @@ Incident Commander: {incident_commander}
                 rollback_order=99
             )
         )
-        
+
         return steps
-    
+
     def _generate_trigger_conditions(self, migration_plan: Dict[str, Any]) -> List[RollbackTriggerCondition]:
         """Generate automatic rollback trigger conditions"""
         triggers = []
         migration_type = migration_plan.get("migration_type", "unknown")
-        
+
         # Generic triggers for all migration types
         triggers.extend([
             RollbackTriggerCondition(
@@ -552,7 +552,7 @@ Incident Commander: {incident_commander}
                 escalation_contacts=["sre_team", "incident_commander"]
             )
         ])
-        
+
         # Migration-type specific triggers
         if migration_type == "database":
             triggers.extend([
@@ -585,7 +585,7 @@ Incident Commander: {incident_commander}
                     escalation_contacts=["migration_team", "dba_team"]
                 )
             ])
-        
+
         elif migration_type == "service":
             triggers.extend([
                 RollbackTriggerCondition(
@@ -617,13 +617,13 @@ Incident Commander: {incident_commander}
                     escalation_contacts=["development_team", "sre_team"]
                 )
             ])
-        
+
         return triggers
-    
+
     def _generate_data_recovery_plan(self, migration_plan: Dict[str, Any]) -> DataRecoveryPlan:
         """Generate data recovery plan"""
         migration_type = migration_plan.get("migration_type", "unknown")
-        
+
         if migration_type == "database":
             return DataRecoveryPlan(
                 recovery_method="point_in_time",
@@ -659,12 +659,12 @@ Incident Commander: {incident_commander}
                 estimated_recovery_time_minutes=20,
                 recovery_dependencies=["service_stopped", "backup_accessible"]
             )
-    
+
     def _generate_communication_templates(self, migration_plan: Dict[str, Any]) -> List[CommunicationTemplate]:
         """Generate communication templates for rollback scenarios"""
         templates = []
         base_templates = self.communication_templates
-        
+
         # Rollback start notifications
         for audience in ["technical", "business", "executive"]:
             if audience in base_templates["rollback_start"]:
@@ -677,7 +677,7 @@ Incident Commander: {incident_commander}
                     urgency="high" if audience == "executive" else "medium",
                     delivery_methods=["email", "slack"] if audience == "technical" else ["email"]
                 ))
-        
+
         # Rollback completion notifications
         for audience in ["technical", "business"]:
             if audience in base_templates.get("rollback_complete", {}):
@@ -690,7 +690,7 @@ Incident Commander: {incident_commander}
                     urgency="medium",
                     delivery_methods=["email", "slack"] if audience == "technical" else ["email"]
                 ))
-        
+
         # Emergency escalation template
         templates.append(CommunicationTemplate(
             template_type="emergency_escalation",
@@ -722,9 +722,9 @@ Executive On-Call: {executive_on_call}
             urgency="emergency",
             delivery_methods=["email", "sms", "phone_call"]
         ))
-        
+
         return templates
-    
+
     def _generate_escalation_matrix(self, migration_plan: Dict[str, Any]) -> Dict[str, Any]:
         """Generate escalation matrix for different failure scenarios"""
         return {
@@ -753,11 +753,11 @@ Executive On-Call: {executive_on_call}
                 "actions": ["Emergency procedures", "Customer communication", "Media preparation if needed"]
             }
         }
-    
+
     def _generate_validation_checklist(self, migration_plan: Dict[str, Any]) -> List[str]:
         """Generate comprehensive validation checklist"""
         migration_type = migration_plan.get("migration_type", "unknown")
-        
+
         base_checklist = [
             "Verify system is responding to health checks",
             "Confirm error rates are within normal parameters",
@@ -770,7 +770,7 @@ Executive On-Call: {executive_on_call}
             "Verify integration points with downstream systems",
             "Confirm user authentication and authorization working"
         ]
-        
+
         if migration_type == "database":
             base_checklist.extend([
                 "Validate database schema matches expected state",
@@ -781,7 +781,7 @@ Executive On-Call: {executive_on_call}
                 "Confirm transaction logs are clean",
                 "Check database connections and connection pooling"
             ])
-        
+
         elif migration_type == "service":
             base_checklist.extend([
                 "Verify service discovery is working correctly",
@@ -792,7 +792,7 @@ Executive On-Call: {executive_on_call}
                 "Check resource utilization (CPU, memory, disk)",
                 "Verify container orchestration is healthy"
             ])
-        
+
         elif migration_type == "infrastructure":
             base_checklist.extend([
                 "Verify network connectivity between components",
@@ -803,9 +803,9 @@ Executive On-Call: {executive_on_call}
                 "Check storage systems are accessible",
                 "Verify backup and disaster recovery systems"
             ])
-        
+
         return base_checklist
-    
+
     def _generate_post_rollback_procedures(self, migration_plan: Dict[str, Any]) -> List[str]:
         """Generate post-rollback procedures"""
         return [
@@ -824,7 +824,7 @@ Executive On-Call: {executive_on_call}
             "Review capacity planning based on rollback resource usage",
             "Update documentation with rollback experience and timings"
         ]
-    
+
     def _generate_emergency_contacts(self, migration_plan: Dict[str, Any]) -> List[Dict[str, str]]:
         """Generate emergency contact list"""
         return [
@@ -864,17 +864,17 @@ Executive On-Call: {executive_on_call}
                 "backup_contact": "vp.engineering@company.com"
             }
         ]
-    
+
     def _calculate_urgency(self, risk_level: str) -> str:
         """Calculate rollback urgency based on risk level"""
         risk_to_urgency = {
             "low": "low",
-            "medium": "medium", 
+            "medium": "medium",
             "high": "high",
             "critical": "emergency"
         }
         return risk_to_urgency.get(risk_level, "medium")
-    
+
     def _get_rollback_prerequisites(self, phase_name: str, phase_index: int) -> List[str]:
         """Get prerequisites for rollback phase"""
         prerequisites = [
@@ -883,26 +883,26 @@ Executive On-Call: {executive_on_call}
             "Monitoring systems confirmed operational",
             "Backup systems verified and accessible"
         ]
-        
+
         if phase_index > 0:
             prerequisites.append("Previous rollback phase completed successfully")
-        
+
         if "cutover" in phase_name.lower():
             prerequisites.extend([
                 "Traffic redirection capabilities confirmed",
                 "Load balancer configuration backed up",
                 "DNS changes prepared for quick execution"
             ])
-        
+
         if "data" in phase_name.lower() or "migration" in phase_name.lower():
             prerequisites.extend([
                 "Database backup verified and accessible",
                 "Data validation queries prepared",
                 "Database administrator on standby"
             ])
-        
+
         return prerequisites
-    
+
     def _get_validation_checkpoints(self, phase_name: str, migration_type: str) -> List[str]:
         """Get validation checkpoints for rollback phase"""
         checkpoints = [
@@ -911,12 +911,12 @@ Executive On-Call: {executive_on_call}
             "No critical errors in logs",
             "Key metrics within acceptable ranges"
         ]
-        
+
         validation_commands = self.validation_templates.get(migration_type, [])
         checkpoints.extend([f"Validation command passed: {cmd[:50]}..." for cmd in validation_commands[:3]])
-        
+
         return checkpoints
-    
+
     def _get_communication_requirements(self, phase_name: str, risk_level: str) -> List[str]:
         """Get communication requirements for rollback phase"""
         base_requirements = [
@@ -924,19 +924,19 @@ Executive On-Call: {executive_on_call}
             "Update rollback status dashboard",
             "Log all actions and decisions"
         ]
-        
+
         if risk_level in ["high", "critical"]:
             base_requirements.extend([
                 "Notify all stakeholders of phase progress",
                 "Update executive team if rollback extends beyond expected time",
                 "Prepare customer communication if needed"
             ])
-        
+
         if "cutover" in phase_name.lower():
             base_requirements.append("Immediate notification when traffic is redirected")
-        
+
         return base_requirements
-    
+
     def generate_human_readable_runbook(self, runbook: RollbackRunbook) -> str:
         """Generate human-readable rollback runbook"""
         output = []
@@ -946,7 +946,7 @@ Executive On-Call: {executive_on_call}
         output.append(f"Migration ID: {runbook.migration_id}")
         output.append(f"Created: {runbook.created_at}")
         output.append("")
-        
+
         # Emergency Contacts
         output.append("EMERGENCY CONTACTS")
         output.append("-" * 40)
@@ -956,7 +956,7 @@ Executive On-Call: {executive_on_call}
             output.append(f"  Email: {contact['email']}")
             output.append(f"  Backup: {contact['backup_contact']}")
             output.append("")
-        
+
         # Escalation Matrix
         output.append("ESCALATION MATRIX")
         output.append("-" * 40)
@@ -967,7 +967,7 @@ Executive On-Call: {executive_on_call}
             output.append(f"  Contacts: {', '.join(details['contacts'])}")
             output.append(f"  Actions: {', '.join(details['actions'])}")
             output.append("")
-        
+
         # Rollback Trigger Conditions
         output.append("AUTOMATIC ROLLBACK TRIGGERS")
         output.append("-" * 40)
@@ -978,7 +978,7 @@ Executive On-Call: {executive_on_call}
             output.append(f"  Evaluation Window: {trigger.evaluation_window_minutes} minutes")
             output.append(f"  Contacts: {', '.join(trigger.escalation_contacts)}")
             output.append("")
-        
+
         # Rollback Phases
         output.append("ROLLBACK PHASES")
         output.append("-" * 40)
@@ -988,12 +988,12 @@ Executive On-Call: {executive_on_call}
             output.append(f"   Urgency: {phase.urgency_level.upper()}")
             output.append(f"   Duration: {phase.estimated_duration_minutes} minutes")
             output.append(f"   Risk Level: {phase.risk_level.upper()}")
-            
+
             if phase.prerequisites:
                 output.append("   Prerequisites:")
                 for prereq in phase.prerequisites:
                     output.append(f"     ✓ {prereq}")
-            
+
             output.append("   Steps:")
             for step in sorted(phase.steps, key=lambda x: x.rollback_order):
                 output.append(f"     {step.rollback_order}. {step.name}")
@@ -1007,13 +1007,13 @@ Executive On-Call: {executive_on_call}
                         output.append("          ...")
                 output.append(f"        Success Criteria: {', '.join(step.success_criteria)}")
                 output.append("")
-            
+
             if phase.validation_checkpoints:
                 output.append("   Validation Checkpoints:")
                 for checkpoint in phase.validation_checkpoints:
                     output.append(f"     ☐ {checkpoint}")
             output.append("")
-        
+
         # Data Recovery Plan
         output.append("DATA RECOVERY PLAN")
         output.append("-" * 40)
@@ -1028,21 +1028,21 @@ Executive On-Call: {executive_on_call}
         for query in drp.data_validation_queries:
             output.append(f"  • {query}")
         output.append("")
-        
+
         # Validation Checklist
         output.append("POST-ROLLBACK VALIDATION CHECKLIST")
         output.append("-" * 40)
         for i, item in enumerate(runbook.validation_checklist, 1):
             output.append(f"{i:2d}. ☐ {item}")
         output.append("")
-        
+
         # Post-Rollback Procedures
         output.append("POST-ROLLBACK PROCEDURES")
         output.append("-" * 40)
         for i, procedure in enumerate(runbook.post_rollback_procedures, 1):
             output.append(f"{i:2d}. {procedure}")
         output.append("")
-        
+
         return "\n".join(output)
 
 
@@ -1052,23 +1052,23 @@ def main():
     parser.add_argument("--input", "-i", required=True, help="Input migration plan file (JSON)")
     parser.add_argument("--output", "-o", help="Output file for rollback runbook (JSON)")
     parser.add_argument("--format", "-f", choices=["json", "text", "both"], default="both", help="Output format")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load migration plan
         with open(args.input, 'r') as f:
             migration_plan = json.load(f)
-        
+
         # Validate required fields
         if "migration_id" not in migration_plan and "source" not in migration_plan:
             print("Error: Migration plan must contain migration_id or source field", file=sys.stderr)
             return 1
-        
+
         # Generate rollback runbook
         generator = RollbackGenerator()
         runbook = generator.generate_rollback_runbook(migration_plan)
-        
+
         # Output results
         if args.format in ["json", "both"]:
             runbook_dict = asdict(runbook)
@@ -1078,7 +1078,7 @@ def main():
                 print(f"Rollback runbook saved to {args.output}")
             else:
                 print(json.dumps(runbook_dict, indent=2))
-        
+
         if args.format in ["text", "both"]:
             human_runbook = generator.generate_human_readable_runbook(runbook)
             text_output = args.output.replace('.json', '.txt') if args.output else None
@@ -1091,7 +1091,7 @@ def main():
                 print("HUMAN-READABLE ROLLBACK RUNBOOK")
                 print("="*80)
                 print(human_runbook)
-        
+
     except FileNotFoundError:
         print(f"Error: Input file '{args.input}' not found", file=sys.stderr)
         return 1
@@ -1101,7 +1101,7 @@ def main():
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1
-    
+
     return 0
 
 

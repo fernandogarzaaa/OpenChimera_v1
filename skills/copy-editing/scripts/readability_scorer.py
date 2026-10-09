@@ -173,22 +173,22 @@ def analyze_text(text: str) -> dict:
 # ---------------------------------------------------------------------------
 
 DEMO_TEXT = """
-Marketing copy needs to be clear, direct, and persuasive. When you write for your audience, 
-you should always think about what they actually want to hear. Really good copy is basically 
-about solving problems. It is very important to avoid using overly complicated language that 
+Marketing copy needs to be clear, direct, and persuasive. When you write for your audience,
+you should always think about what they actually want to hear. Really good copy is basically
+about solving problems. It is very important to avoid using overly complicated language that
 might confuse the reader.
 
-The best headlines are written by experts who truly understand their customers. A strong 
-call-to-action is absolutely essential for any landing page. You need to make sure that 
+The best headlines are written by experts who truly understand their customers. A strong
+call-to-action is absolutely essential for any landing page. You need to make sure that
 every single word is earning its place on the page.
 
-Studies show that shorter sentences improve comprehension. The average reader processes 
-information faster when sentences contain fewer than 20 words. This is genuinely proven 
-by research. Passive voice constructions are often used by writers who want to sound 
+Studies show that shorter sentences improve comprehension. The average reader processes
+information faster when sentences contain fewer than 20 words. This is genuinely proven
+by research. Passive voice constructions are often used by writers who want to sound
 authoritative, but they can actually make copy feel distant and unclear.
 
-Focus on benefits, not features. Tell the reader what they will gain. Use numbers when 
-you can — "save 3 hours per week" beats "save time" every single time. Specificity 
+Focus on benefits, not features. Tell the reader what they will gain. Use numbers when
+you can — "save 3 hours per week" beats "save time" every single time. Specificity
 builds trust. Vague promises are ignored.
 """
 

@@ -6,7 +6,7 @@
     "department": "engineering",
     "competencies": [
       "system_design",
-      "coding_fundamentals", 
+      "coding_fundamentals",
       "technical_leadership",
       "mentoring",
       "cross_team_collaboration"
@@ -21,14 +21,14 @@
     "interview_focus": ["technical_depth", "system_architecture", "leadership_potential"]
   },
   {
-    "role": "Product Manager", 
+    "role": "Product Manager",
     "level": "mid",
     "team": "growth",
     "department": "product",
     "competencies": [
       "product_strategy",
       "user_research",
-      "data_analysis", 
+      "data_analysis",
       "stakeholder_management",
       "cross_functional_leadership"
     ],
@@ -43,7 +43,7 @@
   },
   {
     "role": "Staff Frontend Engineer",
-    "level": "staff", 
+    "level": "staff",
     "team": "consumer",
     "department": "engineering",
     "competencies": [
@@ -65,7 +65,7 @@
   {
     "role": "Data Scientist",
     "level": "mid",
-    "team": "ml_platform", 
+    "team": "ml_platform",
     "department": "data",
     "competencies": [
       "statistical_analysis",
@@ -87,7 +87,7 @@
     "role": "DevOps Engineer",
     "level": "senior",
     "team": "infrastructure",
-    "department": "engineering", 
+    "department": "engineering",
     "competencies": [
       "infrastructure_automation",
       "ci_cd_design",
@@ -105,7 +105,7 @@
     "interview_focus": ["system_reliability", "automation_expertise", "operational_excellence"]
   },
   {
-    "role": "UX Designer", 
+    "role": "UX Designer",
     "level": "senior",
     "team": "design_systems",
     "department": "design",
@@ -122,7 +122,7 @@
       "research_experience": true,
       "systems_thinking": true
     },
-    "hiring_bar": "high", 
+    "hiring_bar": "high",
     "interview_focus": ["design_process", "systems_thinking", "user_advocacy"]
   },
   {
@@ -132,7 +132,7 @@
     "department": "engineering",
     "competencies": [
       "people_leadership",
-      "technical_background", 
+      "technical_background",
       "strategic_thinking",
       "performance_management",
       "cross_functional_leadership"
@@ -159,7 +159,7 @@
       "learning_agility"
     ],
     "requirements": {
-      "years_experience": "0-2", 
+      "years_experience": "0-2",
       "technical_skills": ["JavaScript", "HTML/CSS", "Git", "Basic Algorithms"],
       "education": "CS degree or bootcamp",
       "growth_mindset": true

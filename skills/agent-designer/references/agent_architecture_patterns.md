@@ -261,7 +261,7 @@ PipelineController {
 
 ### Fault Tolerance Requirements
 - **Low:** Single Agent, Pipeline
-- **Medium:** Supervisor, Hierarchical  
+- **Medium:** Supervisor, Hierarchical
 - **High:** Swarm
 
 ## Hybrid Patterns

@@ -3,13 +3,13 @@
 Uses temporary files to avoid real filesystem side effects.
 """
 from __future__ import annotations
+
 import os
 import tempfile
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from core.fim_daemon import FIMDaemon
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -134,20 +134,20 @@ class RAGEvaluator:
         self.retriever = retriever
         self.generator = generator
         self.metrics = self._initialize_metrics(metrics_config)
-    
+
     def evaluate_query(self, query, ground_truth):
         # Retrieval evaluation
         retrieved_docs = self.retriever.search(query)
         retrieval_metrics = self.evaluate_retrieval(
             retrieved_docs, ground_truth['relevant_docs']
         )
-        
+
         # Generation evaluation
         generated_answer = self.generator.generate(query, retrieved_docs)
         generation_metrics = self.evaluate_generation(
             query, generated_answer, retrieved_docs, ground_truth['answer']
         )
-        
+
         return {**retrieval_metrics, **generation_metrics}
 ```
 
@@ -158,13 +158,13 @@ class RAGEvaluator:
 def calculate_faithfulness(answer, context):
     # Split answer into claims
     claims = extract_claims(answer)
-    
+
     # Check each claim against context
     faithful_claims = 0
     for claim in claims:
         if is_supported_by_context(claim, context):
             faithful_claims += 1
-    
+
     return faithful_claims / len(claims) if claims else 0
 ```
 
@@ -175,7 +175,7 @@ def calculate_context_relevance(query, contexts):
     for context in contexts:
         similarity = embedding_similarity(query, context)
         relevance_scores.append(similarity)
-    
+
     return {
         'average_relevance': mean(relevance_scores),
         'top_k_relevance': mean(relevance_scores[:k]),
@@ -423,7 +423,7 @@ def calculate_context_relevance(query, contexts):
 Effective RAG evaluation requires a multi-faceted approach combining automated metrics, human judgment, and continuous monitoring. The key principles are:
 
 1. **Comprehensive Coverage**: Evaluate all pipeline components
-2. **Multiple Perspectives**: Combine different evaluation methodologies  
+2. **Multiple Perspectives**: Combine different evaluation methodologies
 3. **Continuous Improvement**: Regular evaluation and iteration
 4. **Business Alignment**: Metrics should reflect actual user value
 5. **Statistical Rigor**: Proper experimental design and analysis

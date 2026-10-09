@@ -5,8 +5,8 @@ description: Scan codebases for technical debt, score severity, track trends, an
 
 # Tech Debt Tracker
 
-**Tier**: POWERFUL 🔥  
-**Category**: Engineering Process Automation  
+**Tier**: POWERFUL 🔥
+**Category**: Engineering Process Automation
 **Expertise**: Code Quality, Technical Debt Management, Software Engineering
 
 ## Overview

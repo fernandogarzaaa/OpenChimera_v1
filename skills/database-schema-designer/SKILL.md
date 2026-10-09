@@ -5,9 +5,9 @@ description: "Database Schema Designer"
 
 # Database Schema Designer
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
-**Domain:** Data Architecture / Backend  
+**Tier:** POWERFUL
+**Category:** Engineering
+**Domain:** Data Architecture / Backend
 
 ---
 

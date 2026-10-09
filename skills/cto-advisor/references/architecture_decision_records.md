@@ -8,9 +8,9 @@ Architecture Decision Records capture important architectural decisions made alo
 
 ### ADR-[NUMBER]: [TITLE]
 
-**Date**: YYYY-MM-DD  
-**Status**: [Proposed | Accepted | Deprecated | Superseded]  
-**Deciders**: [List of people involved in decision]  
+**Date**: YYYY-MM-DD
+**Status**: [Proposed | Accepted | Deprecated | Superseded]
+**Deciders**: [List of people involved in decision]
 **Technical Story**: [Ticket/Issue reference]
 
 #### Context and Problem Statement
@@ -66,9 +66,9 @@ Architecture Decision Records capture important architectural decisions made alo
 
 ### ADR-001: Microservices Architecture
 
-**Date**: 2024-01-15  
-**Status**: Accepted  
-**Deciders**: CTO, VP Engineering, Tech Leads  
+**Date**: 2024-01-15
+**Status**: Accepted
+**Deciders**: CTO, VP Engineering, Tech Leads
 **Technical Story**: ARCH-001
 
 #### Context and Problem Statement
@@ -109,9 +109,9 @@ Our monolithic application is becoming difficult to scale and deploy. Different 
 
 ### ADR-002: Container Orchestration Platform
 
-**Date**: 2024-02-01  
-**Status**: Accepted  
-**Deciders**: CTO, DevOps Lead, Platform Team  
+**Date**: 2024-02-01
+**Status**: Accepted
+**Deciders**: CTO, DevOps Lead, Platform Team
 **Technical Story**: INFRA-045
 
 #### Context and Problem Statement
@@ -151,9 +151,9 @@ With the move to microservices (ADR-001), we need a container orchestration plat
 
 ### ADR-003: API Gateway Strategy
 
-**Date**: 2024-03-15  
-**Status**: Accepted  
-**Deciders**: CTO, Security Lead, API Team  
+**Date**: 2024-03-15
+**Status**: Accepted
+**Deciders**: CTO, Security Lead, API Team
 **Technical Story**: API-101
 
 #### Context and Problem Statement

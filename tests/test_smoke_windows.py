@@ -10,7 +10,6 @@ from urllib.parse import parse_qs
 
 from sandbox.install_simulation import start_sandbox_runtime
 
-
 PNG_1X1_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9s0nX7sAAAAASUVORK5CYII="
 
 
@@ -130,6 +129,10 @@ class WindowsSmokeTests(unittest.TestCase):
                         },
                     },
                     token="admin-token",
+                    # First boot performs config writes plus provider/channel
+                    # setup; Windows CI runners regularly need more than the
+                    # 5s default (flaked 2026-10-02 on an otherwise-green tree).
+                    timeout=30.0,
                 )
                 self.assertEqual(applied.status_code, 200)
                 self.assertTrue(applied.payload["completed"])
@@ -252,8 +255,8 @@ class SmokeModuleTests(unittest.TestCase):
     def test_core_modules_importable(self) -> None:
         """core.bus, core.database, and core.config are all importable without error."""
         import core.bus  # noqa: F401
-        import core.database  # noqa: F401
         import core.config  # noqa: F401
+        import core.database  # noqa: F401
 
     def test_rate_limiter_in_memory_backend_instantiates(self) -> None:
         """RateLimiter picks the in-memory backend when Redis is not configured."""
@@ -265,6 +268,7 @@ class SmokeModuleTests(unittest.TestCase):
         """CredentialStore.status() returns a dict with a 'providers' key."""
         import tempfile
         from pathlib import Path
+
         from core.credential_store import CredentialStore
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -278,6 +282,7 @@ class SmokeModuleTests(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from unittest.mock import MagicMock
+
         from core.query_engine import QueryEngine
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -300,6 +305,7 @@ class SmokeModuleTests(unittest.TestCase):
         """MultimodalService.status() returns a dict with enabled & backends keys."""
         import tempfile
         from pathlib import Path
+
         from core.multimodal_service import MultimodalService
 
         with tempfile.TemporaryDirectory() as tmp:

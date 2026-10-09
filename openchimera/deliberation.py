@@ -7,9 +7,9 @@ Usage::
 from __future__ import annotations
 
 from core.deliberation import (  # noqa: F401
-    Hypothesis,
     Contradiction,
     DeliberationGraph,
+    Hypothesis,
 )
 from core.deliberation_engine import DeliberationEngine  # noqa: F401
 

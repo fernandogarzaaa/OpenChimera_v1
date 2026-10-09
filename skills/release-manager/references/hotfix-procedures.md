@@ -33,7 +33,7 @@ Hotfixes are emergency releases designed to address critical production issues t
 
 **Examples:**
 - Core user workflow completely broken
-- Payment processing failures affecting >50% of transactions  
+- Payment processing failures affecting >50% of transactions
 - Search functionality returning no results
 - Mobile app crashes on startup
 - API returning 500 errors for main endpoints
@@ -98,7 +98,7 @@ main (v1.2.3) ← hotfix/security-patch → main (v1.2.4)
    # Fix the issue
    git add .
    git commit -m "fix: resolve SQL injection vulnerability"
-   
+
    # Version bump
    echo "1.2.4" > VERSION
    git add VERSION
@@ -113,7 +113,7 @@ main (v1.2.3) ← hotfix/security-patch → main (v1.2.4)
    # Run tests
    npm test
    python -m pytest
-   
+
    # Security scan
    npm audit
    bandit -r src/
@@ -133,12 +133,12 @@ main (v1.2.3) ← hotfix/security-patch → main (v1.2.4)
    git merge --no-ff hotfix/security-patch
    git tag -a v1.2.4 -m "Hotfix: Security vulnerability patch"
    git push origin main --tags
-   
+
    # Merge back to develop
    git checkout develop
    git merge --no-ff hotfix/security-patch
    git push origin develop
-   
+
    # Clean up
    git branch -d hotfix/security-patch
    git push origin --delete hotfix/security-patch
@@ -326,10 +326,10 @@ Next update in 30 minutes or when resolved.
    git checkout main
    git revert HEAD
    git push origin main
-   
+
    # Or container-based rollback
    kubectl rollout undo deployment/app
-   
+
    # Or load balancer switch
    aws elbv2 modify-target-group --target-group-arn arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/previous-version
    ```
@@ -345,7 +345,7 @@ Next update in 30 minutes or when resolved.
 4. **Communication**
    ```
    🔄 ROLLBACK COMPLETE
-   
+
    The hotfix has been rolled back due to [reason].
    System is now stable on previous version.
    We are investigating the issue and will provide updates.
@@ -401,7 +401,7 @@ curl -f https://staging.ourapp.com/api/health
 
 #### Immediate Monitoring (First 30 minutes)
 - Error rate and count
-- Response time and latency  
+- Response time and latency
 - CPU and memory usage
 - Database connection counts
 - Key business metrics
@@ -432,7 +432,7 @@ curl -s "https://api.datadog.com/api/v1/query?query=sum:application.errors{*}" \
   -H "DD-API-KEY: $DATADOG_API_KEY" | jq '.series[0].pointlist[-1][1]'
 
 # Check response times
-echo "--- Response Times ---" 
+echo "--- Response Times ---"
 curl -s "https://api.datadog.com/api/v1/query?query=avg:application.response_time{*}" \
   -H "DD-API-KEY: $DATADOG_API_KEY" | jq '.series[0].pointlist[-1][1]'
 
@@ -487,7 +487,7 @@ echo "=== Monitoring Complete ==="
 
 ## Action Items
 - [ ] Improve monitoring for [specific area]
-- [ ] Add automated test for [specific scenario] 
+- [ ] Add automated test for [specific scenario]
 - [ ] Update documentation for [specific process]
 - [ ] Training on [specific topic] for team
 

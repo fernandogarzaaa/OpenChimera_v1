@@ -9,7 +9,6 @@ from pathlib import Path
 from core.config import get_aether_root
 from core.integration import import_module_from_file
 
-
 LOGGER = logging.getLogger(__name__)
 
 

@@ -20,11 +20,11 @@ class UserInterface {
     constructor() {
         this.components = {};
         this.eventHandlers = [];
-        
+
         // Long parameter list in constructor
         this.init(document, window, localStorage, sessionStorage, navigator, history, location);
     }
-    
+
     // Function with too many parameters
     init(doc, win, localStorage, sessionStorage, nav, hist, loc) {
         this.document = doc;
@@ -34,7 +34,7 @@ class UserInterface {
         this.navigator = nav;
         this.history = hist;
         this.location = loc;
-        
+
         // Deep nesting example
         if (this.localStorage) {
             if (this.localStorage.getItem('user')) {
@@ -54,18 +54,18 @@ class UserInterface {
             }
         }
     }
-    
+
     // Large function that does too many things
     renderUserDashboard(userId, includeStats, includeRecent, includeNotifications, includeSettings, includeHelp) {
         let user = this.getUser(userId);
-        
+
         if (!user) {
             console.log("User not found"); // Should use proper logging
             return;
         }
-        
+
         let html = '<div class="dashboard">';
-        
+
         // Inline HTML generation - should use templates
         html += '<header class="dashboard-header">';
         html += '<h1>Welcome, ' + user.name + '</h1>';
@@ -73,12 +73,12 @@ class UserInterface {
         html += '<img src="' + user.avatar + '" alt="Avatar" />';
         html += '</div>';
         html += '</header>';
-        
+
         // Repeated validation pattern
         if (includeStats && includeStats === true) {
             html += '<section class="stats">';
             html += '<h2>Your Statistics</h2>';
-            
+
             // Magic numbers everywhere
             if (user.loginCount > 100) {
                 html += '<div class="stat-item">Frequent User (100+ logins)</div>';
@@ -89,17 +89,17 @@ class UserInterface {
             } else {
                 html += '<div class="stat-item">New User</div>';
             }
-            
+
             html += '</section>';
         }
-        
+
         if (includeRecent && includeRecent === true) {
             html += '<section class="recent">';
             html += '<h2>Recent Activity</h2>';
-            
+
             // No error handling for API calls
             let recentActivity = this.fetchRecentActivity(userId);
-            
+
             if (recentActivity && recentActivity.length > 0) {
                 html += '<ul class="activity-list">';
                 for (let i = 0; i < recentActivity.length; i++) {
@@ -114,16 +114,16 @@ class UserInterface {
             } else {
                 html += '<p>No recent activity</p>';
             }
-            
+
             html += '</section>';
         }
-        
+
         if (includeNotifications && includeNotifications === true) {
             html += '<section class="notifications">';
             html += '<h2>Notifications</h2>';
-            
+
             let notifications = this.getNotifications(userId);
-            
+
             // Duplicate HTML generation pattern
             if (notifications && notifications.length > 0) {
                 html += '<ul class="notification-list">';
@@ -139,15 +139,15 @@ class UserInterface {
             } else {
                 html += '<p>No notifications</p>';
             }
-            
+
             html += '</section>';
         }
-        
+
         html += '</div>';
-        
+
         // Direct DOM manipulation without cleanup
         document.getElementById('main-content').innerHTML = html;
-        
+
         // Event handler attachment without cleanup
         let buttons = document.querySelectorAll('.action-button');
         for (let i = 0; i < buttons.length; i++) {
@@ -184,29 +184,29 @@ class UserInterface {
             });
         }
     }
-    
+
     // Duplicate code - similar to above but for admin dashboard
     renderAdminDashboard(adminId) {
         let admin = this.getUser(adminId);
-        
+
         if (!admin) {
             console.log("Admin not found");
             return;
         }
-        
+
         let html = '<div class="admin-dashboard">';
-        
+
         html += '<header class="dashboard-header">';
         html += '<h1>Admin Panel - Welcome, ' + admin.name + '</h1>';
         html += '<div class="user-avatar">';
         html += '<img src="' + admin.avatar + '" alt="Avatar" />';
         html += '</div>';
         html += '</header>';
-        
+
         // Same pattern repeated
         html += '<section class="admin-stats">';
         html += '<h2>System Statistics</h2>';
-        
+
         let stats = this.getSystemStats();
         if (stats) {
             html += '<div class="stat-grid">';
@@ -215,25 +215,25 @@ class UserInterface {
             html += '<div class="stat-item">New Today: ' + stats.newToday + '</div>';
             html += '</div>';
         }
-        
+
         html += '</section>';
         html += '</div>';
-        
+
         document.getElementById('main-content').innerHTML = html;
     }
-    
+
     getUser(userId) {
         // Check cache first - but cache never expires
         if (userCache[userId]) {
             return userCache[userId];
         }
-        
+
         // Synchronous AJAX - blocks UI
         let xhr = new XMLHttpRequest();
         xhr.open('GET', API_BASE_URL + '/users/' + userId, false);
         xhr.setRequestHeader('Authorization', 'Bearer ' + authToken);
         xhr.send();
-        
+
         if (xhr.status === 200) {
             let user = JSON.parse(xhr.responseText);
             userCache[userId] = user;
@@ -244,7 +244,7 @@ class UserInterface {
             return null;
         }
     }
-    
+
     fetchRecentActivity(userId) {
         // Another synchronous call
         try {
@@ -252,7 +252,7 @@ class UserInterface {
             xhr.open('GET', API_BASE_URL + '/users/' + userId + '/activity', false);
             xhr.setRequestHeader('Authorization', 'Bearer ' + authToken);
             xhr.send();
-            
+
             if (xhr.status === 200) {
                 return JSON.parse(xhr.responseText);
             } else {
@@ -263,27 +263,27 @@ class UserInterface {
             return [];
         }
     }
-    
+
     getNotifications(userId) {
         // Yet another sync call - should be async
         let xhr = new XMLHttpRequest();
         xhr.open('GET', API_BASE_URL + '/users/' + userId + '/notifications', false);
         xhr.setRequestHeader('Authorization', 'Bearer ' + authToken);
         xhr.send();
-        
+
         if (xhr.status === 200) {
             return JSON.parse(xhr.responseText);
         } else {
             return [];
         }
     }
-    
+
     formatTime(timestamp) {
         // Basic time formatting - should use proper library
         let date = new Date(timestamp);
         return date.getMonth() + '/' + date.getDate() + '/' + date.getFullYear();
     }
-    
+
     // XXX: This method is never used
     formatCurrency(amount, currency) {
         if (currency === 'USD') {
@@ -294,7 +294,7 @@ class UserInterface {
             return amount.toFixed(2) + ' ' + currency;
         }
     }
-    
+
     getSystemStats() {
         // Hardcoded test data - should come from API
         return {
@@ -338,19 +338,19 @@ function $all(selector) {
 document.addEventListener('DOMContentLoaded', function() {
     // Inline anonymous function
     let ui = new UserInterface();
-    
+
     // Event delegation would be better
     document.body.addEventListener('click', function(event) {
         if (event.target.classList.contains('login-button')) {
             // Inline login logic
             let username = $('#username').value;
             let password = $('#password').value;
-            
+
             if (!username || !password) {
                 alert('Please enter username and password'); // Poor UX
                 return;
             }
-            
+
             // No CSRF protection
             fetch(API_BASE_URL + '/auth/login', {
                 method: 'POST',

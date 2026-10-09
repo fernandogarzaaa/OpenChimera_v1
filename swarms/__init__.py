@@ -7,8 +7,8 @@ Public surface::
 from swarms.agent import SwarmAgent
 from swarms.god_swarm import GodSwarm
 from swarms.orchestrator import SwarmOrchestrator
-from swarms.result import SwarmResult
 from swarms.registry import SwarmRegistry
+from swarms.result import SwarmResult
 
 __all__ = [
     "SwarmAgent",

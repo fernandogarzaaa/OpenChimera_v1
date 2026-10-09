@@ -17,18 +17,18 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `deep_nesting`: Excessive indentation levels (>4)
   - `long_parameter_list`: Too many function parameters (>5)
   - `data_clumps`: Related data that should be grouped together
-  
+
 - **Naming and Documentation**
   - `poor_naming`: Unclear or misleading variable/function names
   - `missing_docstring`: Functions/classes without documentation
   - `magic_numbers`: Hardcoded numeric values without explanation
   - `commented_code`: Dead code left in comments
-  
+
 - **Duplication and Patterns**
   - `duplicate_code`: Identical or similar code blocks
   - `copy_paste_programming`: Evidence of code duplication
   - `inconsistent_patterns`: Mixed coding styles within codebase
-  
+
 - **Error Handling**
   - `empty_catch_blocks`: Exception handling without proper action
   - `generic_exceptions`: Catching overly broad exception types
@@ -37,7 +37,7 @@ This document provides a comprehensive taxonomy for classifying technical debt a
 **Severity Indicators**:
 - **Critical**: Security vulnerabilities, syntax errors
 - **High**: Functions >100 lines, complexity >20
-- **Medium**: Functions 50-100 lines, complexity 10-20  
+- **Medium**: Functions 50-100 lines, complexity 10-20
 - **Low**: Minor style issues, short functions with minor problems
 
 ### 2. Architecture Debt
@@ -50,13 +50,13 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `circular_dependencies`: Modules depending on each other cyclically
   - `god_object`: Classes/modules with too many responsibilities
   - `inappropriate_intimacy`: Excessive coupling between modules
-  
+
 - **Layer Violations**
   - `abstraction_inversion`: Lower-level modules depending on higher-level ones
   - `leaky_abstractions`: Implementation details exposed through interfaces
   - `broken_hierarchy`: Inheritance relationships that don't make sense
-  
-- **Scalability Issues**  
+
+- **Scalability Issues**
   - `performance_bottlenecks`: Known architectural performance limitations
   - `resource_contention`: Shared resources creating bottlenecks
   - `single_point_failure`: Critical components without redundancy
@@ -76,13 +76,13 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `missing_unit_tests`: No tests for critical business logic
   - `missing_integration_tests`: No tests for component interactions
   - `missing_end_to_end_tests`: No full system workflow validation
-  
+
 - **Test Quality**
-  - `flaky_tests`: Tests that pass/fail inconsistently  
+  - `flaky_tests`: Tests that pass/fail inconsistently
   - `slow_tests`: Test suite taking too long to execute
   - `brittle_tests`: Tests that break with minor code changes
   - `unclear_test_intent`: Tests without clear purpose or documentation
-  
+
 - **Infrastructure**
   - `manual_testing_only`: No automated testing processes
   - `missing_test_data`: No proper test data management
@@ -103,12 +103,12 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `missing_api_docs`: No documentation for public APIs
   - `outdated_api_docs`: Documentation doesn't match implementation
   - `incomplete_examples`: No usage examples for complex APIs
-  
+
 - **Code Documentation**
   - `missing_comments`: Complex algorithms without explanation
   - `outdated_comments`: Comments contradicting current implementation
   - `redundant_comments`: Comments that just restate the code
-  
+
 - **System Documentation**
   - `missing_architecture_docs`: No high-level system design documentation
   - `missing_deployment_docs`: No deployment or operations guide
@@ -129,12 +129,12 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `vulnerable_dependencies`: Dependencies with known security issues
   - `deprecated_dependencies`: Dependencies no longer maintained
   - `version_conflicts`: Incompatible dependency versions
-  
+
 - **License and Compliance**
-  - `license_violations`: Dependencies with incompatible licenses  
+  - `license_violations`: Dependencies with incompatible licenses
   - `license_unknown`: Dependencies without clear licensing
   - `compliance_risk`: Dependencies creating legal/regulatory risks
-  
+
 - **Usage Optimization**
   - `unused_dependencies`: Dependencies included but not used
   - `oversized_dependencies`: Heavy libraries for simple functionality
@@ -156,13 +156,13 @@ This document provides a comprehensive taxonomy for classifying technical debt a
   - `missing_pipeline`: No CI/CD pipeline automation
   - `brittle_deployments`: Deployment process prone to failure
   - `environment_drift`: Inconsistencies between environments
-  
+
 - **Monitoring and Observability**
   - `missing_monitoring`: No application/system monitoring
   - `inadequate_logging`: Insufficient logging for troubleshooting
   - `missing_alerting`: No alerts for critical system conditions
   - `poor_observability`: Can't understand system behavior in production
-  
+
 - **Configuration Management**
   - `hardcoded_config`: Configuration embedded in code
   - `manual_configuration`: No automated configuration management
@@ -183,7 +183,7 @@ This document provides a comprehensive taxonomy for classifying technical debt a
 - Legal/compliance violations
 - Blocking issues for team productivity
 
-### High (Score: 7-8)  
+### High (Score: 7-8)
 - Significant technical risk
 - Major productivity impact
 - Customer-visible quality issues
@@ -209,7 +209,7 @@ This document provides a comprehensive taxonomy for classifying technical debt a
 - **Compliance**: Regulatory and legal requirements
 - **Market Position**: Competitive advantage considerations
 
-### Technical Impact  
+### Technical Impact
 - **Development Velocity**: Speed of feature development
 - **Code Quality**: Maintainability and reliability
 - **System Reliability**: Uptime and performance
@@ -217,7 +217,7 @@ This document provides a comprehensive taxonomy for classifying technical debt a
 
 ### Team Impact
 - **Developer Productivity**: Individual efficiency
-- **Team Morale**: Job satisfaction and engagement  
+- **Team Morale**: Job satisfaction and engagement
 - **Knowledge Sharing**: Team collaboration and learning
 - **Onboarding Speed**: New team member integration
 

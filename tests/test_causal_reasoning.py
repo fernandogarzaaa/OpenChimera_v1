@@ -9,14 +9,11 @@ from core._bus_fallback import EventBus
 from core.causal_reasoning import (
     CausalEdge,
     CausalGraph,
-    CausalPathway,
     CausalReasoning,
     ConfidenceLevel,
-    CounterfactualResult,
     EdgeType,
     InterventionResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

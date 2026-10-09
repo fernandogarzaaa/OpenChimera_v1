@@ -97,7 +97,7 @@ Hi [Name],
 
 We weren't able to process your [Product] subscription payment of [amount].
 
-This happens sometimes — an expired card, a temporary issue with your bank, 
+This happens sometimes — an expired card, a temporary issue with your bank,
 or a card limit. Easy to fix.
 
 Update your payment details here:
@@ -129,7 +129,7 @@ Subject: [Product] — we'll try your payment again tomorrow
 
 Hi [Name],
 
-We're going to attempt your [Product] payment of [amount] again tomorrow 
+We're going to attempt your [Product] payment of [amount] again tomorrow
 ([specific date]).
 
 If your card details have changed, update them now so the retry goes through:
@@ -156,10 +156,10 @@ Subject: [Product] payment still failing — action needed
 
 Hi [Name],
 
-We've attempted to process your [Product] subscription twice now, 
+We've attempted to process your [Product] subscription twice now,
 and the payment hasn't gone through.
 
-Your account is still active, but we'll need to resolve this soon to 
+Your account is still active, but we'll need to resolve this soon to
 avoid any interruption.
 
 A few common fixes:
@@ -191,7 +191,7 @@ Subject: [Product] account at risk — payment needed by [specific date]
 
 Hi [Name],
 
-We've made multiple attempts to process your [Product] subscription, 
+We've made multiple attempts to process your [Product] subscription,
 and we haven't been able to reach your card.
 
 Your account will be cancelled on [specific date] if we don't receive payment.
@@ -227,7 +227,7 @@ Subject: Your [Product] account has been cancelled
 
 Hi [Name],
 
-We've cancelled your [Product] subscription as of today. Your card could 
+We've cancelled your [Product] subscription as of today. Your card could
 not be charged for [amount] after multiple attempts.
 
 Your data is saved for 90 days (until [date]).

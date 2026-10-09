@@ -1,7 +1,7 @@
 # Migration Architect
 
-**Tier:** POWERFUL  
-**Category:** Engineering - Migration Strategy  
+**Tier:** POWERFUL
+**Category:** Engineering - Migration Strategy
 **Purpose:** Zero-downtime migration planning, compatibility validation, and rollback strategy generation
 
 ## Overview
@@ -13,7 +13,7 @@ The Migration Architect skill provides comprehensive tools and methodologies for
 ### Core Scripts
 
 1. **migration_planner.py** - Automated migration plan generation
-2. **compatibility_checker.py** - Schema and API compatibility analysis  
+2. **compatibility_checker.py** - Schema and API compatibility analysis
 3. **rollback_generator.py** - Comprehensive rollback procedure generation
 
 ### Reference Documentation
@@ -98,7 +98,7 @@ Options:
   "type": "database|service|infrastructure",
   "pattern": "schema_change|strangler_fig|blue_green",
   "source": "Source system description",
-  "target": "Target system description", 
+  "target": "Target system description",
   "constraints": {
     "max_downtime_minutes": 30,
     "data_volume_gb": 2500,
@@ -140,7 +140,7 @@ Creates comprehensive rollback procedures:
 
 - **Phase-by-phase rollback** steps
 - **Automated trigger conditions** for rollback
-- **Data recovery procedures** 
+- **Data recovery procedures**
 - **Communication templates** for different audiences
 - **Validation checklists** for rollback success
 
@@ -253,7 +253,7 @@ python3 scripts/rollback_generator.py \
   "potentially_breaking_count": 3,
   "issues": [
     {
-      "type": "required_column_added", 
+      "type": "required_column_added",
       "severity": "breaking",
       "description": "Required column 'email_verified_at' added",
       "suggested_migration": "Add default value initially"

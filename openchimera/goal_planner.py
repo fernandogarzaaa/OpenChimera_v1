@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from core.goal_planner import (  # noqa: F401
     DecompositionStrategyLearner,
-    GoalStatus,
     Goal,
     GoalPlanner,
+    GoalStatus,
 )
 
 __all__ = ["DecompositionStrategyLearner", "GoalStatus", "Goal", "GoalPlanner"]

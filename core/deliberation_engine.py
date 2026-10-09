@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 from core._bus_fallback import EventBus
-from core.deliberation import Contradiction, DeliberationGraph, Hypothesis
+from core.deliberation import Contradiction, DeliberationGraph
 
 logger = logging.getLogger(__name__)
 

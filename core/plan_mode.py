@@ -71,7 +71,7 @@ class Plan:
 
 class PlanMode:
     """Structured planning and execution state machine.
-    
+
     Provides:
     - Plan creation with multiple steps
     - Dependency tracking between steps
@@ -79,13 +79,13 @@ class PlanMode:
     - Plan pause/resume capability
     - Plan history and querying
     """
-    
+
     def __init__(self, bus: Any | None = None) -> None:
         self._bus = bus
         self._plans: dict[str, Plan] = {}
         self._lock = threading.RLock()
         log.info("PlanMode initialized")
-    
+
     def create_plan(
         self,
         name: str,
@@ -94,7 +94,7 @@ class PlanMode:
         metadata: dict[str, Any] | None = None,
     ) -> Plan:
         """Create a new plan.
-        
+
         Args:
             name: Human-readable plan name
             description: Plan description
@@ -104,13 +104,13 @@ class PlanMode:
                 - parameters: dict (optional)
                 - dependencies: list[str] (optional, step IDs this depends on)
             metadata: Optional metadata dict
-            
+
         Returns:
             Created Plan object
         """
         with self._lock:
             plan_id = f"plan_{uuid.uuid4().hex[:8]}"
-            
+
             plan_steps = []
             for idx, step_def in enumerate(steps):
                 step_id = f"{plan_id}_step_{idx}"
@@ -122,7 +122,7 @@ class PlanMode:
                     dependencies=step_def.get("dependencies", []),
                 )
                 plan_steps.append(step)
-            
+
             plan = Plan(
                 plan_id=plan_id,
                 name=name,
@@ -130,53 +130,53 @@ class PlanMode:
                 steps=plan_steps,
                 metadata=metadata or {},
             )
-            
+
             self._plans[plan_id] = plan
-            
+
             if self._bus:
                 self._bus.publish_nowait("plan/created", {
                     "plan_id": plan_id,
                     "name": name,
                     "step_count": len(plan_steps),
                 })
-            
+
             log.info("Created plan %s with %d steps", plan_id, len(plan_steps))
             return plan
-    
+
     def get_plan(self, plan_id: str) -> Plan | None:
         """Get a plan by ID."""
         with self._lock:
             return self._plans.get(plan_id)
-    
+
     def list_plans(self, status: PlanStatus | None = None) -> list[Plan]:
         """List all plans, optionally filtered by status."""
         with self._lock:
             if status is None:
                 return list(self._plans.values())
             return [p for p in self._plans.values() if p.status == status]
-    
+
     def start_plan(self, plan_id: str) -> bool:
         """Start executing a plan."""
         with self._lock:
             plan = self._plans.get(plan_id)
             if plan is None:
                 return False
-            
+
             if plan.status != PlanStatus.PENDING:
                 return False
-            
+
             plan.status = PlanStatus.IN_PROGRESS
             plan.started_at = time.time()
-            
+
             if self._bus:
                 self._bus.publish_nowait("plan/started", {
                     "plan_id": plan_id,
                     "name": plan.name,
                 })
-            
+
             log.info("Started plan %s", plan_id)
             return True
-    
+
     def update_step(
         self,
         plan_id: str,
@@ -190,21 +190,21 @@ class PlanMode:
             plan = self._plans.get(plan_id)
             if plan is None:
                 return False
-            
+
             step = next((s for s in plan.steps if s.step_id == step_id), None)
             if step is None:
                 return False
-            
+
             if status == StepStatus.IN_PROGRESS and step.started_at is None:
                 step.started_at = time.time()
-            
+
             step.status = status
             step.result = result
             step.error = error
-            
+
             if status in (StepStatus.COMPLETED, StepStatus.FAILED, StepStatus.SKIPPED):
                 step.completed_at = time.time()
-            
+
             # Check if plan is complete
             if all(s.status in (StepStatus.COMPLETED, StepStatus.SKIPPED) for s in plan.steps):
                 plan.status = PlanStatus.COMPLETED
@@ -224,50 +224,50 @@ class PlanMode:
                         "name": plan.name,
                         "failed_step": step_id,
                     })
-            
+
             return True
-    
+
     def get_next_step(self, plan_id: str) -> PlanStep | None:
         """Get the next executable step (dependencies satisfied, not started)."""
         with self._lock:
             plan = self._plans.get(plan_id)
             if plan is None or plan.status != PlanStatus.IN_PROGRESS:
                 return None
-            
+
             completed_steps = {s.step_id for s in plan.steps if s.status == StepStatus.COMPLETED}
-            
+
             for step in plan.steps:
                 if step.status != StepStatus.PENDING:
                     continue
-                
+
                 # Check if all dependencies are satisfied
                 if all(dep in completed_steps for dep in step.dependencies):
                     return step
-            
+
             return None
-    
+
     def pause_plan(self, plan_id: str) -> bool:
         """Pause a plan."""
         with self._lock:
             plan = self._plans.get(plan_id)
             if plan is None or plan.status != PlanStatus.IN_PROGRESS:
                 return False
-            
+
             plan.status = PlanStatus.PAUSED
             log.info("Paused plan %s", plan_id)
             return True
-    
+
     def resume_plan(self, plan_id: str) -> bool:
         """Resume a paused plan."""
         with self._lock:
             plan = self._plans.get(plan_id)
             if plan is None or plan.status != PlanStatus.PAUSED:
                 return False
-            
+
             plan.status = PlanStatus.IN_PROGRESS
             log.info("Resumed plan %s", plan_id)
             return True
-    
+
     def status(self) -> dict[str, Any]:
         """Get PlanMode status."""
         with self._lock:

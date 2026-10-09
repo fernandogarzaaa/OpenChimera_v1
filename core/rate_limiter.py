@@ -6,7 +6,6 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-
 EXPENSIVE_ENDPOINTS = {
     "/v1/query/run",
     "/v1/browser/fetch",

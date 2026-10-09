@@ -1,42 +1,122 @@
-#!/usr/bin/env bash
-# OpenChimera one-liner install script (Linux/macOS)
+#!/bin/bash
+# OpenChimera v2 — One-Liner Bash Install
+# Usage: curl -fsSL https://raw.githubusercontent.com/fernandogarzaaa/OpenChimera_v1/main/install.sh | bash
+
 set -e
 
-# Check for Python 3.9+
-if ! command -v python3 >/dev/null; then
-  echo "Python 3 is required. Please install Python 3.9 or newer."; exit 1
-fi
-PYVER=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
-if [[ "$PYVER" < "3.9" ]]; then
-  echo "Python 3.9+ required. Found $PYVER"; exit 1
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${CYAN}"
+echo "🐉 OpenChimera v2 Installer"
+echo -e "${NC}"
+
+# ── Check prerequisites ──
+echo -e "${CYAN}→${NC} Checking prerequisites..."
+
+if ! command -v git &> /dev/null; then
+    echo -e "${RED}✗ Git not found. Install git first.${NC}"
+    exit 1
 fi
 
-# Create venv if not exists
-if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+PYTHON_CMD=""
+for cmd in python3 python; do
+    if command -v "$cmd" &> /dev/null; then
+        PYTHON_CMD="$cmd"
+        break
+    fi
+done
+
+if [ -z "$PYTHON_CMD" ]; then
+    echo -e "${RED}✗ Python not found. Install Python 3.11+ first.${NC}"
+    exit 1
 fi
-source .venv/bin/activate
 
-# Upgrade pip
-pip install --upgrade pip
+PY_VERSION=$($PYTHON_CMD --version 2>&1)
+echo -e "${GREEN}✓${NC} $PY_VERSION"
 
-# Install requirements
-if [ -f requirements.txt ]; then
-  pip install -r requirements.txt
+# ── Clone repo ──
+INSTALL_DIR="$HOME/OpenChimera"
+if [ -d "$INSTALL_DIR/.git" ]; then
+    echo -e "${CYAN}→${NC} Updating existing installation..."
+    cd "$INSTALL_DIR"
+    git pull origin main --quiet
 else
-  echo "requirements.txt not found!"; exit 1
+    echo -e "${CYAN}→${NC} Cloning OpenChimera to $INSTALL_DIR..."
+    git clone https://github.com/fernandogarzaaa/OpenChimera_v1.git "$INSTALL_DIR" --quiet
+    cd "$INSTALL_DIR"
 fi
 
-# Post-install message
-cat <<EOF
+# ── Install Python deps ──
+echo -e "${CYAN}→${NC} Installing Python dependencies (this may take 2-5 minutes)..."
+if ! $PYTHON_CMD -m pip install -e ".[all]" --quiet 2>/dev/null; then
+    echo -e "${YELLOW}⚠${NC} Full install failed, trying core only..."
+    $PYTHON_CMD -m pip install -e "." --quiet
+fi
+echo -e "${GREEN}✓${NC} Python dependencies installed"
 
-OpenChimera install complete!
-To activate your environment:
-  source .venv/bin/activate
-To run OpenChimera:
-  python run.py
+# ── Check Rust ──
+if command -v cargo &> /dev/null; then
+    echo -e "${CYAN}→${NC} Building Rust TUI..."
+    cd "$INSTALL_DIR/crates/chimera-tui"
+    if cargo build --release 2>/dev/null; then
+        echo -e "${GREEN}✓${NC} Rust TUI built"
+    else
+        echo -e "${YELLOW}⚠${NC} Rust TUI build failed"
+    fi
+    cd "$INSTALL_DIR"
+else
+    echo -e "${YELLOW}⚠${NC} Rust not found — TUI unavailable. Install from https://rustup.rs"
+fi
 
-For onboarding, run:
-  python run.py onboard
-
+# ── Create local config ──
+if [ ! -f "$INSTALL_DIR/config/local.yaml" ]; then
+    cat > "$INSTALL_DIR/config/local.yaml" << 'EOF'
+# Local overrides — add your API keys here or use env vars
+providers:
+  openai:
+    enabled: true
+  anthropic:
+    enabled: true
+  groq:
+    enabled: true
 EOF
+fi
+
+# ── PATH setup ──
+BIN_DIR="$INSTALL_DIR/venv/bin"
+if [ -d "$BIN_DIR" ]; then
+    if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+        SHELL_CONFIG=""
+        if [ -n "$ZSH_VERSION" ]; then
+            SHELL_CONFIG="$HOME/.zshrc"
+        elif [ -n "$BASH_VERSION" ]; then
+            SHELL_CONFIG="$HOME/.bashrc"
+        fi
+        if [ -n "$SHELL_CONFIG" ]; then
+            echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$SHELL_CONFIG"
+            echo -e "${GREEN}✓${NC} Added to PATH in $SHELL_CONFIG"
+        fi
+    fi
+fi
+
+# ── Done ──
+echo ""
+echo -e "${GREEN}✅ OpenChimera v2 installed!${NC}"
+echo ""
+echo "Next steps:"
+echo -e "  ${CYAN}openchimera onboard${NC}      # Run setup wizard"
+echo -e "  ${CYAN}openchimera doctor${NC}       # Run diagnostics"
+echo -e "  ${CYAN}openchimera serve${NC}        # Start API server"
+echo -e "  ${CYAN}openchimera tui${NC}          # Launch Rust TUI"
+echo -e "  ${CYAN}openchimera ask 'hello'${NC}  # One-off query"
+echo ""
+
+read -p "Run onboarding now? [Y/n] " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+    $PYTHON_CMD -m openchimera onboard
+fi

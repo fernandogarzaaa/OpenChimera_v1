@@ -1,7 +1,6 @@
 """Tests for the enhanced operator dashboard (core/api_docs.py)."""
 from __future__ import annotations
 
-import json
 import unittest
 
 from core.api_docs import ROUTE_CATALOG, build_docs_html, build_openapi_document

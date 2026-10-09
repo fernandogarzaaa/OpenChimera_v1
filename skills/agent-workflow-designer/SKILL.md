@@ -5,8 +5,8 @@ description: "Agent Workflow Designer"
 
 # Agent Workflow Designer
 
-**Tier:** POWERFUL  
-**Category:** Engineering  
+**Tier:** POWERFUL
+**Category:** Engineering
 **Domain:** Multi-Agent Systems / AI Orchestration
 
 ---
@@ -78,27 +78,27 @@ class SequentialPipeline:
     def __init__(self, stages: list[PipelineStage]):
         self.stages = stages
         self.client = anthropic.Anthropic()
-    
+
     def run(self, initial_input: str) -> dict:
         state = {"input": initial_input}
-        
+
         for stage in self.stages:
             print(f"[{stage.name}] Processing...")
-            
+
             stage_input = state.get(stage.input_key, "")
-            
+
             response = self.client.messages.create(
                 model=stage.model,
                 max_tokens=stage.max_tokens,
                 system=stage.system_prompt,
                 messages=[{"role": "user", "content": stage_input}],
             )
-            
+
             state[stage.output_key] = response.content[0].text
             state[f"{stage.name}_tokens"] = response.usage.input_tokens + response.usage.output_tokens
-            
+
             print(f"[{stage.name}] Done. Tokens: {state[f'{stage.name}_tokens']}")
-        
+
         return state
 
 # Example: Blog post pipeline
@@ -139,7 +139,7 @@ from typing import Any
 async def run_agent(client, task_name: "str-system-str-user-str-model-str"claude-3-5-sonnet-20241022") -> dict:
     """Single async agent call"""
     loop = asyncio.get_event_loop()
-    
+
     def _call():
         return client.messages.create(
             model=model,
@@ -147,7 +147,7 @@ async def run_agent(client, task_name: "str-system-str-user-str-model-str"claude
             system=system,
             messages=[{"role": "user", "content": user}],
         )
-    
+
     response = await loop.run_in_executor(None, _call)
     return {
         "task": task_name,
@@ -158,7 +158,7 @@ async def run_agent(client, task_name: "str-system-str-user-str-model-str"claude
 async def parallel_research(competitors: list[str], research_type: str) -> dict:
     """Fan-out: research all competitors in parallel. Fan-in: synthesize results."""
     client = anthropic.Anthropic()
-    
+
     # FAN-OUT: spawn parallel agent calls
     tasks = [
         run_agent(
@@ -169,21 +169,21 @@ async def parallel_research(competitors: list[str], research_type: str) -> dict:
         )
         for competitor in competitors
     ]
-    
+
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     # Handle failures gracefully
     successful = [r for r in results if not isinstance(r, Exception)]
     failed = [r for r in results if isinstance(r, Exception)]
-    
+
     if failed:
         print(f"Warning: {len(failed)} research tasks failed: {failed}")
-    
+
     # FAN-IN: synthesize
     combined_research = "\n\n".join([
         f"## {r['task']}\n{r['output']}" for r in successful
     ])
-    
+
     synthesis = await run_agent(
         client,
         task_name="synthesizer",
@@ -191,7 +191,7 @@ async def parallel_research(competitors: list[str], research_type: str) -> dict:
         user=f"Synthesize these competitor analyses:\n\n{combined_research}",
         model="claude-3-5-sonnet-20241022",
     )
-    
+
     return {
         "individual_analyses": successful,
         "synthesis": synthesis["output"],
@@ -218,7 +218,7 @@ ORCHESTRATOR_SYSTEM = """You are an orchestration agent. Your job is to:
 
 Available specialists:
 - researcher: finds facts, data, and information
-- writer: creates content and documents  
+- writer: creates content and documents
 - coder: writes and reviews code
 - analyst: analyzes data and produces insights
 
@@ -240,7 +240,7 @@ SPECIALIST_SYSTEMS = {
 class HierarchicalOrchestrator:
     def __init__(self):
         self.client = anthropic.Anthropic()
-    
+
     def run(self, user_request: str) -> str:
         # 1. Orchestrator creates plan
         plan_response = self.client.messages.create(
@@ -249,15 +249,15 @@ class HierarchicalOrchestrator:
             system=ORCHESTRATOR_SYSTEM,
             messages=[{"role": "user", "content": user_request}],
         )
-        
+
         plan = json.loads(plan_response.content[0].text)
         results = {}
-        
+
         # 2. Execute subtasks respecting dependencies
         for subtask in self._topological_sort(plan["subtasks"]):
             context = self._build_context(subtask, results)
             specialist = SPECIALIST_SYSTEMS[subtask["agent"]]
-            
+
             result = self.client.messages.create(
                 model="claude-3-5-sonnet-20241022",
                 max_tokens=2048,
@@ -265,7 +265,7 @@ class HierarchicalOrchestrator:
                 messages=[{"role": "user", "content": f"{context}\n\nTask: {subtask['task']}"}],
             )
             results[subtask["id"]] = result.content[0].text
-        
+
         # 3. Final synthesis
         all_results = "\n\n".join([f"### {k}\n{v}" for k, v in results.items()])
         synthesis = self.client.messages.create(
@@ -275,13 +275,13 @@ class HierarchicalOrchestrator:
             messages=[{"role": "user", "content": f"Original request: {user_request}\n\nSpecialist outputs:\n{all_results}"}],
         )
         return synthesis.content[0].text
-    
+
     def _build_context(self, subtask: dict, results: dict) -> str:
         if not subtask.get("depends_on"):
             return ""
         deps = [f"Output from task {dep}:\n{results[dep]}" for dep in subtask["depends_on"] if dep in results]
         return "Previous results:\n" + "\n\n".join(deps) if deps else ""
-    
+
     def _topological_sort(self, subtasks: list) -> list:
         # Simple ordered execution respecting depends_on
         ordered, remaining = [], list(subtasks)
@@ -309,21 +309,21 @@ class AgentHandoff:
     workflow_id: str
     step_number: int
     total_steps: int
-    
+
     # What was done
     previous_agent: str
     previous_output: str
     artifacts: dict  # {"filename": "content"} for any files produced
-    
+
     # What to do next
     current_agent: str
     current_task: str
     constraints: list[str]  # hard rules for this step
-    
+
     # Metadata
     context_budget_remaining: int  # tokens left for this agent
     cost_so_far_usd: float
-    
+
     def to_prompt(self) -> str:
         return f"""
 # Agent Handoff — Step {self.step_number}/{self.total_steps}
@@ -365,7 +365,7 @@ def with_retry(max_attempts=3, backoff_seconds=2, fallback_model=None):
                         wait = backoff_seconds * (2 ** attempt)
                         print(f"Attempt {attempt+1} failed: {e}. Retrying in {wait}s...")
                         time.sleep(wait)
-                        
+
                         # Fall back to cheaper/faster model on rate limit
                         if fallback_model and "rate_limit" in str(e).lower():
                             kwargs["model"] = fallback_model
@@ -397,16 +397,16 @@ class ContextBudget:
         self.total = total
         self.reserve = int(total * reserve_pct)  # keep 20% as buffer
         self.used = 0
-    
+
     @property
     def remaining(self):
         return self.total - self.reserve - self.used
-    
+
     def allocate(self, step_name: "str-requested-int-int"
         allocated = min(requested, int(self.remaining * 0.6))  # max 60% of remaining
         print(f"[Budget] {step_name}: allocated {allocated:,} tokens (remaining: {self.remaining:,})")
         return allocated
-    
+
     def consume(self, tokens_used: int):
         self.used += tokens_used
 

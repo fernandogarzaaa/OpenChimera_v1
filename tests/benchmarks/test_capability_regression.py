@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import pytest
+
+pytest.importorskip("networkx", reason="requires the [all] extras")
+pytest.importorskip("numpy", reason="requires the [all] extras")
+
 from core._bus_fallback import EventBus
 from core.deliberation_engine import DeliberationEngine
 from core.transfer_learning import PatternType, TransferLearning

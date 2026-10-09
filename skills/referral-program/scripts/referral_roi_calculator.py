@@ -87,7 +87,7 @@ def calculate_break_even_referral_rate(params):
     """
     What referral rate do we need so that CAC via referral equals
     reward_per_conversion + overhead_per_customer_amortized?
-    
+
     We want: total_cost / new_customers = cac_target
     Solving for referral_rate where cac_target = 50% of paid CAC (our target)
     """
@@ -117,7 +117,7 @@ def calculate_optimal_reward(params):
     """
     What's the maximum reward you can afford while keeping CAC via referral
     under 60% of paid CAC?
-    
+
     max_total_reward = 0.60 × paid_CAC (using conversion-amortized overhead)
     """
     target_cac = params["cac"] * 0.60

@@ -39,7 +39,6 @@ import json
 import logging
 import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -254,11 +253,11 @@ def run_wizard() -> dict[str, Any]:
     print(_bold("  ── Advanced Setup ──────────────────────────────────────"))
     print()
     print("  The core setup is complete. Advanced setup lets you configure:")
-    print(f"    • Channel integrations (Discord, Slack, Telegram)")
-    print(f"    • Cloud failover chain & model roles")
-    print(f"    • API security, database, plugins, MCP servers")
-    print(f"    • Autonomy job tuning, logging, sandbox retention")
-    print(f"    • External tools, MiniMind, RAG, system personality")
+    print("    • Channel integrations (Discord, Slack, Telegram)")
+    print("    • Cloud failover chain & model roles")
+    print("    • API security, database, plugins, MCP servers")
+    print("    • Autonomy job tuning, logging, sandbox retention")
+    print("    • External tools, MiniMind, RAG, system personality")
     print()
 
     if _ask_yes_no("Continue to advanced setup?", default=False):
@@ -348,7 +347,7 @@ def _step_model_discovery(hw: dict[str, Any], results: dict[str, Any]) -> dict[s
     print("  Scanning Ollama and HuggingFace for compatible models...")
     print()
 
-    from core.model_scout import scout_models, format_model_table
+    from core.model_scout import format_model_table, scout_models
 
     scout = scout_models(hw)
     results["models_scouted"] = scout
@@ -572,7 +571,8 @@ def _step_cloud_api_keys(profile: dict[str, Any], results: dict[str, Any]) -> No
 
 def _validate_api_key(provider: dict[str, str], key: str) -> bool:
     """Quick validation of an API key by hitting the provider's endpoint."""
-    from urllib import error as url_error, request as url_request
+    from urllib import error as url_error
+    from urllib import request as url_request
 
     probe_urls = {
         "openai": "https://api.openai.com/v1/models",
@@ -960,7 +960,7 @@ def _step_api_security(profile: dict[str, Any], results: dict[str, Any]) -> None
         print(f"  {_green('✓')} TLS configured: {_dim(tls_cfg['certfile'])}")
     else:
         print(f"  {_dim('TLS not configured (HTTP only). For HTTPS:')}")
-        print(f"    Set api.tls.certfile and api.tls.keyfile in runtime_profile.json")
+        print("    Set api.tls.certfile and api.tls.keyfile in runtime_profile.json")
 
     print()
 
@@ -1193,7 +1193,7 @@ def _step_model_roles(profile: dict[str, Any], results: dict[str, Any]) -> None:
         current = roles_data.get(role["id"], {}).get("model", "")
         current_str = f" (current: {_cyan(current)})" if current else ""
         print(f"  {_bold(role['id'].upper())} — {role['desc']}{current_str}")
-        model = _ask(f"    Model name (or Enter to skip)")
+        model = _ask("    Model name (or Enter to skip)")
         if model:
             roles_data[role["id"]] = {
                 "role": role["id"],
@@ -1281,7 +1281,7 @@ def _step_logging_observability(profile: dict[str, Any], results: dict[str, Any]
     print()
     obs_section = profile.setdefault("observability", {})
     recent_limit = obs_cfg.get("recent_limit", 64)
-    new_limit = _ask(f"Max recent events to keep in memory", str(recent_limit))
+    new_limit = _ask("Max recent events to keep in memory", str(recent_limit))
     try:
         obs_section["recent_limit"] = max(10, int(new_limit))
     except ValueError:
@@ -1335,7 +1335,7 @@ def _step_minimind_config(
     config["auto_start_server"] = _ask_yes_no("Auto-start MiniMind server with OpenChimera?", default=False)
 
     # Sequence length
-    seq_len = _ask(f"Max sequence length", str(config.get("serve_max_seq_len", 8192)))
+    seq_len = _ask("Max sequence length", str(config.get("serve_max_seq_len", 8192)))
     try:
         config["serve_max_seq_len"] = max(512, int(seq_len))
     except ValueError:

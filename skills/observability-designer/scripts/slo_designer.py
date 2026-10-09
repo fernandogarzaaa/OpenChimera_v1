@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 
 class SLODesigner:
     """Design and generate SLO frameworks for services."""
-    
+
     # SLO target recommendations based on service criticality
     SLO_TARGETS = {
         'critical': {
@@ -52,7 +52,7 @@ class SLODesigner:
             'error_rate': 0.02       # 2% error rate
         }
     }
-    
+
     # Burn rate windows for multi-window alerting
     BURN_RATE_WINDOWS = [
         {'short': '5m', 'long': '1h', 'burn_rate': 14.4, 'budget_consumed': '2%'},
@@ -60,7 +60,7 @@ class SLODesigner:
         {'short': '2h', 'long': '1d', 'burn_rate': 3, 'budget_consumed': '10%'},
         {'short': '6h', 'long': '3d', 'burn_rate': 1, 'budget_consumed': '10%'}
     ]
-    
+
     # Service type specific SLI recommendations
     SERVICE_TYPE_SLIS = {
         'api': ['availability', 'latency', 'error_rate', 'throughput'],
@@ -86,7 +86,7 @@ class SLODesigner:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in service definition: {e}")
 
-    def create_service_definition(self, service_type: str, criticality: str, 
+    def create_service_definition(self, service_type: str, criticality: str,
                                 user_facing: bool, name: str = None) -> Dict[str, Any]:
         """Create a service definition from parameters."""
         return {
@@ -104,25 +104,25 @@ class SLODesigner:
         """Generate Service Level Indicators based on service characteristics."""
         service_type = service_def.get('type', 'api')
         base_slis = self.SERVICE_TYPE_SLIS.get(service_type, ['availability', 'latency', 'error_rate'])
-        
+
         slis = []
-        
+
         for sli_name in base_slis:
             sli = self._create_sli_definition(sli_name, service_def)
             if sli:
                 slis.append(sli)
-        
+
         # Add user-facing specific SLIs
         if service_def.get('user_facing', False):
             user_slis = self._generate_user_facing_slis(service_def)
             slis.extend(user_slis)
-            
+
         return slis
 
     def _create_sli_definition(self, sli_name: str, service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Create detailed SLI definition."""
         service_name = service_def.get('name', 'service')
-        
+
         sli_definitions = {
             'availability': {
                 'name': 'Availability',
@@ -177,13 +177,13 @@ class SLODesigner:
                 'unit': 'percentage'
             }
         }
-        
+
         return sli_definitions.get(sli_name)
 
     def _generate_user_facing_slis(self, service_def: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Generate additional SLIs for user-facing services."""
         service_name = service_def.get('name', 'service')
-        
+
         return [
             {
                 'name': 'User Journey Success Rate',
@@ -207,21 +207,21 @@ class SLODesigner:
         """Generate Service Level Objectives based on service criticality."""
         criticality = service_def.get('criticality', 'medium')
         targets = self.SLO_TARGETS.get(criticality, self.SLO_TARGETS['medium'])
-        
+
         slos = []
-        
+
         for sli in slis:
             slo = self._create_slo_from_sli(sli, targets, service_def)
             if slo:
                 slos.append(slo)
-                
+
         return slos
 
-    def _create_slo_from_sli(self, sli: Dict[str, Any], targets: Dict[str, float], 
+    def _create_slo_from_sli(self, sli: Dict[str, Any], targets: Dict[str, float],
                            service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Create SLO definition from SLI."""
         sli_name = sli['name'].lower().replace(' ', '_')
-        
+
         # Map SLI names to target keys
         target_mapping = {
             'availability': 'availability',
@@ -233,15 +233,15 @@ class SLODesigner:
             'database_query_latency_p95': 'latency_p95',
             'database_connection_success_rate': 'availability'
         }
-        
+
         target_key = target_mapping.get(sli_name)
         if not target_key:
             return None
-            
+
         target_value = targets.get(target_key)
         if target_value is None:
             return None
-            
+
         # Determine comparison operator and format target
         if 'latency' in sli_name or 'duration' in sli_name:
             operator = '<='
@@ -253,10 +253,10 @@ class SLODesigner:
         else:
             operator = '>='
             target_display = f"{target_value * 100}%"
-        
+
         # Calculate time windows
         time_windows = ['1h', '1d', '7d', '30d']
-        
+
         slo = {
             'name': f"{sli['name']} SLO",
             'description': f"Service level objective for {sli['description'].lower()}",
@@ -269,18 +269,18 @@ class SLODesigner:
             'service': service_def.get('name', 'service'),
             'criticality': service_def.get('criticality', 'medium')
         }
-        
+
         return slo
 
     def calculate_error_budgets(self, slos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Calculate error budgets for SLOs."""
         error_budgets = []
-        
+
         for slo in slos:
             if slo['operator'] == '>=':  # Availability-type SLOs
                 target = slo['target_value']
                 error_budget_rate = 1 - target
-                
+
                 # Calculate budget for different time windows
                 time_windows = {
                     '1h': 3600,
@@ -288,7 +288,7 @@ class SLODesigner:
                     '7d': 604800,
                     '30d': 2592000
                 }
-                
+
                 budgets = {}
                 for window, seconds in time_windows.items():
                     budget_seconds = seconds * error_budget_rate
@@ -298,7 +298,7 @@ class SLODesigner:
                         budgets[window] = f"{budget_seconds/60:.1f} minutes"
                     else:
                         budgets[window] = f"{budget_seconds/3600:.1f} hours"
-                
+
                 error_budget = {
                     'slo_name': slo['name'],
                     'error_budget_rate': error_budget_rate,
@@ -306,9 +306,9 @@ class SLODesigner:
                     'budgets_by_window': budgets,
                     'burn_rate_alerts': self._generate_burn_rate_alerts(slo, error_budget_rate)
                 }
-                
+
                 error_budgets.append(error_budget)
-                
+
         return error_budgets
 
     def _generate_burn_rate_alerts(self, slo: Dict[str, Any], error_budget_rate: float) -> List[Dict[str, Any]]:
@@ -316,7 +316,7 @@ class SLODesigner:
         alerts = []
         service_name = slo['service']
         sli_query = self._get_sli_query_for_burn_rate(slo)
-        
+
         for window_config in self.BURN_RATE_WINDOWS:
             alert = {
                 'name': f"{slo['sli_name']} Burn Rate {window_config['budget_consumed']} Alert",
@@ -333,14 +333,14 @@ class SLODesigner:
                 }
             }
             alerts.append(alert)
-            
+
         return alerts
 
     def _get_sli_query_for_burn_rate(self, slo: Dict[str, Any]) -> str:
         """Generate SLI query fragment for burn rate calculation."""
         service_name = slo['service']
         sli_name = slo['sli_name'].lower().replace(' ', '_')
-        
+
         if 'availability' in sli_name or 'success' in sli_name:
             return f"(1 - (sum(rate(http_requests_total{{service='{service_name}',code!~'5..'}})) / sum(rate(http_requests_total{{service='{service_name}'}}))))"
         elif 'error' in sli_name:
@@ -357,7 +357,7 @@ class SLODesigner:
         else:
             return 'info'
 
-    def generate_sla_recommendations(self, service_def: Dict[str, Any], 
+    def generate_sla_recommendations(self, service_def: Dict[str, Any],
                                    slos: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate SLA recommendations for customer-facing services."""
         if not service_def.get('user_facing', False):
@@ -365,12 +365,12 @@ class SLODesigner:
                 'applicable': False,
                 'reason': 'SLA not recommended for non-user-facing services'
             }
-        
+
         criticality = service_def.get('criticality', 'medium')
-        
+
         # SLA targets should be more conservative than SLO targets
         sla_buffer = 0.001  # 0.1% buffer below SLO
-        
+
         sla_recommendations = {
             'applicable': True,
             'service': service_def.get('name'),
@@ -384,7 +384,7 @@ class SLODesigner:
                 'Third-party service dependencies beyond our control'
             ]
         }
-        
+
         for slo in slos:
             if slo['operator'] == '>=' and 'availability' in slo['sli_name'].lower():
                 sla_target = max(0.9, slo['target_value'] - sla_buffer)
@@ -396,7 +396,7 @@ class SLODesigner:
                     'measurement_method': 'Uptime monitoring with 1-minute granularity'
                 }
                 sla_recommendations['commitments'].append(commitment)
-        
+
         return sla_recommendations
 
     def _generate_penalty_structure(self, criticality: str) -> List[Dict[str, Any]]:
@@ -416,23 +416,23 @@ class SLODesigner:
             ],
             'low': []
         }
-        
+
         return penalty_structures.get(criticality, [])
 
     def generate_framework(self, service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Generate complete SLO framework."""
         # Generate SLIs
         slis = self.generate_slis(service_def)
-        
+
         # Generate SLOs
         slos = self.generate_slos(service_def, slis)
-        
+
         # Calculate error budgets
         error_budgets = self.calculate_error_budgets(slos)
-        
+
         # Generate SLA recommendations
         sla_recommendations = self.generate_sla_recommendations(service_def, slos)
-        
+
         # Create comprehensive framework
         framework = {
             'metadata': {
@@ -447,13 +447,13 @@ class SLODesigner:
             'monitoring_recommendations': self._generate_monitoring_recommendations(service_def),
             'implementation_guide': self._generate_implementation_guide(service_def, slis, slos)
         }
-        
+
         return framework
 
     def _generate_monitoring_recommendations(self, service_def: Dict[str, Any]) -> Dict[str, Any]:
         """Generate monitoring tool recommendations."""
         service_type = service_def.get('type', 'api')
-        
+
         recommendations = {
             'metrics': {
                 'collection': 'Prometheus with service discovery',
@@ -471,18 +471,18 @@ class SLODesigner:
                 'integration': 'OpenTelemetry instrumentation'
             }
         }
-        
+
         if service_type == 'web':
             recommendations['synthetic_monitoring'] = {
                 'frequency': 'Every 1 minute from 3+ geographic locations',
                 'checks': 'Full user journey simulation',
                 'tools': 'Pingdom, DataDog Synthetics, or equivalent'
             }
-        
+
         return recommendations
 
-    def _generate_implementation_guide(self, service_def: Dict[str, Any], 
-                                     slis: List[Dict[str, Any]], 
+    def _generate_implementation_guide(self, service_def: Dict[str, Any],
+                                     slis: List[Dict[str, Any]],
                                      slos: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generate implementation guide for the SLO framework."""
         return {
@@ -551,38 +551,38 @@ class SLODesigner:
         slis = framework['slis']
         slos = framework['slos']
         error_budgets = framework['error_budgets']
-        
+
         print(f"\n{'='*60}")
         print(f"SLO FRAMEWORK SUMMARY FOR {service['name'].upper()}")
         print(f"{'='*60}")
-        
+
         print(f"\nService Details:")
         print(f"  Type: {service['type']}")
         print(f"  Criticality: {service['criticality']}")
         print(f"  User Facing: {'Yes' if service.get('user_facing') else 'No'}")
         print(f"  Team: {service.get('team', 'Unknown')}")
-        
+
         print(f"\nService Level Indicators ({len(slis)}):")
         for i, sli in enumerate(slis, 1):
             print(f"  {i}. {sli['name']}")
             print(f"     Description: {sli['description']}")
             print(f"     Type: {sli['type']}")
             print()
-        
+
         print(f"Service Level Objectives ({len(slos)}):")
         for i, slo in enumerate(slos, 1):
             print(f"  {i}. {slo['name']}")
             print(f"     Target: {slo['target_display']}")
             print(f"     Measurement Window: {slo['measurement_window']}")
             print()
-        
+
         print(f"Error Budget Summary:")
         for budget in error_budgets:
             print(f"  {budget['slo_name']}:")
             print(f"    Monthly Budget: {budget['error_budget_percentage']}")
             print(f"    Burn Rate Alerts: {len(budget['burn_rate_alerts'])}")
             print()
-        
+
         sla = framework['sla_recommendations']
         if sla['applicable']:
             print(f"SLA Recommendations:")
@@ -590,7 +590,7 @@ class SLODesigner:
             print(f"  Penalty Tiers: {len(sla['penalties'])}")
         else:
             print(f"SLA Recommendations: {sla['reason']}")
-        
+
         print(f"\nImplementation Timeline: 1-2 weeks")
         print(f"Framework generated at: {framework['metadata']['generated_at']}")
         print(f"{'='*60}\n")
@@ -605,20 +605,20 @@ def main():
 Examples:
     # Generate from service definition file
     python slo_designer.py --input service.json --output framework.json
-    
+
     # Generate from command line parameters
     python slo_designer.py --service-type api --criticality high --user-facing true --output framework.json
-    
+
     # Generate and display summary only
     python slo_designer.py --service-type web --criticality critical --user-facing true --summary-only
         """
     )
-    
-    parser.add_argument('--input', '-i', 
+
+    parser.add_argument('--input', '-i',
                        help='Input service definition JSON file')
-    parser.add_argument('--output', '-o', 
+    parser.add_argument('--output', '-o',
                        help='Output framework JSON file')
-    parser.add_argument('--service-type', 
+    parser.add_argument('--service-type',
                        choices=['api', 'web', 'database', 'queue', 'batch', 'ml'],
                        help='Service type')
     parser.add_argument('--criticality',
@@ -631,14 +631,14 @@ Examples:
                        help='Service name')
     parser.add_argument('--summary-only', action='store_true',
                        help='Only display summary, do not save JSON')
-    
+
     args = parser.parse_args()
-    
+
     if not args.input and not (args.service_type and args.criticality and args.user_facing):
         parser.error("Must provide either --input file or --service-type, --criticality, and --user-facing")
-    
+
     designer = SLODesigner()
-    
+
     try:
         # Load or create service definition
         if args.input:
@@ -648,19 +648,19 @@ Examples:
             service_def = designer.create_service_definition(
                 args.service_type, args.criticality, user_facing, args.service_name
             )
-        
+
         # Generate framework
         framework = designer.generate_framework(service_def)
-        
+
         # Output results
         if not args.summary_only:
             output_file = args.output or f"{service_def['name']}_slo_framework.json"
             designer.export_json(framework, output_file)
             print(f"SLO framework saved to: {output_file}")
-        
+
         # Always show summary
         designer.print_summary(framework)
-        
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

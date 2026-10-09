@@ -14,19 +14,16 @@ All scenarios are async, self-contained, and portable (no hardcoded paths).
 from __future__ import annotations
 
 import asyncio
-import time
 from typing import Any, Callable, Dict, List
 
 from core._bus_fallback import EventBus
 from core.causal_reasoning import CausalReasoning, EdgeType
-from core.quantum_engine import ConsensusResult, QuantumEngine
-from core.self_model import HealthStatus, SelfModel
+from core.self_model import SelfModel
 from core.transfer_learning import PatternType, TransferLearning
 
 from .cluster import SimCluster
 from .harness import run_sim_scenario
 from .node import SimNode
-
 
 # ---------------------------------------------------------------------------
 # Agent callables — cognitive agents backed by real subsystems

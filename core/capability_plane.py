@@ -13,19 +13,29 @@ from core.mcp_registry import (
     upsert_mcp_registry_entry,
 )
 from core.tool_runtime import ToolMetadata, ToolRegistry, ToolResult
+from services.hook_pipeline import HookPipeline
 
 log = logging.getLogger(__name__)
 
 
 class CapabilityPlane:
-    def __init__(self, *, capabilities: Any, plugins: Any, bus: Any, tool_runtime: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        capabilities: Any,
+        plugins: Any,
+        bus: Any,
+        tool_runtime: Any | None = None,
+        hook_pipeline: HookPipeline | None = None,
+    ) -> None:
         self.capabilities = capabilities
         self.plugins = plugins
         self.bus = bus
         self.tool_runtime = tool_runtime  # RuntimeToolRegistry, wired from kernel
+        self.hook_pipeline = hook_pipeline if hook_pipeline is not None else HookPipeline()
 
         # Internal ToolRegistry for ToolMetadata-based tools (Phase 1)
-        self._tool_registry = ToolRegistry(bus=bus)
+        self._tool_registry = ToolRegistry(bus=bus, hook_pipeline=self.hook_pipeline)
 
         # Skill registry: name → dict metadata
         self._skills: dict[str, dict[str, Any]] = {}
@@ -242,71 +252,12 @@ class CapabilityPlane:
             },
         }
 
-    def mcp_registry_status(self) -> dict[str, Any]:
-        servers = list_mcp_registry_with_health()
-        return {
-            "counts": {
-                "total": len(servers),
-                "healthy": sum(1 for item in servers if str(item.get("status", "")).lower() == "healthy"),
-                "enabled": sum(1 for item in servers if bool(item.get("enabled", True))),
-            },
-            "servers": servers,
-        }
 
-    def register_mcp_connector(
-        self,
-        server_id: str,
-        *,
-        transport: str,
-        name: str | None = None,
-        description: str | None = None,
-        url: str | None = None,
-        command: str | None = None,
-        args: list[str] | None = None,
-        enabled: bool = True,
-    ) -> dict[str, Any]:
-        result = upsert_mcp_registry_entry(
-            server_id,
-            transport=transport,
-            name=name,
-            description=description,
-            url=url,
-            command=command,
-            args=args,
-            enabled=enabled,
-        )
-        self.capabilities.refresh()
-        self.bus.publish_nowait("system/mcp", {"action": "register", "connector": result})
-        return result
 
-    def unregister_mcp_connector(self, server_id: str) -> dict[str, Any]:
-        result = delete_mcp_registry_entry(server_id)
-        self.capabilities.refresh()
-        self.bus.publish_nowait("system/mcp", {"action": "unregister", "result": result})
-        return result
 
-    def probe_mcp_connectors(self, server_id: str | None = None, timeout_seconds: float = 3.0) -> dict[str, Any]:
-        if server_id:
-            result = probe_mcp_registry_entry(server_id, timeout_seconds=timeout_seconds)
-            payload = {"counts": {"total": 1, "healthy": 1 if str(result.get("status", "")).lower() == "healthy" else 0}, "servers": [result]}
-        else:
-            payload = probe_all_mcp_registry_entries(timeout_seconds=timeout_seconds)
-        self.capabilities.refresh()
-        self.bus.publish_nowait("system/mcp", {"action": "probe", "result": payload})
-        return payload
 
-    def plugin_status(self) -> dict[str, Any]:
-        return self.plugins.status()
 
-    def install_plugin(self, plugin_id: str) -> dict[str, Any]:
-        result = self.plugins.install(plugin_id)
-        self.bus.publish_nowait("system/plugins", {"action": "install", "result": result})
-        return result
 
-    def uninstall_plugin(self, plugin_id: str) -> dict[str, Any]:
-        result = self.plugins.uninstall(plugin_id)
-        self.bus.publish_nowait("system/plugins", {"action": "uninstall", "result": result})
-        return result
 
     def mcp_registry_status(self) -> dict[str, Any]:
         servers = list_mcp_registry_with_health()

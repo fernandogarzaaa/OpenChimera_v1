@@ -449,6 +449,12 @@ class MultimodalService:
         artifact_path.write_bytes(image_bytes)
         return provider["provider"], provider["model"]
 
+    def _media_backend_timeout(self) -> float:
+        try:
+            return max(1.0, float(os.getenv("OPENCHIMERA_MEDIA_BACKEND_TIMEOUT", "90")))
+        except ValueError:
+            return 90.0
+
     def _provider_secret(self, provider_id: str, candidate_keys: list[str]) -> str:
         for key in candidate_keys:
             value = os.getenv(key, "").strip()
@@ -466,7 +472,7 @@ class MultimodalService:
         request_headers = {"Content-Type": "application/json", **headers}
         req = request.Request(url, data=body, headers=request_headers, method="POST")
         try:
-            with request.urlopen(req, timeout=90) as response:
+            with request.urlopen(req, timeout=self._media_backend_timeout()) as response:
                 return json.loads(response.read().decode("utf-8"))
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore")

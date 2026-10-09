@@ -128,7 +128,7 @@ Used when: major adverse event, fundraise miss, key customer loss, market disrup
 
 ```
 CEO broadcasts:
-[BROADCAST:all|Scenario: largest customer (28% of ARR) gives 60-day termination notice. 
+[BROADCAST:all|Scenario: largest customer (28% of ARR) gives 60-day termination notice.
 Each role: what's the immediate impact on your domain and your top recommended action?]
 
 Roles respond INDEPENDENTLY (no agent sees others' responses first):

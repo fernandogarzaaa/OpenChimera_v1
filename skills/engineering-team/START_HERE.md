@@ -6,7 +6,7 @@
 
 All skills follow your exact template structure with:
 - ✅ **SKILL.md** - Complete documentation with quick start
-- ✅ **3 Reference Guides** - Advanced patterns and best practices  
+- ✅ **3 Reference Guides** - Advanced patterns and best practices
 - ✅ **3 Automation Scripts** - Production-grade Python tools
 - ✅ **7 files per skill** - Comprehensive and ready to use
 

@@ -132,7 +132,7 @@ python -c "import json; p=json.load(open('phase4_poc_plan.json')); print('Go/No-
 
 **Purpose:** Parse RFP/RFI requirements, score coverage, identify gaps, and generate bid/no-bid recommendations.
 
-**Coverage Categories:** Full (100%), Partial (50%), Planned (25%), Gap (0%).  
+**Coverage Categories:** Full (100%), Partial (50%), Planned (25%), Gap (0%).
 **Priority Weighting:** Must-Have 3×, Should-Have 2×, Nice-to-Have 1×.
 
 **Bid/No-Bid Logic:**

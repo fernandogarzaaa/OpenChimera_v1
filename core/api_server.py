@@ -9,7 +9,7 @@ import time
 import uuid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
 
 from pydantic import ValidationError
@@ -28,13 +28,12 @@ from core.config import (
     is_loopback_host,
     is_provider_tls_enabled,
 )
-from core.mcp_server import OpenChimeraMCPServer
 from core.logging_utils import clear_request_context, set_request_context
+from core.mcp_server import OpenChimeraMCPServer
 from core.observability import ObservabilityStore
 from core.provider import OpenChimeraProvider
 from core.rate_limiter import RateLimiter
 from core.schemas import GET_QUERY_SCHEMAS, POST_BODY_SCHEMAS, HealthResponse, ReadinessResponse
-
 
 LOGGER = logging.getLogger(__name__)
 MAX_JSON_BODY_BYTES = 10 * 1024 * 1024
@@ -56,7 +55,7 @@ class _ProviderHTTPServer(ThreadingHTTPServer):
         self,
         server_address: tuple[str, int],
         provider: OpenChimeraProvider,
-        system_status_provider: callable | None = None,
+        system_status_provider: Callable[..., Any] | None = None,
         rate_limiter: RateLimiter | None = None,
     ):
         super().__init__(server_address, _ProviderRequestHandler)
@@ -108,6 +107,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
         self._request_started_at = time.perf_counter()
         self._request_id = self.headers.get("X-Request-Id", "").strip() or f"req-{uuid.uuid4().hex[:12]}"
         self._response_recorded = False
+        self._granted_permission: str | None = None
         self._request_context_token = set_request_context(self._request_id)
 
     def _record_response(self, status: HTTPStatus) -> None:
@@ -142,7 +142,15 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
 
     def _authorize_request(self) -> bool:
         decision = self.server.authorizer.authorize(self.command, self.path, self.headers)
+        # Bind the permission scope to the authenticated session so privileged
+        # tool execution can never be driven by a client-supplied request body.
+        # When auth is disabled (no auth required) the local operator is fully
+        # trusted and granted admin; otherwise the scope is taken strictly from
+        # the validated token.
+        self._granted_permission = decision.granted_permission
         if decision.allowed:
+            if self._granted_permission is None and not decision.auth_required:
+                self._granted_permission = "admin"
             return True
         self._write_json(
             {
@@ -154,6 +162,16 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             www_authenticate=decision.status == HTTPStatus.UNAUTHORIZED,
         )
         return False
+
+    def _session_permission_scope(self) -> str:
+        """Return the permission scope bound to the authenticated session.
+
+        The scope is derived from the validated auth token (or ``admin`` when
+        auth is disabled for local use). It must never be read from the client
+        request body, otherwise a low-privilege caller could escalate to admin
+        tools by supplying ``"permission_scope": "admin"`` (CWE-863).
+        """
+        return str(getattr(self, "_granted_permission", None) or "user")
 
     def _extract_auth_token(self) -> str | None:
         raw = self.headers.get(self.server.authorizer.auth_header, "")
@@ -365,8 +383,8 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                 self._write_json(get_registry().status())
                 return
             if self.path == "/v1/quantum/channels":
-                from core.remote_channels import CHANNEL_CLASSES
                 from core.quantum_capabilities import get_registry
+                from core.remote_channels import CHANNEL_CLASSES
                 registry = get_registry()
                 channels = {}
                 for cap_id in CHANNEL_CLASSES:
@@ -684,7 +702,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                         query=str(payload.get("query", "")),
                         messages=messages,
                         session_id=str(payload.get("session_id", "")).strip() or None,
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                         max_tokens=int(payload.get("max_tokens", 512)),
                         allow_tool_planning=bool(payload.get("allow_tool_planning", True)),
                         execute_tools=bool(payload.get("execute_tools", False)),
@@ -700,7 +718,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     self.server.provider.execute_tool(
                         str(payload.get("tool_id", "")).strip(),
                         dict(payload.get("arguments", {})),
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                     )
                 )
                 return
@@ -714,7 +732,7 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
                     self.server.provider.resume_session(
                         session_id=str(payload.get("session_id", "")).strip(),
                         query=str(payload.get("query", "")).strip(),
-                        permission_scope=str(payload.get("permission_scope", "user")),
+                        permission_scope=self._session_permission_scope(),
                         max_tokens=int(payload.get("max_tokens", 512)),
                     )
                 )
@@ -1133,7 +1151,7 @@ class OpenChimeraAPIServer:
         provider: OpenChimeraProvider,
         host: str | None = None,
         port: int | None = None,
-        system_status_provider: callable | None = None,
+        system_status_provider: Callable[..., Any] | None = None,
         rate_limiter: RateLimiter | None = None,
     ):
         self.provider = provider
@@ -1181,7 +1199,7 @@ class OpenChimeraAPIServer:
                 system_status_provider=self.system_status_provider,
                 rate_limiter=self.rate_limiter,
             )
-        except OSError as exc:
+        except OSError:
             LOGGER.exception("Failed to bind OpenChimera API server.")
             return False
 

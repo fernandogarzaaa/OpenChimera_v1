@@ -56,18 +56,18 @@ CREATE INDEX idx_users_id_hash ON users USING HASH (user_id);
 **Example:**
 ```sql
 -- Index only active users
-CREATE INDEX idx_active_users_email 
-ON users (email) 
+CREATE INDEX idx_active_users_email
+ON users (email)
 WHERE status = 'active';
 
 -- Index recent orders only
-CREATE INDEX idx_recent_orders 
-ON orders (customer_id, created_at) 
+CREATE INDEX idx_recent_orders
+ON orders (customer_id, created_at)
 WHERE created_at > CURRENT_DATE - INTERVAL '90 days';
 
 -- Index non-null values only
-CREATE INDEX idx_customers_phone 
-ON customers (phone_number) 
+CREATE INDEX idx_customers_phone
+ON customers (phone_number)
 WHERE phone_number IS NOT NULL;
 ```
 
@@ -81,12 +81,12 @@ WHERE phone_number IS NOT NULL;
 **Example:**
 ```sql
 -- Covering index with INCLUDE clause (SQL Server/PostgreSQL)
-CREATE INDEX idx_orders_customer_covering 
-ON orders (customer_id, order_date) 
+CREATE INDEX idx_orders_customer_covering
+ON orders (customer_id, order_date)
 INCLUDE (order_total, status);
 
 -- Query can be satisfied entirely from index:
--- SELECT order_total, status FROM orders 
+-- SELECT order_total, status FROM orders
 -- WHERE customer_id = 123 AND order_date > '2024-01-01';
 ```
 
@@ -100,15 +100,15 @@ INCLUDE (order_total, status);
 **Example:**
 ```sql
 -- Case-insensitive email searches
-CREATE INDEX idx_users_email_lower 
+CREATE INDEX idx_users_email_lower
 ON users (LOWER(email));
 
 -- Date part extraction
-CREATE INDEX idx_orders_month 
+CREATE INDEX idx_orders_month
 ON orders (EXTRACT(MONTH FROM order_date));
 
 -- JSON field indexing
-CREATE INDEX idx_users_preferences_theme 
+CREATE INDEX idx_users_preferences_theme
 ON users ((preferences->>'theme'));
 ```
 
@@ -131,17 +131,17 @@ CREATE INDEX idx_users_status_city_age ON users (status, city, age);
 **Selectivity Calculation:**
 ```sql
 -- Estimate selectivity for each column
-SELECT 
+SELECT
     'status' as column_name,
     COUNT(DISTINCT status)::float / COUNT(*) as selectivity
 FROM users
 UNION ALL
-SELECT 
+SELECT
     'city' as column_name,
     COUNT(DISTINCT city)::float / COUNT(*) as selectivity
 FROM users
 UNION ALL
-SELECT 
+SELECT
     'age' as column_name,
     COUNT(DISTINCT age)::float / COUNT(*) as selectivity
 FROM users;
@@ -175,7 +175,7 @@ CREATE INDEX idx_products_category_price_date ON products (category, price DESC,
 CREATE INDEX idx_users_lastname_firstname_email ON users (last_name, first_name, email);
 
 -- ✓ Uses index: WHERE last_name = 'Smith'
--- ✓ Uses index: WHERE last_name = 'Smith' AND first_name = 'John'  
+-- ✓ Uses index: WHERE last_name = 'Smith' AND first_name = 'John'
 -- ✓ Uses index: WHERE last_name = 'Smith' AND first_name = 'John' AND email = 'john@...'
 -- ✗ Cannot use index: WHERE first_name = 'John'
 -- ✗ Cannot use index: WHERE email = 'john@...'
@@ -208,7 +208,7 @@ CREATE INDEX idx_users_city_status_age ON users (city, status, age);
 ```sql
 -- Pros: Covers many query patterns, excellent for covering queries
 -- Cons: Large index size, slower writes, more memory usage
-CREATE INDEX idx_orders_comprehensive 
+CREATE INDEX idx_orders_comprehensive
 ON orders (customer_id, order_date, status, total_amount, shipping_method, created_at)
 INCLUDE (order_notes, billing_address);
 ```
@@ -226,7 +226,7 @@ CREATE INDEX idx_orders_status ON orders (status);
 **Regular Index Analysis:**
 ```sql
 -- PostgreSQL: Check index usage statistics
-SELECT 
+SELECT
     schemaname,
     tablename,
     indexname,
@@ -238,7 +238,7 @@ WHERE idx_scan = 0  -- Potentially unused indexes
 ORDER BY schemaname, tablename;
 
 -- Check index size
-SELECT 
+SELECT
     indexname,
     pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size
 FROM pg_indexes
@@ -254,7 +254,7 @@ ORDER BY pg_relation_size(indexname::regclass) DESC;
 ```sql
 -- Too many similar indexes
 CREATE INDEX idx_orders_customer ON orders (customer_id);
-CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);  
+CREATE INDEX idx_orders_customer_date ON orders (customer_id, order_date);
 CREATE INDEX idx_orders_customer_status ON orders (customer_id, status);
 CREATE INDEX idx_orders_customer_date_status ON orders (customer_id, order_date, status);
 ```
@@ -332,19 +332,19 @@ ANALYZE addresses;
 **Pattern: Different indexes for different data ages**
 ```sql
 -- Hot data (recent orders) - optimized for OLTP
-CREATE INDEX idx_orders_hot_customer_date 
-ON orders (customer_id, order_date DESC) 
+CREATE INDEX idx_orders_hot_customer_date
+ON orders (customer_id, order_date DESC)
 WHERE order_date > CURRENT_DATE - INTERVAL '30 days';
 
--- Warm data (older orders) - optimized for analytics  
-CREATE INDEX idx_orders_warm_date_total 
-ON orders (order_date, total_amount) 
-WHERE order_date <= CURRENT_DATE - INTERVAL '30 days' 
+-- Warm data (older orders) - optimized for analytics
+CREATE INDEX idx_orders_warm_date_total
+ON orders (order_date, total_amount)
+WHERE order_date <= CURRENT_DATE - INTERVAL '30 days'
   AND order_date > CURRENT_DATE - INTERVAL '1 year';
 
 -- Cold data (archived orders) - minimal indexing
-CREATE INDEX idx_orders_cold_date 
-ON orders (order_date) 
+CREATE INDEX idx_orders_cold_date
+ON orders (order_date)
 WHERE order_date <= CURRENT_DATE - INTERVAL '1 year';
 ```
 
@@ -353,12 +353,12 @@ WHERE order_date <= CURRENT_DATE - INTERVAL '1 year';
 **Design indexes to avoid table access:**
 ```sql
 -- Query: SELECT order_id, total_amount, status FROM orders WHERE customer_id = ?
-CREATE INDEX idx_orders_customer_covering 
-ON orders (customer_id) 
+CREATE INDEX idx_orders_customer_covering
+ON orders (customer_id)
 INCLUDE (order_id, total_amount, status);
 
 -- Or as composite index (if database doesn't support INCLUDE)
-CREATE INDEX idx_orders_customer_covering 
+CREATE INDEX idx_orders_customer_covering
 ON orders (customer_id, order_id, total_amount, status);
 ```
 
@@ -369,7 +369,7 @@ ON orders (customer_id, order_id, total_amount, status);
 **Find slow queries that might benefit from indexes:**
 ```sql
 -- PostgreSQL: Find queries with high cost
-SELECT 
+SELECT
     query,
     calls,
     total_time,
@@ -383,7 +383,7 @@ ORDER BY mean_time DESC;
 **Identify missing indexes:**
 ```sql
 -- Look for sequential scans on large tables
-SELECT 
+SELECT
     schemaname,
     tablename,
     seq_scan,
@@ -391,7 +391,7 @@ SELECT
     idx_scan,
     n_tup_ins + n_tup_upd + n_tup_del as write_activity
 FROM pg_stat_user_tables
-WHERE seq_scan > 100 
+WHERE seq_scan > 100
   AND seq_tup_read > 100000  -- Large sequential scans
   AND (idx_scan = 0 OR seq_scan > idx_scan * 2)
 ORDER BY seq_tup_read DESC;
@@ -416,7 +416,7 @@ SELECT * FROM pg_stat_user_indexes WHERE idx_scan = 0;
 Effective index strategy requires:
 
 1. **Understanding Query Patterns**: Analyze actual application queries, not theoretical scenarios
-2. **Measuring Performance**: Use query execution plans and timing to validate index effectiveness  
+2. **Measuring Performance**: Use query execution plans and timing to validate index effectiveness
 3. **Balancing Trade-offs**: More indexes improve reads but slow writes and increase storage
 4. **Regular Maintenance**: Monitor index usage and performance, remove unused indexes
 5. **Iterative Improvement**: Start with essential indexes, add and optimize based on real usage

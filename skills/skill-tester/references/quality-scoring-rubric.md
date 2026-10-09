@@ -1,8 +1,8 @@
 # Quality Scoring Rubric
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-16  
-**Authority**: Claude Skills Engineering Team  
+**Version**: 1.0.0
+**Last Updated**: 2026-02-16
+**Authority**: Claude Skills Engineering Team
 
 ## Overview
 
@@ -12,7 +12,7 @@ This document defines the comprehensive quality scoring methodology used to asse
 
 ### Overall Scoring Scale
 - **A+ (95-100)**: Exceptional quality, exceeds all standards
-- **A (90-94)**: Excellent quality, meets highest standards consistently  
+- **A (90-94)**: Excellent quality, meets highest standards consistently
 - **A- (85-89)**: Very good quality, minor areas for improvement
 - **B+ (80-84)**: Good quality, meets most standards well
 - **B (75-79)**: Satisfactory quality, meets standards adequately
@@ -154,7 +154,7 @@ Each dimension contributes equally to the overall score:
 
 **Scoring Calculation:**
 ```
-Structure Score = (Required Present / Required Total) * 0.6 + 
+Structure Score = (Required Present / Required Total) * 0.6 +
                   (Recommended Present / Recommended Total) * 0.4
 ```
 
@@ -190,7 +190,7 @@ Structure Score = (Required Present / Required Total) * 0.6 +
 #### Test Coverage and Validation (25% of Completeness Score)
 **Assessment Areas:**
 - Sample data processing capability
-- Output verification mechanisms  
+- Output verification mechanisms
 - Edge case handling
 - Error condition testing
 - Integration test scenarios
@@ -279,13 +279,13 @@ Each dimension score is calculated as a weighted average of its components:
 def calculate_dimension_score(components):
     total_weighted_score = 0
     total_weight = 0
-    
+
     for component_name, component_data in components.items():
         score = component_data['score']
         weight = component_data['weight']
         total_weighted_score += score * weight
         total_weight += weight
-    
+
     return total_weighted_score / total_weight if total_weight > 0 else 0
 ```
 

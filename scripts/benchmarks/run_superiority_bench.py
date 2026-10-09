@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.benchmarks.scorecard import evaluate_scorecard
+from scripts.benchmarks.scorecard import evaluate_scorecard  # noqa: E402  -- sys.path bootstrap above must run first
 
 ARTIFACT_DIR = ROOT / "artifacts" / "benchmarks"
 JSON_PATH = ARTIFACT_DIR / "superiority-report.json"

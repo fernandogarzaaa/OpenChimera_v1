@@ -8,14 +8,14 @@ from __future__ import annotations
 
 from core.social_cognition import (  # noqa: F401
     MentalState,
-    RelationshipRecord,
-    SocialContext,
-    SocialNorm,
-    TheoryOfMind,
     RelationshipMemory,
-    SocialContextTracker,
-    SocialNormRegistry,
+    RelationshipRecord,
     SocialCognition,
+    SocialContext,
+    SocialContextTracker,
+    SocialNorm,
+    SocialNormRegistry,
+    TheoryOfMind,
 )
 
 __all__ = [

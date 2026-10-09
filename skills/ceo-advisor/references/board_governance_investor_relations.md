@@ -30,7 +30,7 @@
 - Current year priorities
 - Risk assessment update
 
-**Q2 Meeting** 
+**Q2 Meeting**
 - Q1 results review
 - Strategic initiative progress
 - Competitive landscape
@@ -201,7 +201,7 @@ Best,
 
 Financial Highlights:
 • Revenue: $X (±Y% YoY)
-• Net Income: $X (±Y% YoY)  
+• Net Income: $X (±Y% YoY)
 • EPS: $X (±Y% YoY)
 • [Other key metric]
 
@@ -229,7 +229,7 @@ Contact:
 
 **CEO Opening (5 minutes)**
 ```
-Good [morning/afternoon], and welcome to [Company's] 
+Good [morning/afternoon], and welcome to [Company's]
 [Quarter] earnings call.
 
 Today I'll cover:

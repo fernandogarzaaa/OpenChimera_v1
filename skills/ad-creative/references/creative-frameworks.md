@@ -34,8 +34,8 @@ Every ad has one job: get the right person to stop, read, and take one action. I
 
 **Example (SaaS — project management):**
 ```
-Primary text: "Your team is shipping, but nobody knows who owns what. Deadlines are "this week" 
-not "Tuesday at 3pm." By the time the stand-up is over, everyone has a different version of 
+Primary text: "Your team is shipping, but nobody knows who owns what. Deadlines are "this week"
+not "Tuesday at 3pm." By the time the stand-up is over, everyone has a different version of
 the plan. [Product] replaces the chaos with a single source of truth. Try it free for 14 days."
 
 Headline: "Stop running projects in Slack threads"
@@ -83,8 +83,8 @@ Feature: "Automated payroll that syncs with your accounting software"
 Advantage: "No more manual data entry between systems"
 Benefit: "Close the books on time, every time — without staying late"
 
-Ad copy: "Payroll that closes itself. Automated payroll synced directly to QuickBooks — 
-no double entry, no reconciliation hell. Every month. On time. [Product] — 
+Ad copy: "Payroll that closes itself. Automated payroll synced directly to QuickBooks —
+no double entry, no reconciliation hell. Every month. On time. [Product] —
 start your free trial."
 ```
 
@@ -102,11 +102,11 @@ start your free trial."
 
 **Example (video script outline for SaaS):**
 ```
-[0–3s] ATTENTION: "[Hook visual/statement]" — "Most companies spend 8 hours a week 
+[0–3s] ATTENTION: "[Hook visual/statement]" — "Most companies spend 8 hours a week
 on reports nobody reads."
-[3–10s] INTEREST: "If you're a head of marketing, that's 32 hours of your team's time 
+[3–10s] INTEREST: "If you're a head of marketing, that's 32 hours of your team's time
 each month — time they could spend on campaigns that actually drive revenue."
-[10–20s] DESIRE: "[Product] automates the reporting. Your team gets that time back. 
+[10–20s] DESIRE: "[Product] automates the reporting. Your team gets that time back.
 Your manager gets the data they asked for, without the nagging."
 [20–25s] ACTION: "Start your 14-day free trial. No credit card."
 ```
@@ -129,7 +129,7 @@ Your manager gets the data they asked for, without the nagging."
 **Results-led:**
 ```
 Headline: "[Company] saved [X] hours per week with [Product]"
-Body: "Before [Product], [Company] was manually tracking [problem]. Today, 
+Body: "Before [Product], [Company] was manually tracking [problem]. Today,
 they [specific result] — in [timeframe]. Here's how they did it."
 ```
 
@@ -154,7 +154,7 @@ Body: "From 5-person startups to Fortune 500 companies. Start your free trial."
 Headline: "More emails isn't the answer"
 Body: "Everyone says send more emails. Better segmentation. More automation. More sequences.
 But if your email is boring, more of it just means more unsubscribes.
-[Product] helps you write emails people actually want to open — then send them 
+[Product] helps you write emails people actually want to open — then send them
 to the people most likely to act. Less volume. More revenue."
 ```
 
@@ -195,7 +195,7 @@ Body:
 2. Set your conditions ("when a lead scores over 80, do this")
 3. Watch it run — 24/7, without your team touching it"
 
-The result? Leads followed up in minutes, not days. Teams that spend time on deals, 
+The result? Leads followed up in minutes, not days. Teams that spend time on deals,
 not on data entry.
 [CTA: See it in action — free demo]
 ```

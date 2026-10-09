@@ -13,7 +13,7 @@ This skill actively forces OpenClaw to utilize the local CHIMERA Quantum Engine 
 - You (the assistant) recognize that a quick, single-shot answer might be insufficient and you want a consensus-driven response.
 
 ## How to Use
-Call the `quantum_solve` tool with a JSON object. 
+Call the `quantum_solve` tool with a JSON object.
 
 Example:
 ```json

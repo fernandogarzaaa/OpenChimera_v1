@@ -1,9 +1,7 @@
 """Tests for core.meta_learning — MetaLearning engine."""
 from __future__ import annotations
 
-import time
 import unittest
-from unittest.mock import MagicMock
 
 from core._bus_fallback import EventBus
 from core.meta_learning import (

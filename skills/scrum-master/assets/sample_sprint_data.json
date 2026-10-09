@@ -32,7 +32,7 @@
           "priority": "high"
         },
         {
-          "id": "US-102", 
+          "id": "US-102",
           "title": "Dashboard layout implementation",
           "points": 5,
           "status": "completed",
@@ -46,7 +46,7 @@
           "id": "US-103",
           "title": "API integration for user data",
           "points": 5,
-          "status": "completed", 
+          "status": "completed",
           "assigned_to": "Bob Wilson",
           "created_date": "2024-01-08",
           "completed_date": "2024-01-19",
@@ -260,7 +260,7 @@
     },
     {
       "sprint_number": 4,
-      "sprint_name": "Sprint Delta", 
+      "sprint_name": "Sprint Delta",
       "start_date": "2024-02-19",
       "end_date": "2024-03-01",
       "planned_points": 20,
@@ -388,7 +388,7 @@
           "points": 2,
           "status": "completed",
           "assigned_to": "Jane Smith",
-          "created_date": "2024-03-04", 
+          "created_date": "2024-03-04",
           "completed_date": "2024-03-10",
           "blocked_days": 0,
           "priority": "low"
@@ -521,7 +521,7 @@
       "duration_minutes": 75,
       "went_well": [
         "Team collaboration was excellent during planning",
-        "Daily standups were efficient and focused", 
+        "Daily standups were efficient and focused",
         "Good technical problem-solving on authentication system",
         "New team member integrated well",
         "Clear user story definitions"
@@ -546,7 +546,7 @@
           "effort_estimate": "medium"
         },
         {
-          "id": "AI-002", 
+          "id": "AI-002",
           "description": "Establish direct communication channel with API team",
           "owner": "Bob Wilson",
           "priority": "medium",
@@ -675,7 +675,7 @@
     {
       "sprint_number": 4,
       "date": "2024-03-01",
-      "facilitator": "Sarah Chen", 
+      "facilitator": "Sarah Chen",
       "attendees": ["John Doe", "Jane Smith", "Bob Wilson", "Alice Brown", "Sarah Chen"],
       "duration_minutes": 45,
       "went_well": [

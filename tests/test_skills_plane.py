@@ -1,8 +1,6 @@
 """Tests for core.skills_plane.SkillsPlane."""
 from __future__ import annotations
 
-import sys
-import types
 import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -99,7 +97,7 @@ class TestSkillsPlaneListAndGet(unittest.TestCase):
 class TestSkillsPlaneLoadModule(unittest.TestCase):
     """Tests for load_skill_module()."""
 
-    def _make_plane_with_skill(self, tmpdir: Path, py_content: str, skill_id: str = "my-skill") -> "SkillsPlane":
+    def _make_plane_with_skill(self, tmpdir: Path, py_content: str, skill_id: str = "my-skill") -> "SkillsPlane":  # noqa: F821  -- bound by the function-local import below; annotations are strings
         from core.skills_plane import SkillsPlane
 
         skill_dir = tmpdir / skill_id
@@ -187,7 +185,7 @@ class TestSkillsPlaneInvoke(unittest.TestCase):
         import shutil
         shutil.rmtree(self._tmpdir, ignore_errors=True)
 
-    def _make_plane(self, py_content: str, skill_id: str = "test-skill") -> "SkillsPlane":
+    def _make_plane(self, py_content: str, skill_id: str = "test-skill") -> "SkillsPlane":  # noqa: F821  -- bound by the function-local import below; annotations are strings
         from core.skills_plane import SkillsPlane
 
         skill_dir = self._tmpdir / skill_id

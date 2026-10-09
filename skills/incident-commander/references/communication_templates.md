@@ -159,7 +159,7 @@ Next update in 15 minutes.
 ```
 {Timestamp} - Monitoring
 
-The fix has been implemented and we are monitoring the service recovery. 
+The fix has been implemented and we are monitoring the service recovery.
 
 Current Status: {Recovery progress}
 Next Steps: {What we're monitoring}
@@ -211,7 +211,7 @@ Immediate Actions:
 
 Metrics:
 - Error Rate: {Current vs normal}
-- Response Time: {Current vs normal}  
+- Response Time: {Current vs normal}
 - Throughput: {Current vs normal}
 
 Communication Plan:
@@ -400,7 +400,7 @@ Product Owner: {Name}
 SEVERITY ESCALATION NOTIFICATION
 
 Original Classification: {Original severity}
-New Classification: {New severity}  
+New Classification: {New severity}
 Escalation Time: {Timestamp}
 Escalated By: {Name and role}
 
@@ -586,6 +586,6 @@ Thank you,
 
 ---
 
-**Last Updated:** February 2026  
-**Next Review:** May 2026  
+**Last Updated:** February 2026
+**Next Review:** May 2026
 **Owner:** Incident Management Team

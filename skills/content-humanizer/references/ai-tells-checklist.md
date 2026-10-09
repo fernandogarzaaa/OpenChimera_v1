@@ -124,7 +124,7 @@ Bold should be used sparingly — for the one thing that matters most in a secti
 ## Category 5: Tonal Tells
 
 ### False warmth 🟡
-"We hope this guide has been helpful in your journey to..." 
+"We hope this guide has been helpful in your journey to..."
 "We trust that you've found valuable insights in..."
 "It's our sincere hope that these strategies will empower you to..."
 

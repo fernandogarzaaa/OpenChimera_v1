@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
-from importlib.metadata import PackageNotFoundError, version as package_version
 import json
 import logging
 import os
@@ -12,17 +10,20 @@ import sys
 import threading
 import time
 import tomllib
+from datetime import datetime, timezone
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
 
+from core.aether_service import AetherService
 from core.bootstrap import bootstrap_workspace
 from core.bus import EventBus
-from core.aether_service import AetherService
 from core.config import (
     ROOT,
-    build_runtime_configuration_status,
     build_deployment_status,
     build_identity_snapshot,
+    build_runtime_configuration_status,
     get_api_admin_token,
     get_api_auth_header,
     get_api_auth_token,
@@ -42,7 +43,13 @@ from core.database import DatabaseManager
 from core.evo_service import EvoService
 from core.kernel import OpenChimeraKernel
 from core.logging_utils import configure_runtime_logging
-from core.mcp_registry import delete_mcp_registry_entry, list_mcp_registry_with_health, probe_all_mcp_registry_entries, probe_mcp_registry_entry, upsert_mcp_registry_entry
+from core.mcp_registry import (
+    delete_mcp_registry_entry,
+    list_mcp_registry_with_health,
+    probe_all_mcp_registry_entries,
+    probe_mcp_registry_entry,
+    upsert_mcp_registry_entry,
+)
 from core.personality import Personality
 from core.provider import OpenChimeraProvider
 from core.wraith_service import WraithService
@@ -177,13 +184,15 @@ def _format_job_counts(counts: dict[str, Any]) -> str:
     return f"total={total} queued={queued} running={running} completed={completed} failed={failed} cancelled={cancelled}"
 
 
-def _runtime_state_label(snapshot: dict[str, Any]) -> str:
+def _runtime_state_label(snapshot: dict[str, Any], optional: bool = False) -> str:
     if not isinstance(snapshot, dict):
         return "unknown"
     if snapshot.get("running"):
         return "running"
     if snapshot.get("available"):
         return "available"
+    if optional:
+        return "not installed (optional)"
     return "missing"
 
 
@@ -462,12 +471,29 @@ def _status_command(as_json: bool) -> int:
         return 0
 
     provider_state = "online" if payload.get("provider_online") else "degraded"
+    # A provider can be "degraded" only because optional subsystems are absent —
+    # that is normal for a fresh install.  Help the user understand what's missing.
     print(f"OpenChimera status: {provider_state}")
-    print(f"AETHER: {_runtime_state_label(payload.get('aether', {}))}")
-    print(f"WRAITH: {_runtime_state_label(payload.get('wraith', {}))}")
-    print(f"Evo: {_runtime_state_label(payload.get('evo', {}))}")
-    print(f"Aegis: {_runtime_state_label(payload.get('aegis', {}))}")
+    print(f"AETHER: {_runtime_state_label(payload.get('aether', {}), optional=True)}")
+    print(f"WRAITH: {_runtime_state_label(payload.get('wraith', {}), optional=True)}")
+    print(f"Evo: {_runtime_state_label(payload.get('evo', {}), optional=True)}")
+    print(f"Aegis: {_runtime_state_label(payload.get('aegis', {}), optional=True)}")
     print(f"Ascension: {_runtime_state_label(payload.get('ascension', {}))}")
+
+    # Explain "degraded" when all optional subsystems are absent
+    optional_keys = ("aether", "wraith", "evo", "aegis")
+    all_optional_absent = all(
+        not payload.get(k, {}).get("available") and not payload.get(k, {}).get("running")
+        for k in optional_keys
+    )
+    if provider_state == "degraded" and all_optional_absent:
+        print(
+            "  Note: 'degraded' means optional subsystems (AETHER/WRAITH/Evo/Aegis) are not\n"
+            "  installed — the core runtime and Ascension work normally. To enable them,\n"
+            "  clone their repos into external/ or set the corresponding *_ROOT env vars.\n"
+            "  See LEGACY_INTEGRATIONS.md for setup instructions."
+        )
+
     print(f"Prefer free fallbacks: {'enabled' if provider_activation.get('prefer_free_models') else 'disabled'}")
     print(f"Learned fallback rankings: {'available' if fallback_learning.get('learned_rankings_available') else 'unavailable'}")
     print(f"Fallback leaders: {_format_fallback_leaders(fallback_learning)}")
@@ -1793,8 +1819,8 @@ def _plugins_command(install_id: str, uninstall_id: str, as_json: bool, load_pat
     provider = _build_provider()
     if load_path:
         # Load a plugin from a manifest path via the capability plane
-        from core.capability_plane import CapabilityPlane
         from core.bus import EventBus
+        from core.capability_plane import CapabilityPlane
         bus = EventBus()
         # Minimal stub for plugin loading — capability plane is self-contained
         class _StubPlugins:

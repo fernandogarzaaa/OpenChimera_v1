@@ -1,6 +1,6 @@
 # Core web framework
-Django==4.2.29
-djangorestframework==3.15.2
+Django==5.2.17
+djangorestframework==3.17.2
 django-cors-headers==3.14.0
 django-environ==0.10.0
 django-extensions==3.2.1
@@ -13,18 +13,18 @@ celery==5.2.7
 # Authentication and Security
 django-allauth==65.14.1
 djangorestframework-simplejwt==5.5.1
-cryptography==46.0.7
+cryptography==50.0.0
 bcrypt==4.0.1
 
 # HTTP and API clients
 requests==2.33.0
 httpx==0.24.1
-urllib3==2.6.3
+urllib3==2.8.0
 
 # Data processing and analysis
 pandas==2.0.1
 numpy==1.24.3
-Pillow==12.1.1
+Pillow==12.3.0
 openpyxl==3.1.2
 
 # Monitoring and logging
@@ -32,7 +32,7 @@ sentry-sdk==1.45.1
 structlog==23.1.0
 
 # Testing
-pytest==7.3.1
+pytest==9.0.3
 pytest-django==4.5.2
 pytest-cov==4.0.0
 factory-boy==3.2.1

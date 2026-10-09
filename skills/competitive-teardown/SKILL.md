@@ -5,8 +5,8 @@ description: "Analyzes competitor products and companies by synthesizing data fr
 
 # Competitive Teardown
 
-**Tier:** POWERFUL  
-**Category:** Product Team  
+**Tier:** POWERFUL
+**Category:** Product Team
 **Domain:** Competitive Intelligence, Product Strategy, Market Analysis
 
 ---
@@ -26,9 +26,9 @@ description: "Analyzes competitor products and companies by synthesizing data fr
 Follow these steps in sequence to produce a complete teardown:
 
 1. **Define competitors** — List 2–4 competitors to analyze. Confirm which is the primary focus.
-2. **Collect data** — Use `references/data-collection-guide.md` to gather raw signals from at least 3 sources per competitor (website, reviews, job postings, SEO, social).  
+2. **Collect data** — Use `references/data-collection-guide.md` to gather raw signals from at least 3 sources per competitor (website, reviews, job postings, SEO, social).
    _Validation checkpoint: Before proceeding, confirm you have pricing data, at least 20 reviews, and job posting counts for each competitor._
-3. **Score using rubric** — Apply the 12-dimension rubric below to produce a numeric scorecard for each competitor and your own product.  
+3. **Score using rubric** — Apply the 12-dimension rubric below to produce a numeric scorecard for each competitor and your own product.
    _Validation checkpoint: Every dimension should have a score and at least one supporting evidence note._
 4. **Generate outputs** — Populate the templates in `references/analysis-templates.md` (Feature Matrix, Pricing Analysis, SWOT, Positioning Map, UX Audit).
 5. **Build action plan** — Translate findings into the Action Items template (quick wins / medium-term / strategic).
@@ -122,14 +122,14 @@ Apply this pattern to all 12 dimensions for each competitor.
 
 ### Feature Comparison Matrix
 
-Rows: core features, pricing tiers, platform capabilities (web, iOS, Android, API).  
-Columns: your product + up to 3 competitors.  
-Score each cell 1–5. Sum to get total out of 60.  
+Rows: core features, pricing tiers, platform capabilities (web, iOS, Android, API).
+Columns: your product + up to 3 competitors.
+Score each cell 1–5. Sum to get total out of 60.
 **Score legend:** 5=Best-in-class, 4=Strong, 3=Average, 2=Below average, 1=Weak/Missing
 
 ### Pricing Analysis
 
-Capture per competitor: model type (per-seat / usage-based / flat rate / freemium), entry/mid/enterprise price points, free trial length.  
+Capture per competitor: model type (per-seat / usage-based / flat rate / freemium), entry/mid/enterprise price points, free trial length.
 Summarize: price leader, value leader, premium positioning, your position, and 2–3 pricing opportunity bullets.
 
 ### SWOT Analysis
@@ -142,9 +142,9 @@ For each competitor: 3–5 bullets per quadrant (Strengths, Weaknesses, Opportun
 
 ### UX Audit Checklist
 
-Onboarding: TTFV (minutes), steps to activation, CC-required, onboarding wizard quality.  
-Key workflows: steps, friction points, comparative score (yours vs. theirs).  
-Mobile: iOS/Android ratings, feature parity, top complaint and praise.  
+Onboarding: TTFV (minutes), steps to activation, CC-required, onboarding wizard quality.
+Key workflows: steps, friction points, comparative score (yours vs. theirs).
+Mobile: iOS/Android ratings, feature parity, top complaint and praise.
 Navigation: global search, keyboard shortcuts, in-app help.
 
 ### Action Items

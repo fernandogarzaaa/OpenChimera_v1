@@ -6,7 +6,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from core.logging_utils import JsonLogFormatter, RequestContextFilter, clear_request_context, configure_runtime_logging, set_request_context
+from core.logging_utils import (
+    JsonLogFormatter,
+    RequestContextFilter,
+    clear_request_context,
+    configure_runtime_logging,
+    set_request_context,
+)
 
 
 class LoggingUtilsTests(unittest.TestCase):

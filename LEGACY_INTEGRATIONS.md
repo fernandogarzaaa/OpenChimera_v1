@@ -22,6 +22,50 @@ The runtime profile can point at these optional roots:
 - legacy workflow snapshot roots used for compatibility evidence only
 - Aegis and Ascension-related workspaces
 
+## Setting Up Optional Subsystems
+
+`python run.py status` will show `not installed (optional)` for AETHER, WRAITH, Evo,
+and Aegis when their repos are absent. This is normal for a fresh install — the core
+runtime and Ascension subsystem operate fully without them.
+
+To enable any optional subsystem clone (or symlink) its repository into the `external/`
+directory, then restart OpenChimera:
+
+```bash
+# AETHER — adaptive operator intelligence stack
+git clone <aether-repo-url> external/aether
+
+# WRAITH — stealth/mutation analysis engine
+git clone <wraith-repo-url> external/wraith
+
+# Project Evo — evolutionary algorithm subsystem
+git clone <evo-repo-url> external/evo
+
+# Aegis — mobile gateway / control plane
+git clone <aegis-repo-url> external/aegis-mobile
+```
+
+Alternatively, override any root via an environment variable before starting:
+
+```bash
+AETHER_ROOT=/my/custom/aether python run.py serve
+```
+
+Or set the path permanently in `config/runtime_profile.local.json`:
+
+```json
+{
+  "integrations": {
+    "aether": "/my/custom/aether",
+    "wraith": "/my/custom/wraith"
+  }
+}
+```
+
+If a subsystem repo is not publicly available, OpenChimera continues to operate in
+full degraded-acceptable mode: all core APIs, Ascension, the God Swarm, the audit
+pipeline, and chimeralang-mcp integration work without them.
+
 ## Memory-Recovered Integrations
 
 OpenChimera now preserves historically important integrations recovered from the OpenClaw memory corpus even when they are not yet first-class runtime bridges.

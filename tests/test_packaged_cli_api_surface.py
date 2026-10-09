@@ -1,0 +1,168 @@
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+PYTHON_PACKAGE_PATH = REPO_ROOT / "python"
+
+
+def _run_packaged_python(code: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(PYTHON_PACKAGE_PATH)
+    return subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=Path(tempfile.gettempdir()),
+        env=env,
+        text=True,
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+
+
+def test_packaged_cli_capabilities_and_config_commands_emit_json() -> None:
+    code = """
+from click.testing import CliRunner
+from openchimera.cli import cli
+for args in (["capabilities", "--json"], ["config", "--json"], ["onboard", "--json"], ["tools", "--json"]):
+    result = CliRunner().invoke(cli, list(args))
+    assert result.exit_code == 0, result.output
+    assert result.output.strip().startswith("{"), result.output
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_openai_compatible_models_and_chat_endpoints_exist() -> None:
+    code = """
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    models = client.get('/v1/models')
+    assert models.status_code == 200, models.text
+    assert models.json()['object'] == 'list'
+    chat = client.post('/v1/chat/completions', json={'model': 'mock', 'messages': [{'role': 'user', 'content': 'hello'}]})
+    assert chat.status_code == 200, chat.text
+    payload = chat.json()
+    assert payload['object'] == 'chat.completion'
+    assert payload['choices'][0]['message']['role'] == 'assistant'
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_tui_check_reports_missing_binary_as_json() -> None:
+    code = """
+from click.testing import CliRunner
+from openchimera.cli import cli
+result = CliRunner().invoke(cli, ['tui', '--check', '--json'])
+assert result.output.strip().startswith('{'), result.output
+assert result.exit_code in {0, 1}, result.output
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_streaming_openai_compatible_chat_emits_sse_chunks() -> None:
+    code = """
+import json
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    response = client.post('/v1/chat/completions', json={'model': 'mock', 'stream': True, 'messages': [{'role': 'user', 'content': 'hello'}]})
+    assert response.status_code == 200, response.text
+    assert response.headers['content-type'].startswith('text/event-stream'), response.headers
+    assert response.text.strip().endswith('data: [DONE]'), response.text
+    events = [json.loads(line[len('data: '):]) for line in response.text.splitlines() if line.startswith('data: ') and line != 'data: [DONE]']
+    assert events, response.text
+    assert all(event['object'] == 'chat.completion.chunk' for event in events), response.text
+    assert events[0]['choices'][0]['delta'].get('role') == 'assistant', response.text
+    assert any(event['choices'][0].get('finish_reason') == 'stop' for event in events), response.text
+    streamed = ''.join(event['choices'][0]['delta'].get('content', '') for event in events)
+    direct = client.post('/v1/chat/completions', json={'model': 'mock', 'stream': False, 'messages': [{'role': 'user', 'content': 'hello'}]})
+    assert direct.status_code == 200, direct.text
+    assert streamed == direct.json()['choices'][0]['message']['content'], (streamed, direct.text)
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_serve_bind_guardrail() -> None:
+    code = """
+from click.testing import CliRunner
+from openchimera.cli import check_bind_guardrail, cli
+assert check_bind_guardrail('127.0.0.1', False, False) is None
+assert check_bind_guardrail('localhost', False, False) is None
+assert check_bind_guardrail('::1', False, False) is None
+assert check_bind_guardrail('0.0.0.0', False, False) is not None
+assert check_bind_guardrail('', False, False) is not None
+assert check_bind_guardrail('0.0.0.0', True, False) is None
+assert check_bind_guardrail('0.0.0.0', False, True) is None
+# The CLI refuses before touching the network: no server is started.
+result = CliRunner().invoke(cli, ['serve', '--host', '0.0.0.0'])
+assert result.exit_code != 0, result.output
+assert 'auth' in result.output.lower(), result.output
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_api_auth_enforcement() -> None:
+    code = """
+import os
+os.environ['OPENCHIMERA_API__AUTH__ENABLED'] = 'true'
+os.environ['OPENCHIMERA_API__AUTH__TOKEN'] = 's3cret-test-token'
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    assert client.get('/health').status_code == 200
+    assert client.get('/v1/models').status_code == 401
+    denied = client.post('/v1/chat/completions', json={'model': 'mock', 'messages': [{'role': 'user', 'content': 'hi'}]})
+    assert denied.status_code == 401, denied.text
+    assert denied.headers.get('www-authenticate') == 'Bearer', denied.headers
+    authed = client.get('/v1/models', headers={'Authorization': 'Bearer s3cret-test-token'})
+    assert authed.status_code == 200, authed.text
+    wrong = client.get('/v1/models', headers={'Authorization': 'Bearer wrong'})
+    assert wrong.status_code == 401, wrong.text
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_api_open_by_default() -> None:
+    code = """
+from fastapi.testclient import TestClient
+from openchimera.api.routes import app
+with TestClient(app) as client:
+    assert client.get('/health').status_code == 200
+    assert client.get('/v1/models').status_code == 200
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_packaged_env_overrides_config_files() -> None:
+    default_yaml = (REPO_ROOT / "config" / "default.yaml").as_posix()
+    code = f"""
+import os
+os.environ['OPENCHIMERA_CONFIG'] = '{default_yaml}'
+os.environ['OPENCHIMERA_PROVIDERS__OLLAMA__ENABLED'] = 'true'
+os.environ['OPENCHIMERA_PROVIDERS__OLLAMA__DEFAULT_MODEL'] = 'qwen2.5:0.5b'
+os.environ['OPENCHIMERA_SERVER__PORT'] = '9999'
+os.environ['OPENCHIMERA_BOGUS__NOPE'] = 'ignored'
+from openchimera.config import load_settings
+s = load_settings(force_reload=True)
+# Environment wins over the config file (bool, str, and int coercion).
+assert s.providers.ollama.enabled is True
+assert s.providers.ollama.default_model == 'qwen2.5:0.5b'
+assert s.server.port == 9999
+# Config-file values still fill every gap the environment leaves.
+assert s.server.host == '127.0.0.1'
+assert s.providers.openai.enabled is False
+"""
+    result = _run_packaged_python(code)
+    assert result.returncode == 0, result.stdout + result.stderr

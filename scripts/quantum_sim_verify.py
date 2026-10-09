@@ -30,8 +30,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from core.quantum_engine import AgentReputation, QuantumEngine
-
+from core.quantum_engine import AgentReputation, QuantumEngine  # noqa: E402  -- sys.path bootstrap above must run first
 
 # ---------------------------------------------------------------------------
 # Simulated agent pool
@@ -330,7 +329,7 @@ def main() -> int:
     else:
         print(f"\nQuantum Engine Sim: {passed}/{len(results)} passed in {elapsed * 1000:.0f}ms")
         if failed:
-            print(f"FAILED scenarios:")
+            print("FAILED scenarios:")
             for r in results:
                 if not r["passed"]:
                     print(f"  - {r['name']}: {r.get('error', 'assertion failed')}")

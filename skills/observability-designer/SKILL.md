@@ -5,8 +5,8 @@ description: "Observability Designer (POWERFUL)"
 
 # Observability Designer (POWERFUL)
 
-**Category:** Engineering  
-**Tier:** POWERFUL  
+**Category:** Engineering
+**Tier:** POWERFUL
 **Description:** Design comprehensive observability strategies for production systems including SLI/SLO frameworks, alerting optimization, and dashboard generation.
 
 ## Overview
@@ -68,7 +68,7 @@ Observability Designer enables you to create production-ready observability stra
 ### Alert Design and Optimization
 
 #### Alert Classification
-- **Severity Levels:** 
+- **Severity Levels:**
   - **Critical:** Service down, SLO burn rate high
   - **Warning:** Approaching thresholds, non-user-facing issues
   - **Info:** Deployment notifications, capacity planning alerts

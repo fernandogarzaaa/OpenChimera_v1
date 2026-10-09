@@ -20,5 +20,5 @@ if __name__ == "__main__":
     parser.add_argument("text", help="Text to compress")
     parser.add_argument("--ratio", type=float, default=0.5, help="Compression ratio (0.1-0.9)")
     args = parser.parse_args()
-    
+
     fracture_text(args.text, args.ratio)

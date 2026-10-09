@@ -81,11 +81,11 @@ class CompatibilityReport:
 
 class SchemaCompatibilityChecker:
     """Main schema compatibility checker class"""
-    
+
     def __init__(self):
         self.type_compatibility_matrix = self._build_type_compatibility_matrix()
         self.constraint_implications = self._build_constraint_implications()
-    
+
     def _build_type_compatibility_matrix(self) -> Dict[str, Dict[str, str]]:
         """Build data type compatibility matrix"""
         return {
@@ -169,7 +169,7 @@ class SchemaCompatibilityChecker:
                 "null": "potentially_breaking"
             }
         }
-    
+
     def _build_constraint_implications(self) -> Dict[str, Dict[str, str]]:
         """Build constraint change implications"""
         return {
@@ -206,16 +206,16 @@ class SchemaCompatibilityChecker:
                 "modified": "non_breaking"  # Performance impact only
             }
         }
-    
-    def analyze_database_schema(self, before_schema: Dict[str, Any], 
+
+    def analyze_database_schema(self, before_schema: Dict[str, Any],
                               after_schema: Dict[str, Any]) -> CompatibilityReport:
         """Analyze database schema compatibility"""
         issues = []
         migration_scripts = []
-        
+
         before_tables = before_schema.get("tables", {})
         after_tables = after_schema.get("tables", {})
-        
+
         # Check for removed tables
         for table_name in before_tables:
             if table_name not in after_tables:
@@ -230,7 +230,7 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"CREATE VIEW {table_name} AS SELECT * FROM replacement_table;",
                     affected_operations=["SELECT", "INSERT", "UPDATE", "DELETE"]
                 ))
-        
+
         # Check for added tables
         for table_name in after_tables:
             if table_name not in before_tables:
@@ -242,7 +242,7 @@ class SchemaCompatibilityChecker:
                     dependencies=[],
                     validation_query=f"SELECT COUNT(*) FROM information_schema.tables WHERE table_name = '{table_name}';"
                 ))
-        
+
         # Check for modified tables
         for table_name in set(before_tables.keys()) & set(after_tables.keys()):
             table_issues, table_scripts = self._analyze_table_changes(
@@ -250,21 +250,21 @@ class SchemaCompatibilityChecker:
             )
             issues.extend(table_issues)
             migration_scripts.extend(table_scripts)
-        
+
         return self._build_compatibility_report(
             before_schema, after_schema, issues, migration_scripts
         )
-    
-    def analyze_api_schema(self, before_schema: Dict[str, Any], 
+
+    def analyze_api_schema(self, before_schema: Dict[str, Any],
                           after_schema: Dict[str, Any]) -> CompatibilityReport:
         """Analyze REST API schema compatibility"""
         issues = []
         migration_scripts = []
-        
+
         # Analyze endpoints
         before_paths = before_schema.get("paths", {})
         after_paths = after_schema.get("paths", {})
-        
+
         # Check for removed endpoints
         for path in before_paths:
             if path not in after_paths:
@@ -280,7 +280,7 @@ class SchemaCompatibilityChecker:
                         suggested_migration=f"Implement redirect to replacement endpoint or maintain backward compatibility stub",
                         affected_operations=[f"{method.upper()} {path}"]
                     ))
-        
+
         # Check for modified endpoints
         for path in set(before_paths.keys()) & set(after_paths.keys()):
             path_issues, path_scripts = self._analyze_endpoint_changes(
@@ -288,31 +288,31 @@ class SchemaCompatibilityChecker:
             )
             issues.extend(path_issues)
             migration_scripts.extend(path_scripts)
-        
+
         # Analyze data models
         before_components = before_schema.get("components", {}).get("schemas", {})
         after_components = after_schema.get("components", {}).get("schemas", {})
-        
+
         for model_name in set(before_components.keys()) & set(after_components.keys()):
             model_issues, model_scripts = self._analyze_model_changes(
                 model_name, before_components[model_name], after_components[model_name]
             )
             issues.extend(model_issues)
             migration_scripts.extend(model_scripts)
-        
+
         return self._build_compatibility_report(
             before_schema, after_schema, issues, migration_scripts
         )
-    
-    def _analyze_table_changes(self, table_name: str, before_table: Dict[str, Any], 
+
+    def _analyze_table_changes(self, table_name: str, before_table: Dict[str, Any],
                              after_table: Dict[str, Any]) -> Tuple[List[CompatibilityIssue], List[MigrationScript]]:
         """Analyze changes to a specific table"""
         issues = []
         scripts = []
-        
+
         before_columns = before_table.get("columns", {})
         after_columns = after_table.get("columns", {})
-        
+
         # Check for removed columns
         for col_name in before_columns:
             if col_name not in after_columns:
@@ -327,13 +327,13 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"ALTER TABLE {table_name} ADD COLUMN {col_name}_deprecated AS computed_value;",
                     affected_operations=["SELECT", "INSERT", "UPDATE"]
                 ))
-        
+
         # Check for added columns
         for col_name in after_columns:
             if col_name not in before_columns:
                 col_def = after_columns[col_name]
                 is_required = col_def.get("nullable", True) == False and col_def.get("default") is None
-                
+
                 if is_required:
                     issues.append(CompatibilityIssue(
                         type="required_column_added",
@@ -346,7 +346,7 @@ class SchemaCompatibilityChecker:
                         suggested_migration=f"Add default value or make column nullable initially",
                         affected_operations=["INSERT"]
                     ))
-                
+
                 scripts.append(MigrationScript(
                     script_type="sql",
                     description=f"Add column {col_name} to table {table_name}",
@@ -355,7 +355,7 @@ class SchemaCompatibilityChecker:
                     dependencies=[],
                     validation_query=f"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '{table_name}' AND column_name = '{col_name}';"
                 ))
-        
+
         # Check for modified columns
         for col_name in set(before_columns.keys()) & set(after_columns.keys()):
             col_issues, col_scripts = self._analyze_column_changes(
@@ -363,32 +363,32 @@ class SchemaCompatibilityChecker:
             )
             issues.extend(col_issues)
             scripts.extend(col_scripts)
-        
+
         # Check constraint changes
         before_constraints = before_table.get("constraints", {})
         after_constraints = after_table.get("constraints", {})
-        
+
         constraint_issues, constraint_scripts = self._analyze_constraint_changes(
             table_name, before_constraints, after_constraints
         )
         issues.extend(constraint_issues)
         scripts.extend(constraint_scripts)
-        
+
         return issues, scripts
-    
-    def _analyze_column_changes(self, table_name: str, col_name: str, 
+
+    def _analyze_column_changes(self, table_name: str, col_name: str,
                               before_col: Dict[str, Any], after_col: Dict[str, Any]) -> Tuple[List[CompatibilityIssue], List[MigrationScript]]:
         """Analyze changes to a specific column"""
         issues = []
         scripts = []
-        
+
         # Check data type changes
         before_type = before_col.get("type", "").lower()
         after_type = after_col.get("type", "").lower()
-        
+
         if before_type != after_type:
             compatibility = self.type_compatibility_matrix.get(before_type, {}).get(after_type, "breaking")
-            
+
             if compatibility == "breaking":
                 issues.append(CompatibilityIssue(
                     type="incompatible_type_change",
@@ -401,7 +401,7 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Add conversion logic and validate data integrity",
                     affected_operations=["SELECT", "INSERT", "UPDATE", "WHERE clauses"]
                 ))
-                
+
                 scripts.append(MigrationScript(
                     script_type="sql",
                     description=f"Convert column {col_name} from {before_type} to {after_type}",
@@ -410,7 +410,7 @@ class SchemaCompatibilityChecker:
                     dependencies=[f"backup_{table_name}"],
                     validation_query=f"SELECT COUNT(*) FROM {table_name} WHERE {col_name} IS NOT NULL;"
                 ))
-            
+
             elif compatibility == "potentially_breaking":
                 issues.append(CompatibilityIssue(
                     type="risky_type_change",
@@ -423,11 +423,11 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Validate all existing data can be converted safely",
                     affected_operations=["Data integrity"]
                 ))
-        
+
         # Check nullability changes
         before_nullable = before_col.get("nullable", True)
         after_nullable = after_col.get("nullable", True)
-        
+
         if before_nullable != after_nullable:
             if before_nullable and not after_nullable:  # null -> not null
                 issues.append(CompatibilityIssue(
@@ -441,7 +441,7 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Update NULL values to valid defaults before applying NOT NULL constraint",
                     affected_operations=["INSERT", "UPDATE"]
                 ))
-                
+
                 scripts.append(MigrationScript(
                     script_type="sql",
                     description=f"Make column {col_name} NOT NULL",
@@ -455,11 +455,11 @@ class SchemaCompatibilityChecker:
                     dependencies=[],
                     validation_query=f"SELECT COUNT(*) FROM {table_name} WHERE {col_name} IS NULL;"
                 ))
-        
+
         # Check length/precision changes
         before_length = before_col.get("length")
         after_length = after_col.get("length")
-        
+
         if before_length and after_length and before_length != after_length:
             if after_length < before_length:
                 issues.append(CompatibilityIssue(
@@ -473,23 +473,23 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Validate no existing data exceeds new length limit",
                     affected_operations=["INSERT", "UPDATE"]
                 ))
-        
+
         return issues, scripts
-    
-    def _analyze_constraint_changes(self, table_name: str, before_constraints: Dict[str, Any], 
+
+    def _analyze_constraint_changes(self, table_name: str, before_constraints: Dict[str, Any],
                                   after_constraints: Dict[str, Any]) -> Tuple[List[CompatibilityIssue], List[MigrationScript]]:
         """Analyze constraint changes"""
         issues = []
         scripts = []
-        
+
         for constraint_type in ["primary_key", "foreign_key", "unique", "check"]:
             before_constraint = before_constraints.get(constraint_type, [])
             after_constraint = after_constraints.get(constraint_type, [])
-            
+
             # Convert to sets for comparison
             before_set = set(str(c) for c in before_constraint) if isinstance(before_constraint, list) else {str(before_constraint)} if before_constraint else set()
             after_set = set(str(c) for c in after_constraint) if isinstance(after_constraint, list) else {str(after_constraint)} if after_constraint else set()
-            
+
             # Check for removed constraints
             for constraint in before_set - after_set:
                 implication = self.constraint_implications.get(constraint_type, {}).get("removed", "non_breaking")
@@ -504,7 +504,7 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Consider application-level validation for removed constraint",
                     affected_operations=["INSERT", "UPDATE", "DELETE"]
                 ))
-            
+
             # Check for added constraints
             for constraint in after_set - before_set:
                 implication = self.constraint_implications.get(constraint_type, {}).get("added", "potentially_breaking")
@@ -519,7 +519,7 @@ class SchemaCompatibilityChecker:
                     suggested_migration=f"Validate existing data complies with new constraint",
                     affected_operations=["INSERT", "UPDATE"]
                 ))
-                
+
                 scripts.append(MigrationScript(
                     script_type="sql",
                     description=f"Add {constraint_type} constraint to {table_name}",
@@ -528,26 +528,26 @@ class SchemaCompatibilityChecker:
                     dependencies=[],
                     validation_query=f"SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name = '{table_name}' AND constraint_type = '{constraint_type.upper()}';"
                 ))
-        
+
         return issues, scripts
-    
-    def _analyze_endpoint_changes(self, path: str, before_endpoint: Dict[str, Any], 
+
+    def _analyze_endpoint_changes(self, path: str, before_endpoint: Dict[str, Any],
                                 after_endpoint: Dict[str, Any]) -> Tuple[List[CompatibilityIssue], List[MigrationScript]]:
         """Analyze changes to an API endpoint"""
         issues = []
         scripts = []
-        
+
         for method in set(before_endpoint.keys()) & set(after_endpoint.keys()):
             before_method = before_endpoint[method]
             after_method = after_endpoint[method]
-            
+
             # Check parameter changes
             before_params = before_method.get("parameters", [])
             after_params = after_method.get("parameters", [])
-            
+
             before_param_names = {p["name"] for p in before_params}
             after_param_names = {p["name"] for p in after_params}
-            
+
             # Check for removed required parameters
             for param_name in before_param_names - after_param_names:
                 param = next(p for p in before_params if p["name"] == param_name)
@@ -563,7 +563,7 @@ class SchemaCompatibilityChecker:
                         suggested_migration="Implement parameter validation with backward compatibility",
                         affected_operations=[f"{method.upper()} {path}"]
                     ))
-            
+
             # Check for added required parameters
             for param_name in after_param_names - before_param_names:
                 param = next(p for p in after_params if p["name"] == param_name)
@@ -579,16 +579,16 @@ class SchemaCompatibilityChecker:
                         suggested_migration="Provide default value or make parameter optional initially",
                         affected_operations=[f"{method.upper()} {path}"]
                     ))
-            
+
             # Check response schema changes
             before_responses = before_method.get("responses", {})
             after_responses = after_method.get("responses", {})
-            
+
             for status_code in before_responses:
                 if status_code in after_responses:
                     before_schema = before_responses[status_code].get("content", {}).get("application/json", {}).get("schema", {})
                     after_schema = after_responses[status_code].get("content", {}).get("application/json", {}).get("schema", {})
-                    
+
                     if before_schema != after_schema:
                         issues.append(CompatibilityIssue(
                             type="response_schema_changed",
@@ -601,20 +601,20 @@ class SchemaCompatibilityChecker:
                             suggested_migration="Implement versioned API responses",
                             affected_operations=[f"{method.upper()} {path}"]
                         ))
-        
+
         return issues, scripts
-    
-    def _analyze_model_changes(self, model_name: str, before_model: Dict[str, Any], 
+
+    def _analyze_model_changes(self, model_name: str, before_model: Dict[str, Any],
                              after_model: Dict[str, Any]) -> Tuple[List[CompatibilityIssue], List[MigrationScript]]:
         """Analyze changes to an API data model"""
         issues = []
         scripts = []
-        
+
         before_props = before_model.get("properties", {})
         after_props = after_model.get("properties", {})
         before_required = set(before_model.get("required", []))
         after_required = set(after_model.get("required", []))
-        
+
         # Check for removed properties
         for prop_name in set(before_props.keys()) - set(after_props.keys()):
             issues.append(CompatibilityIssue(
@@ -628,7 +628,7 @@ class SchemaCompatibilityChecker:
                 suggested_migration="Use API versioning to maintain backward compatibility",
                 affected_operations=["Serialization", "Deserialization"]
             ))
-        
+
         # Check for newly required properties
         for prop_name in after_required - before_required:
             issues.append(CompatibilityIssue(
@@ -642,12 +642,12 @@ class SchemaCompatibilityChecker:
                 suggested_migration="Provide default values or implement gradual rollout",
                 affected_operations=["Request validation"]
             ))
-        
+
         # Check for property type changes
         for prop_name in set(before_props.keys()) & set(after_props.keys()):
             before_type = before_props[prop_name].get("type")
             after_type = after_props[prop_name].get("type")
-            
+
             if before_type != after_type:
                 compatibility = self.type_compatibility_matrix.get(before_type, {}).get(after_type, "breaking")
                 issues.append(CompatibilityIssue(
@@ -661,9 +661,9 @@ class SchemaCompatibilityChecker:
                     suggested_migration="Implement type coercion or API versioning",
                     affected_operations=["Serialization", "Deserialization"]
                 ))
-        
+
         return issues, scripts
-    
+
     def _build_compatibility_report(self, before_schema: Dict[str, Any], after_schema: Dict[str, Any],
                                   issues: List[CompatibilityIssue], migration_scripts: List[MigrationScript]) -> CompatibilityReport:
         """Build the final compatibility report"""
@@ -672,7 +672,7 @@ class SchemaCompatibilityChecker:
         potentially_breaking_count = sum(1 for issue in issues if issue.severity == "potentially_breaking")
         non_breaking_count = sum(1 for issue in issues if issue.severity == "non_breaking")
         additive_count = sum(1 for issue in issues if issue.type == "additive")
-        
+
         # Determine overall compatibility
         if breaking_count > 0:
             overall_compatibility = "breaking_changes"
@@ -682,34 +682,34 @@ class SchemaCompatibilityChecker:
             overall_compatibility = "backward_compatible"
         else:
             overall_compatibility = "fully_compatible"
-        
+
         # Generate risk assessment
         risk_assessment = {
             "overall_risk": "high" if breaking_count > 0 else "medium" if potentially_breaking_count > 0 else "low",
             "deployment_risk": "requires_coordinated_deployment" if breaking_count > 0 else "safe_independent_deployment",
             "rollback_complexity": "high" if breaking_count > 3 else "medium" if breaking_count > 0 else "low",
-            "testing_requirements": ["integration_testing", "regression_testing"] + 
+            "testing_requirements": ["integration_testing", "regression_testing"] +
                                   (["data_migration_testing"] if any(s.script_type == "sql" for s in migration_scripts) else [])
         }
-        
+
         # Generate recommendations
         recommendations = []
         if breaking_count > 0:
             recommendations.append("Implement API versioning to maintain backward compatibility")
             recommendations.append("Plan for coordinated deployment with all clients")
             recommendations.append("Implement comprehensive rollback procedures")
-        
+
         if potentially_breaking_count > 0:
             recommendations.append("Conduct thorough testing with realistic data volumes")
             recommendations.append("Implement monitoring for migration success metrics")
-        
+
         if migration_scripts:
             recommendations.append("Test all migration scripts in staging environment")
             recommendations.append("Implement migration progress monitoring")
-        
+
         recommendations.append("Create detailed communication plan for stakeholders")
         recommendations.append("Implement feature flags for gradual rollout")
-        
+
         return CompatibilityReport(
             schema_before=json.dumps(before_schema, indent=2)[:500] + "..." if len(json.dumps(before_schema)) > 500 else json.dumps(before_schema, indent=2),
             schema_after=json.dumps(after_schema, indent=2)[:500] + "..." if len(json.dumps(after_schema)) > 500 else json.dumps(after_schema, indent=2),
@@ -724,23 +724,23 @@ class SchemaCompatibilityChecker:
             risk_assessment=risk_assessment,
             recommendations=recommendations
         )
-    
+
     def _generate_create_table_sql(self, table_name: str, table_def: Dict[str, Any]) -> str:
         """Generate CREATE TABLE SQL statement"""
         columns = []
         for col_name, col_def in table_def.get("columns", {}).items():
             columns.append(self._generate_column_definition(col_name, col_def))
-        
+
         return f"CREATE TABLE {table_name} (\n  " + ",\n  ".join(columns) + "\n);"
-    
+
     def _generate_column_definition(self, col_name: str, col_def: Dict[str, Any]) -> str:
         """Generate column definition for SQL"""
         col_type = col_def.get("type", "VARCHAR(255)")
         nullable = "" if col_def.get("nullable", True) else " NOT NULL"
         default = f" DEFAULT {col_def.get('default')}" if col_def.get("default") is not None else ""
-        
+
         return f"{col_name} {col_type}{nullable}{default}"
-    
+
     def generate_human_readable_report(self, report: CompatibilityReport) -> str:
         """Generate human-readable compatibility report"""
         output = []
@@ -750,7 +750,7 @@ class SchemaCompatibilityChecker:
         output.append(f"Analysis Date: {report.analysis_date}")
         output.append(f"Overall Compatibility: {report.overall_compatibility.upper()}")
         output.append("")
-        
+
         # Summary
         output.append("SUMMARY")
         output.append("-" * 40)
@@ -760,21 +760,21 @@ class SchemaCompatibilityChecker:
         output.append(f"Additive Changes: {report.additive_changes_count}")
         output.append(f"Total Issues Found: {len(report.issues)}")
         output.append("")
-        
+
         # Risk Assessment
         output.append("RISK ASSESSMENT")
         output.append("-" * 40)
         for key, value in report.risk_assessment.items():
             output.append(f"{key.replace('_', ' ').title()}: {value}")
         output.append("")
-        
+
         # Issues by Severity
         issues_by_severity = {}
         for issue in report.issues:
             if issue.severity not in issues_by_severity:
                 issues_by_severity[issue.severity] = []
             issues_by_severity[issue.severity].append(issue)
-        
+
         for severity in ["breaking", "potentially_breaking", "non_breaking"]:
             if severity in issues_by_severity:
                 output.append(f"{severity.upper().replace('_', ' ')} ISSUES")
@@ -787,7 +787,7 @@ class SchemaCompatibilityChecker:
                     if issue.affected_operations:
                         output.append(f"  Affected Operations: {', '.join(issue.affected_operations)}")
                     output.append("")
-        
+
         # Migration Scripts
         if report.migration_scripts:
             output.append("SUGGESTED MIGRATION SCRIPTS")
@@ -799,14 +799,14 @@ class SchemaCompatibilityChecker:
                 for line in script.script_content.split('\n'):
                     output.append(f"     {line}")
                 output.append("")
-        
+
         # Recommendations
         output.append("RECOMMENDATIONS")
         output.append("-" * 40)
         for i, rec in enumerate(report.recommendations, 1):
             output.append(f"{i}. {rec}")
         output.append("")
-        
+
         return "\n".join(output)
 
 
@@ -818,25 +818,25 @@ def main():
     parser.add_argument("--type", choices=["database", "api"], default="database", help="Schema type to analyze")
     parser.add_argument("--output", "-o", help="Output file for compatibility report (JSON)")
     parser.add_argument("--format", "-f", choices=["json", "text", "both"], default="both", help="Output format")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load schemas
         with open(args.before, 'r') as f:
             before_schema = json.load(f)
-        
+
         with open(args.after, 'r') as f:
             after_schema = json.load(f)
-        
+
         # Analyze compatibility
         checker = SchemaCompatibilityChecker()
-        
+
         if args.type == "database":
             report = checker.analyze_database_schema(before_schema, after_schema)
         else:  # api
             report = checker.analyze_api_schema(before_schema, after_schema)
-        
+
         # Output results
         if args.format in ["json", "both"]:
             report_dict = asdict(report)
@@ -846,7 +846,7 @@ def main():
                 print(f"Compatibility report saved to {args.output}")
             else:
                 print(json.dumps(report_dict, indent=2))
-        
+
         if args.format in ["text", "both"]:
             human_report = checker.generate_human_readable_report(report)
             text_output = args.output.replace('.json', '.txt') if args.output else None
@@ -859,7 +859,7 @@ def main():
                 print("HUMAN-READABLE COMPATIBILITY REPORT")
                 print("="*80)
                 print(human_report)
-        
+
         # Return exit code based on compatibility
         if report.breaking_changes_count > 0:
             return 2  # Breaking changes found
@@ -867,7 +867,7 @@ def main():
             return 1  # Potentially breaking changes found
         else:
             return 0  # No compatibility issues
-            
+
     except FileNotFoundError as e:
         print(f"Error: File not found: {e}", file=sys.stderr)
         return 1

@@ -7,7 +7,6 @@ import time
 from core.config import get_wraith_root
 from core.integration import import_module_from_file
 
-
 LOGGER = logging.getLogger(__name__)
 
 

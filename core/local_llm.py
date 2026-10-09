@@ -17,7 +17,6 @@ from core.local_model_inventory import discover_local_model_inventory
 from core.resilience import retry_call
 from core.transactions import atomic_write_json
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -664,7 +663,7 @@ class LocalLLMManager:
         query_type: str,
         prompt_strategy: str | None = None,
     ) -> list[dict[str, str]]:
-        lowered = model_name.lower()
+        _lowered = model_name.lower()
         style_instruction = (
             "Respond in plain text. Be concrete and concise. Avoid markdown fences, bullet skeletons, placeholders, or role labels."
         )
@@ -731,7 +730,7 @@ class LocalLLMManager:
             stats = strategy_stats.get(strategy, {})
             successes = int(stats.get("successes", 0))
             failures = int(stats.get("failures", 0))
-            low_quality_failures = int(stats.get("low_quality_failures", 0))
+            _low_quality_failures = int(stats.get("low_quality_failures", 0))
             events = successes + failures
             score = self._prompt_strategy_penalty(stats)
             scored_candidates.append((score, -events, strategy))

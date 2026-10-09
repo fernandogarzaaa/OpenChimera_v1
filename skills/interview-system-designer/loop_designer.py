@@ -3,7 +3,7 @@
 Interview Loop Designer
 
 Generates calibrated interview loops tailored to specific roles, levels, and teams.
-Creates complete interview loops with rounds, focus areas, time allocation, 
+Creates complete interview loops with rounds, focus areas, time allocation,
 interviewer skill requirements, and scorecard templates.
 
 Usage:
@@ -23,12 +23,12 @@ from collections import defaultdict
 
 class InterviewLoopDesigner:
     """Designs comprehensive interview loops based on role requirements."""
-    
+
     def __init__(self):
         self.competency_frameworks = self._init_competency_frameworks()
         self.role_templates = self._init_role_templates()
         self.interviewer_skills = self._init_interviewer_skills()
-        
+
     def _init_competency_frameworks(self) -> Dict[str, Dict]:
         """Initialize competency frameworks for different roles."""
         return {
@@ -150,7 +150,7 @@ class InterviewLoopDesigner:
                 }
             }
         }
-    
+
     def _init_role_templates(self) -> Dict[str, Dict]:
         """Initialize role-specific interview templates."""
         return {
@@ -191,7 +191,7 @@ class InterviewLoopDesigner:
                 "required_competencies": ["people_leadership", "technical_understanding", "strategic_thinking"]
             }
         }
-    
+
     def _init_interviewer_skills(self) -> Dict[str, Dict]:
         """Initialize interviewer skill requirements for different round types."""
         return {
@@ -236,31 +236,31 @@ class InterviewLoopDesigner:
                 "calibration_level": "high"
             }
         }
-    
-    def generate_interview_loop(self, role: str, level: str, team: Optional[str] = None, 
+
+    def generate_interview_loop(self, role: str, level: str, team: Optional[str] = None,
                               competencies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Generate a complete interview loop for the specified role and level."""
-        
+
         # Normalize inputs
         role_key = role.lower().replace(" ", "_").replace("-", "_")
         level_key = level.lower()
-        
+
         # Get role template and competency requirements
         if role_key not in self.competency_frameworks:
             role_key = self._find_closest_role(role_key)
-        
+
         if level_key not in self.competency_frameworks[role_key]:
             level_key = self._find_closest_level(role_key, level_key)
-        
+
         competency_req = self.competency_frameworks[role_key][level_key]
         role_template = self.role_templates.get(role_key, self.role_templates["software_engineer"])
-        
+
         # Design the interview loop
         rounds = self._design_rounds(role_key, level_key, competency_req, role_template, competencies)
         schedule = self._create_schedule(rounds)
         scorecard = self._generate_scorecard(role_key, level_key, competency_req)
         interviewer_requirements = self._define_interviewer_requirements(rounds)
-        
+
         return {
             "role": role,
             "level": level,
@@ -275,7 +275,7 @@ class InterviewLoopDesigner:
             "competency_framework": competency_req,
             "calibration_notes": self._generate_calibration_notes(role_key, level_key)
         }
-    
+
     def _find_closest_role(self, role_key: str) -> str:
         """Find the closest matching role template."""
         role_mappings = {
@@ -299,20 +299,20 @@ class InterviewLoopDesigner:
             "manager": "engineering_manager",
             "lead": "engineering_manager"
         }
-        
+
         for key_part in role_key.split("_"):
             if key_part in role_mappings:
                 return role_mappings[key_part]
-        
+
         return "software_engineer"  # Default fallback
-    
+
     def _find_closest_level(self, role_key: str, level_key: str) -> str:
         """Find the closest matching level for the role."""
         available_levels = list(self.competency_frameworks[role_key].keys())
-        
+
         level_mappings = {
             "entry": "junior",
-            "associate": "junior", 
+            "associate": "junior",
             "jr": "junior",
             "mid": "mid",
             "middle": "mid",
@@ -323,25 +323,25 @@ class InterviewLoopDesigner:
             "lead": "senior",
             "manager": "senior"
         }
-        
+
         mapped_level = level_mappings.get(level_key, level_key)
-        
+
         if mapped_level in available_levels:
             return mapped_level
         elif "senior" in available_levels:
             return "senior"
         else:
             return available_levels[0]
-    
-    def _design_rounds(self, role_key: str, level_key: str, competency_req: Dict, 
+
+    def _design_rounds(self, role_key: str, level_key: str, competency_req: Dict,
                       role_template: Dict, custom_competencies: Optional[List[str]]) -> Dict[str, Dict]:
         """Design the specific interview rounds based on role and level."""
         rounds = {}
-        
+
         # Determine which rounds to include
         core_rounds = role_template["core_rounds"].copy()
         optional_rounds = role_template["optional_rounds"].copy()
-        
+
         # Add optional rounds based on level
         if level_key in ["senior", "staff", "principal"]:
             if "technical_leadership" in optional_rounds and role_key in ["software_engineer", "engineering_manager"]:
@@ -350,23 +350,23 @@ class InterviewLoopDesigner:
                 core_rounds.append("strategic_thinking")
             if "design_system_thinking" in optional_rounds and role_key == "designer":
                 core_rounds.append("design_system_thinking")
-        
+
         if level_key in ["staff", "principal"]:
             if "domain_expertise" in optional_rounds:
                 core_rounds.append("domain_expertise")
-        
+
         # Define round details
         round_definitions = self._get_round_definitions()
-        
+
         for i, round_type in enumerate(core_rounds, 1):
             if round_type in round_definitions:
                 round_def = round_definitions[round_type].copy()
                 round_def["order"] = i
                 round_def["focus_areas"] = self._customize_focus_areas(round_type, competency_req, custom_competencies)
                 rounds[f"round_{i}_{round_type}"] = round_def
-        
+
         return rounds
-    
+
     def _get_round_definitions(self) -> Dict[str, Dict]:
         """Get predefined round definitions with standard durations and formats."""
         return {
@@ -443,12 +443,12 @@ class InterviewLoopDesigner:
                 "evaluation_criteria": ["design_quality", "process_thinking", "business_impact"]
             }
         }
-    
-    def _customize_focus_areas(self, round_type: str, competency_req: Dict, 
+
+    def _customize_focus_areas(self, round_type: str, competency_req: Dict,
                               custom_competencies: Optional[List[str]]) -> List[str]:
         """Customize focus areas based on role competency requirements."""
         base_focus_areas = competency_req.get("focus_areas", [])
-        
+
         round_focus_mapping = {
             "technical_phone_screen": ["coding_fundamentals", "problem_solving"],
             "coding_deep_dive": ["technical_execution", "code_quality"],
@@ -459,32 +459,32 @@ class InterviewLoopDesigner:
             "analytical_thinking": ["data_analysis", "metric_design"],
             "design_challenge": ["design_process", "user_focus"]
         }
-        
+
         focus_areas = round_focus_mapping.get(round_type, [])
-        
+
         # Add custom competencies if specified
         if custom_competencies:
             focus_areas.extend([comp for comp in custom_competencies if comp not in focus_areas])
-        
+
         # Add role-specific focus areas
         focus_areas.extend([area for area in base_focus_areas if area not in focus_areas])
-        
+
         return focus_areas[:5]  # Limit to top 5 focus areas
-    
+
     def _create_schedule(self, rounds: Dict[str, Dict]) -> Dict[str, Any]:
         """Create a suggested interview schedule."""
         sorted_rounds = sorted(rounds.items(), key=lambda x: x[1]["order"])
-        
+
         # Calculate optimal scheduling
         total_duration = sum(round_info["duration_minutes"] for _, round_info in sorted_rounds)
-        
+
         if total_duration <= 240:  # 4 hours or less - single day
             schedule_type = "single_day"
             day_structure = self._create_single_day_schedule(sorted_rounds)
         else:  # Multi-day schedule
             schedule_type = "multi_day"
             day_structure = self._create_multi_day_schedule(sorted_rounds)
-        
+
         return {
             "type": schedule_type,
             "total_duration_minutes": total_duration,
@@ -492,14 +492,14 @@ class InterviewLoopDesigner:
             "day_structure": day_structure,
             "logistics_notes": self._generate_logistics_notes(sorted_rounds)
         }
-    
+
     def _create_single_day_schedule(self, rounds: List[Tuple[str, Dict]]) -> Dict[str, Any]:
         """Create a single-day interview schedule."""
         start_time = datetime.strptime("09:00", "%H:%M")
         current_time = start_time
-        
+
         schedule = []
-        
+
         for round_name, round_info in rounds:
             # Add break if needed (after 90 minutes of interviews)
             if schedule and sum(item.get("duration_minutes", 0) for item in schedule if "break" not in item.get("type", "")) >= 90:
@@ -510,7 +510,7 @@ class InterviewLoopDesigner:
                     "end_time": (current_time + timedelta(minutes=15)).strftime("%H:%M")
                 })
                 current_time += timedelta(minutes=15)
-            
+
             # Add the interview round
             end_time = current_time + timedelta(minutes=round_info["duration_minutes"])
             schedule.append({
@@ -523,7 +523,7 @@ class InterviewLoopDesigner:
                 "format": round_info["format"]
             })
             current_time = end_time
-        
+
         return {
             "day_1": {
                 "date": "TBD",
@@ -532,7 +532,7 @@ class InterviewLoopDesigner:
                 "rounds": schedule
             }
         }
-    
+
     def _create_multi_day_schedule(self, rounds: List[Tuple[str, Dict]]) -> Dict[str, Any]:
         """Create a multi-day interview schedule."""
         # Split rounds across days (max 4 hours per day)
@@ -541,32 +541,32 @@ class InterviewLoopDesigner:
         current_day = 1
         current_day_duration = 0
         current_day_rounds = []
-        
+
         for round_name, round_info in rounds:
             duration = round_info["duration_minutes"] + 15  # Add buffer time
-            
+
             if current_day_duration + duration > max_daily_minutes and current_day_rounds:
                 # Finalize current day
                 days[f"day_{current_day}"] = self._finalize_day_schedule(current_day_rounds)
                 current_day += 1
                 current_day_duration = 0
                 current_day_rounds = []
-            
+
             current_day_rounds.append((round_name, round_info))
             current_day_duration += duration
-        
+
         # Finalize last day
         if current_day_rounds:
             days[f"day_{current_day}"] = self._finalize_day_schedule(current_day_rounds)
-        
+
         return days
-    
+
     def _finalize_day_schedule(self, day_rounds: List[Tuple[str, Dict]]) -> Dict[str, Any]:
         """Finalize the schedule for a specific day."""
         start_time = datetime.strptime("09:00", "%H:%M")
         current_time = start_time
         schedule = []
-        
+
         for round_name, round_info in day_rounds:
             end_time = current_time + timedelta(minutes=round_info["duration_minutes"])
             schedule.append({
@@ -579,33 +579,33 @@ class InterviewLoopDesigner:
                 "format": round_info["format"]
             })
             current_time = end_time + timedelta(minutes=15)  # 15-min buffer
-        
+
         return {
             "date": "TBD",
             "start_time": start_time.strftime("%H:%M"),
             "end_time": (current_time - timedelta(minutes=15)).strftime("%H:%M"),
             "rounds": schedule
         }
-    
+
     def _calculate_breaks(self, total_duration: int) -> List[Dict[str, Any]]:
         """Calculate recommended breaks based on total duration."""
         breaks = []
-        
+
         if total_duration >= 120:  # 2+ hours
             breaks.append({"type": "short_break", "duration": 15, "after_minutes": 90})
-        
+
         if total_duration >= 240:  # 4+ hours
             breaks.append({"type": "lunch_break", "duration": 60, "after_minutes": 180})
-        
+
         if total_duration >= 360:  # 6+ hours
             breaks.append({"type": "short_break", "duration": 15, "after_minutes": 300})
-        
+
         return breaks
-    
+
     def _generate_scorecard(self, role_key: str, level_key: str, competency_req: Dict) -> Dict[str, Any]:
         """Generate a scorecard template for the interview loop."""
         scoring_dimensions = []
-        
+
         # Add competency-based scoring dimensions
         for competency in competency_req["required"]:
             scoring_dimensions.append({
@@ -614,28 +614,28 @@ class InterviewLoopDesigner:
                 "scale": "1-4",
                 "description": f"Assessment of {competency.replace('_', ' ')} competency"
             })
-        
+
         for competency in competency_req.get("preferred", []):
             scoring_dimensions.append({
                 "dimension": competency,
                 "weight": "medium",
-                "scale": "1-4", 
+                "scale": "1-4",
                 "description": f"Assessment of {competency.replace('_', ' ')} competency"
             })
-        
+
         # Add standard dimensions
         standard_dimensions = [
             {"dimension": "communication", "weight": "high", "scale": "1-4"},
             {"dimension": "cultural_fit", "weight": "medium", "scale": "1-4"},
             {"dimension": "learning_agility", "weight": "medium", "scale": "1-4"}
         ]
-        
+
         scoring_dimensions.extend(standard_dimensions)
-        
+
         return {
             "scoring_scale": {
                 "4": "Exceeds Expectations - Demonstrates mastery beyond required level",
-                "3": "Meets Expectations - Solid performance meeting all requirements", 
+                "3": "Meets Expectations - Solid performance meeting all requirements",
                 "2": "Partially Meets - Shows potential but has development areas",
                 "1": "Does Not Meet - Significant gaps in required competencies"
             },
@@ -650,14 +650,14 @@ class InterviewLoopDesigner:
                 "sections": ["strengths", "areas_for_development", "specific_examples"]
             }
         }
-    
+
     def _define_interviewer_requirements(self, rounds: Dict[str, Dict]) -> Dict[str, Dict]:
         """Define interviewer skill requirements for each round."""
         requirements = {}
-        
+
         for round_name, round_info in rounds.items():
             round_type = round_name.split("_", 2)[-1]  # Extract round type
-            
+
             if round_type in self.interviewer_skills:
                 skill_req = self.interviewer_skills[round_type].copy()
                 skill_req["suggested_interviewers"] = self._suggest_interviewer_profiles(round_type)
@@ -670,9 +670,9 @@ class InterviewLoopDesigner:
                     "calibration_level": "standard",
                     "suggested_interviewers": ["experienced_interviewer"]
                 }
-        
+
         return requirements
-    
+
     def _suggest_interviewer_profiles(self, round_type: str) -> List[str]:
         """Suggest specific interviewer profiles for different round types."""
         profile_mapping = {
@@ -685,9 +685,9 @@ class InterviewLoopDesigner:
             "analytical_thinking": ["senior_analyst", "data_scientist"],
             "design_challenge": ["senior_designer", "design_manager"]
         }
-        
+
         return profile_mapping.get(round_type, ["experienced_interviewer"])
-    
+
     def _generate_calibration_notes(self, role_key: str, level_key: str) -> Dict[str, Any]:
         """Generate calibration notes and best practices."""
         return {
@@ -708,7 +708,7 @@ class InterviewLoopDesigner:
                 "Unusual circumstances or accommodations needed"
             ]
         }
-    
+
     def _generate_logistics_notes(self, rounds: List[Tuple[str, Dict]]) -> List[str]:
         """Generate logistics and coordination notes."""
         notes = [
@@ -717,109 +717,109 @@ class InterviewLoopDesigner:
             "Prepare interview rooms/virtual links for all rounds",
             "Share candidate resume and application with all interviewers"
         ]
-        
+
         # Add format-specific notes
         formats_used = {round_info["format"] for _, round_info in rounds}
-        
+
         if "virtual" in formats_used:
             notes.append("Test video conferencing setup before virtual interviews")
             notes.append("Share virtual meeting links with candidate 24 hours in advance")
-        
+
         if "collaborative_whiteboard" in formats_used:
             notes.append("Prepare whiteboard or collaborative online tool for design sessions")
-        
+
         if "hands_on_design" in formats_used:
             notes.append("Provide design tools access or ensure candidate can screen share their preferred tools")
-        
+
         return notes
 
 
 def format_human_readable(loop_data: Dict[str, Any]) -> str:
     """Format the interview loop data in a human-readable format."""
     output = []
-    
+
     # Header
     output.append(f"Interview Loop Design for {loop_data['role']} ({loop_data['level'].title()} Level)")
     output.append("=" * 60)
-    
+
     if loop_data.get('team'):
         output.append(f"Team: {loop_data['team']}")
-    
+
     output.append(f"Generated: {loop_data['generated_at']}")
     output.append(f"Total Duration: {loop_data['total_duration_minutes']} minutes ({loop_data['total_duration_minutes']//60}h {loop_data['total_duration_minutes']%60}m)")
     output.append(f"Total Rounds: {loop_data['total_rounds']}")
     output.append("")
-    
+
     # Interview Rounds
     output.append("INTERVIEW ROUNDS")
     output.append("-" * 40)
-    
+
     sorted_rounds = sorted(loop_data['rounds'].items(), key=lambda x: x[1]['order'])
     for round_name, round_info in sorted_rounds:
         output.append(f"\nRound {round_info['order']}: {round_info['name']}")
         output.append(f"Duration: {round_info['duration_minutes']} minutes")
         output.append(f"Format: {round_info['format'].replace('_', ' ').title()}")
-        
+
         output.append("Objectives:")
         for obj in round_info['objectives']:
             output.append(f"  • {obj}")
-        
+
         output.append("Focus Areas:")
         for area in round_info['focus_areas']:
             output.append(f"  • {area.replace('_', ' ').title()}")
-    
+
     # Suggested Schedule
     output.append("\nSUGGESTED SCHEDULE")
     output.append("-" * 40)
-    
+
     schedule = loop_data['suggested_schedule']
     output.append(f"Schedule Type: {schedule['type'].replace('_', ' ').title()}")
-    
+
     for day_name, day_info in schedule['day_structure'].items():
         output.append(f"\n{day_name.replace('_', ' ').title()}:")
         output.append(f"Time: {day_info['start_time']} - {day_info['end_time']}")
-        
+
         for item in day_info['rounds']:
             if item['type'] == 'interview':
                 output.append(f"  {item['start_time']}-{item['end_time']}: {item['title']} ({item['duration_minutes']}min)")
             else:
                 output.append(f"  {item['start_time']}-{item['end_time']}: {item['type'].title()} ({item['duration_minutes']}min)")
-    
+
     # Interviewer Requirements
     output.append("\nINTERVIEWER REQUIREMENTS")
     output.append("-" * 40)
-    
+
     for round_name, requirements in loop_data['interviewer_requirements'].items():
         round_display = round_name.split("_", 2)[-1].replace("_", " ").title()
         output.append(f"\n{round_display}:")
         output.append(f"Required Skills: {', '.join(requirements['required_skills'])}")
         output.append(f"Suggested Interviewers: {', '.join(requirements['suggested_interviewers'])}")
         output.append(f"Calibration Level: {requirements['calibration_level'].title()}")
-    
+
     # Scorecard Overview
     output.append("\nSCORECARD TEMPLATE")
     output.append("-" * 40)
-    
+
     scorecard = loop_data['scorecard_template']
     output.append("Scoring Scale:")
     for score, description in scorecard['scoring_scale'].items():
         output.append(f"  {score}: {description}")
-    
+
     output.append("\nEvaluation Dimensions:")
     for dim in scorecard['dimensions']:
         output.append(f"  • {dim['dimension'].replace('_', ' ').title()} (Weight: {dim['weight']})")
-    
+
     # Calibration Notes
     output.append("\nCALIBRATION NOTES")
     output.append("-" * 40)
-    
+
     calibration = loop_data['calibration_notes']
     output.append(f"Hiring Bar: {calibration['hiring_bar_notes']}")
-    
+
     output.append("\nCommon Pitfalls:")
     for pitfall in calibration['common_pitfalls']:
         output.append(f"  • {pitfall}")
-    
+
     return "\n".join(output)
 
 
@@ -832,11 +832,11 @@ def main():
     parser.add_argument("--input", type=str, help="Input JSON file with role definition")
     parser.add_argument("--output", type=str, help="Output directory or file path")
     parser.add_argument("--format", choices=["json", "text", "both"], default="both", help="Output format")
-    
+
     args = parser.parse_args()
-    
+
     designer = InterviewLoopDesigner()
-    
+
     # Handle input
     if args.input:
         try:
@@ -853,16 +853,16 @@ def main():
         if not args.role or not args.level:
             print("Error: --role and --level are required when not using --input")
             sys.exit(1)
-        
+
         role = args.role
         level = args.level
         team = args.team
         competencies = args.competencies.split(',') if args.competencies else None
-    
+
     # Generate interview loop
     try:
         loop_data = designer.generate_interview_loop(role, level, team, competencies)
-        
+
         # Handle output
         if args.output:
             output_path = args.output
@@ -880,25 +880,25 @@ def main():
             base_filename = f"{safe_role}_{level}_interview_loop"
             json_path = f"{base_filename}.json"
             text_path = f"{base_filename}.txt"
-        
+
         # Write outputs
         if args.format in ["json", "both"]:
             with open(json_path, 'w') as f:
                 json.dump(loop_data, f, indent=2, default=str)
             print(f"JSON output written to: {json_path}")
-        
+
         if args.format in ["text", "both"]:
             with open(text_path, 'w') as f:
                 f.write(format_human_readable(loop_data))
             print(f"Text output written to: {text_path}")
-        
+
         # Always print summary to stdout
         print("\nInterview Loop Summary:")
         print(f"Role: {loop_data['role']} ({loop_data['level'].title()})")
         print(f"Total Duration: {loop_data['total_duration_minutes']} minutes")
         print(f"Number of Rounds: {loop_data['total_rounds']}")
         print(f"Schedule Type: {loop_data['suggested_schedule']['type'].replace('_', ' ').title()}")
-        
+
     except Exception as e:
         print(f"Error generating interview loop: {e}")
         sys.exit(1)

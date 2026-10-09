@@ -8,7 +8,6 @@ from typing import Any, Mapping
 
 from core.config import get_api_admin_token, get_api_auth_header, get_api_auth_token, is_api_auth_enabled
 
-
 PUBLIC_PATHS = {"/health", "/v1/system/readiness", "/openapi.json", "/docs"}
 PRIVILEGED_POST_PATHS = {
     "/v1/runtime/start",
@@ -131,5 +130,5 @@ class RequestAuthorizer:
                         "reason": reason,
                     },
                 )
-        except Exception:
-            logging.getLogger(__name__).debug("Failed to emit auth event", exc_info=True)
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Failed to emit auth event: %s", exc, exc_info=True)

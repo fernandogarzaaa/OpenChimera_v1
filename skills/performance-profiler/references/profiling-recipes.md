@@ -422,7 +422,7 @@ export function setup() {
     email: 'loadtest@example.com',
     password: 'loadtest123',
   }), { headers: { 'Content-Type': 'application/json' } })
-  
+
   return { token: loginRes.json('token') }
 }
 
@@ -431,30 +431,30 @@ export default function(data) {
     'Authorization': `Bearer ${data.token}`,
     'Content-Type': 'application/json',
   }
-  
+
   // Scenario 1: List tasks
   const start = Date.now()
   const listRes = http.get(`${BASE_URL}/api/tasks?limit=20`, { headers })
   taskListDuration.add(Date.now() - start)
-  
+
   check(listRes, {
     'list tasks: status 200': (r) => r.status === 200,
     'list tasks: has items': (r) => r.json('items') !== undefined,
   }) || errorRate.add(1)
-  
+
   sleep(0.5)
-  
+
   // Scenario 2: Create task
   const createRes = http.post(
     `${BASE_URL}/api/tasks`,
     JSON.stringify({ title: `Load test task ${Date.now()}`, priority: 'medium' }),
     { headers }
   )
-  
+
   check(createRes, {
     'create task: status 201': (r) => r.status === 201,
   }) || errorRate.add(1)
-  
+
   sleep(1)
 }
 

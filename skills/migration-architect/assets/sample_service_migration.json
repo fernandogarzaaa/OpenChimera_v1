@@ -9,7 +9,7 @@
     "data_volume_gb": 50,
     "dependencies": [
       "payment_service",
-      "order_service", 
+      "order_service",
       "notification_service",
       "analytics_service",
       "mobile_app_v1",
@@ -60,7 +60,7 @@
         "PUT /api/v2/users/{id}",
         "DELETE /api/v2/users/{id}",
         "GET /api/v2/users/{id}/profile",
-        "PUT /api/v2/users/{id}/profile", 
+        "PUT /api/v2/users/{id}/profile",
         "POST /api/v2/users/{id}/verify-email",
         "POST /api/v2/users/{id}/verify-phone",
         "POST /api/v2/auth/login",
@@ -138,7 +138,7 @@
   "monitoring": {
     "critical_metrics": [
       "request_rate",
-      "error_rate", 
+      "error_rate",
       "response_time_p95",
       "response_time_p99",
       "cpu_utilization",

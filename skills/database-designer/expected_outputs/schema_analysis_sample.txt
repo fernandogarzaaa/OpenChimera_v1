@@ -12,7 +12,7 @@ Total Indexes: 15
 KEY RECOMMENDATIONS
 ------------------
 1. Address 3 high-severity issues immediately
-2. Add primary keys to tables: 
+2. Add primary keys to tables:
 3. Review 4 VARCHAR(255) columns for right-sizing
 4. Consider adding 2 foreign key constraints for referential integrity
 5. Review 8 normalization issues for schema optimization
@@ -98,7 +98,7 @@ erDiagram
         TIMESTAMP updated_at
         VARCHAR(20) status
     }
-    
+
     CATEGORIES {
         INTEGER id "PK"
         VARCHAR(100) name "NOT NULL"
@@ -109,7 +109,7 @@ erDiagram
         INTEGER sort_order
         TIMESTAMP created_at
     }
-    
+
     PRODUCTS {
         INTEGER id "PK"
         VARCHAR(255) name "NOT NULL"
@@ -132,7 +132,7 @@ erDiagram
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
-    
+
     ADDRESSES {
         INTEGER id "PK"
         INTEGER user_id "FK"
@@ -146,7 +146,7 @@ erDiagram
         BOOLEAN is_default
         TIMESTAMP created_at
     }
-    
+
     ORDERS {
         INTEGER id "PK"
         VARCHAR(50) order_number "NOT NULL UNIQUE"
@@ -173,7 +173,7 @@ erDiagram
         TIMESTAMP shipped_at
         TIMESTAMP delivered_at
     }
-    
+
     ORDER_ITEMS {
         INTEGER id "PK"
         INTEGER order_id "FK"
@@ -185,7 +185,7 @@ erDiagram
         DECIMAL(10,2) total_price "NOT NULL"
         TIMESTAMP created_at
     }
-    
+
     SHOPPING_CART {
         INTEGER id "PK"
         INTEGER user_id "FK"
@@ -195,7 +195,7 @@ erDiagram
         TIMESTAMP added_at
         TIMESTAMP updated_at
     }
-    
+
     PRODUCT_REVIEWS {
         INTEGER id "PK"
         INTEGER product_id "FK"

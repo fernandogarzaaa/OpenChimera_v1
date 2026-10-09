@@ -1,8 +1,8 @@
 # Executive Portfolio Report Template
 
-**Reporting Period:** [Start Date] - [End Date]  
-**Report Date:** [Report Generation Date]  
-**Prepared By:** [Senior Project Manager Name]  
+**Reporting Period:** [Start Date] - [End Date]
+**Report Date:** [Report Generation Date]
+**Prepared By:** [Senior Project Manager Name]
 **Distribution:** Executive Leadership Team, Board of Directors
 
 ---
@@ -88,7 +88,7 @@ Market Expansion:        ████░░░░░░░░░ 15% ($[X]M)
 
 ### Business Value Delivered
 - **Revenue Impact:** $[X]M additional revenue / [X]% growth
-- **Cost Reduction:** $[X]M annual savings / [X]% efficiency gain  
+- **Cost Reduction:** $[X]M annual savings / [X]% efficiency gain
 - **Process Improvements:** [X]% faster processing / [X]% error reduction
 - **Customer Impact:** [X]% satisfaction increase / [X]K new customers
 - **Employee Impact:** [X]% productivity gain / [X] hours saved per week
@@ -189,7 +189,7 @@ Market Expansion:        ████░░░░░░░░░ 15% ($[X]M)
 
 ### Next Quarter Priorities
 1. **Priority 1:** [Specific focus area with success metrics]
-2. **Priority 2:** [Specific focus area with success metrics]  
+2. **Priority 2:** [Specific focus area with success metrics]
 3. **Priority 3:** [Specific focus area with success metrics]
 
 ### Strategic Recommendations
@@ -221,7 +221,7 @@ Market Expansion:        ████░░░░░░░░░ 15% ($[X]M)
 | **Stakeholder Satisfaction** | [X]/10 | [X]/10 | [X]/10 | >[X] | ↗️↘️→ |
 | **ROI Achievement** | [X]% | [X]% | [X]% | [X]% | ↗️↘️→ |
 
-### Business Impact Metrics  
+### Business Impact Metrics
 | Metric | Current | Target | Gap | Notes |
 |--------|---------|---------|-----|-------|
 | **Revenue Impact** | $[X]M | $[X]M | $[X]M | [Commentary] |
@@ -251,15 +251,15 @@ Market Expansion:        ████░░░░░░░░░ 15% ($[X]M)
 ---
 
 **Report Prepared By:**
-[Senior Project Manager Name]  
-[Title]  
+[Senior Project Manager Name]
+[Title]
 [Email] | [Phone]
 
 **Quality Assurance:**
-[PMO Director Name] - Reviewed and Approved  
+[PMO Director Name] - Reviewed and Approved
 [Date of Approval]
 
-**Next Report Due:** [Date]  
+**Next Report Due:** [Date]
 **Special Topics Next Period:** [Preview of upcoming focus areas]
 
 ---

@@ -5,9 +5,9 @@ description: "Dependency Auditor"
 
 # Dependency Auditor
 
-> **Skill Type:** POWERFUL  
-> **Category:** Engineering  
-> **Domain:** Dependency Management & Security  
+> **Skill Type:** POWERFUL
+> **Category:** Engineering
+> **Domain:** Dependency Management & Security
 
 ## Overview
 

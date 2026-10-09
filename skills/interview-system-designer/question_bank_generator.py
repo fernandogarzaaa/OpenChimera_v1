@@ -3,7 +3,7 @@
 Question Bank Generator
 
 Generates comprehensive, competency-based interview questions with detailed scoring criteria.
-Creates structured question banks organized by competency area with scoring rubrics, 
+Creates structured question banks organized by competency area with scoring rubrics,
 follow-up probes, and calibration examples.
 
 Usage:
@@ -24,14 +24,14 @@ from collections import defaultdict
 
 class QuestionBankGenerator:
     """Generates comprehensive interview question banks with scoring criteria."""
-    
+
     def __init__(self):
         self.technical_questions = self._init_technical_questions()
         self.behavioral_questions = self._init_behavioral_questions()
         self.competency_mapping = self._init_competency_mapping()
         self.scoring_rubrics = self._init_scoring_rubrics()
         self.follow_up_strategies = self._init_follow_up_strategies()
-        
+
     def _init_technical_questions(self) -> Dict[str, Dict]:
         """Initialize technical questions by competency area and level."""
         return {
@@ -47,7 +47,7 @@ class QuestionBankGenerator:
                     },
                     {
                         "question": "Implement a function to check if a string is a palindrome.",
-                        "competency": "coding_fundamentals", 
+                        "competency": "coding_fundamentals",
                         "type": "coding",
                         "difficulty": "easy",
                         "time_limit": 15,
@@ -56,7 +56,7 @@ class QuestionBankGenerator:
                     {
                         "question": "Find the largest element in an array without using built-in max functions.",
                         "competency": "coding_fundamentals",
-                        "type": "coding", 
+                        "type": "coding",
                         "difficulty": "easy",
                         "time_limit": 10,
                         "key_concepts": ["arrays", "iteration", "comparison"]
@@ -75,7 +75,7 @@ class QuestionBankGenerator:
                         "question": "Write a function to merge two sorted arrays into one sorted array.",
                         "competency": "coding_fundamentals",
                         "type": "coding",
-                        "difficulty": "medium", 
+                        "difficulty": "medium",
                         "time_limit": 25,
                         "key_concepts": ["merge_algorithms", "two_pointers", "optimization"]
                     }
@@ -177,7 +177,7 @@ class QuestionBankGenerator:
                 "mid": [
                     {
                         "question": "Analyze conversion funnel data to identify the biggest drop-off point and propose solutions.",
-                        "competency": "data_analysis", 
+                        "competency": "data_analysis",
                         "type": "analytical",
                         "difficulty": "medium",
                         "time_limit": 45,
@@ -189,7 +189,7 @@ class QuestionBankGenerator:
                         "question": "Design an A/B testing framework to measure the impact of a new recommendation algorithm.",
                         "competency": "data_analysis",
                         "type": "analytical",
-                        "difficulty": "hard", 
+                        "difficulty": "hard",
                         "time_limit": 60,
                         "key_concepts": ["experiment_design", "statistical_power", "bias_mitigation", "causal_inference"]
                     }
@@ -240,7 +240,7 @@ class QuestionBankGenerator:
                 ]
             }
         }
-    
+
     def _init_behavioral_questions(self) -> Dict[str, List[Dict]]:
         """Initialize behavioral questions by competency area."""
         return {
@@ -254,7 +254,7 @@ class QuestionBankGenerator:
                 },
                 {
                     "question": "Describe a situation where you had to influence someone without having direct authority over them.",
-                    "competency": "leadership", 
+                    "competency": "leadership",
                     "type": "behavioral",
                     "method": "STAR",
                     "focus_areas": ["influence", "persuasion", "stakeholder_management"]
@@ -262,7 +262,7 @@ class QuestionBankGenerator:
                 {
                     "question": "Give me an example of when you had to make a difficult decision that affected your team.",
                     "competency": "leadership",
-                    "type": "behavioral", 
+                    "type": "behavioral",
                     "method": "STAR",
                     "focus_areas": ["decision_making", "team_impact", "communication"]
                 }
@@ -272,7 +272,7 @@ class QuestionBankGenerator:
                     "question": "Describe a time when you had to work with a difficult colleague or stakeholder.",
                     "competency": "collaboration",
                     "type": "behavioral",
-                    "method": "STAR", 
+                    "method": "STAR",
                     "focus_areas": ["conflict_resolution", "relationship_building", "professionalism"]
                 },
                 {
@@ -295,7 +295,7 @@ class QuestionBankGenerator:
                     "question": "Describe a time when you had to solve a problem with limited information or resources.",
                     "competency": "problem_solving",
                     "type": "behavioral",
-                    "method": "STAR", 
+                    "method": "STAR",
                     "focus_areas": ["resourcefulness", "ambiguity_tolerance", "decision_making"]
                 }
             ],
@@ -310,7 +310,7 @@ class QuestionBankGenerator:
                 {
                     "question": "Describe a situation where you had to deliver difficult feedback to a colleague.",
                     "competency": "communication",
-                    "type": "behavioral", 
+                    "type": "behavioral",
                     "method": "STAR",
                     "focus_areas": ["feedback_delivery", "empathy", "constructive_criticism"]
                 }
@@ -334,14 +334,14 @@ class QuestionBankGenerator:
             "innovation": [
                 {
                     "question": "Tell me about a time when you came up with a creative solution to improve a process or solve a problem.",
-                    "competency": "innovation", 
+                    "competency": "innovation",
                     "type": "behavioral",
                     "method": "STAR",
                     "focus_areas": ["creative_thinking", "process_improvement", "initiative"]
                 }
             ]
         }
-    
+
     def _init_competency_mapping(self) -> Dict[str, Dict]:
         """Initialize role to competency mapping."""
         return {
@@ -349,7 +349,7 @@ class QuestionBankGenerator:
                 "core_competencies": ["coding_fundamentals", "system_design", "problem_solving", "collaboration"],
                 "level_specific": {
                     "junior": ["coding_fundamentals", "debugging", "learning_agility"],
-                    "mid": ["advanced_coding", "system_design", "mentoring_basics"], 
+                    "mid": ["advanced_coding", "system_design", "mentoring_basics"],
                     "senior": ["system_architecture", "technical_leadership", "innovation"],
                     "staff": ["architectural_vision", "organizational_impact", "strategic_thinking"]
                 }
@@ -409,7 +409,7 @@ class QuestionBankGenerator:
                 }
             }
         }
-    
+
     def _init_scoring_rubrics(self) -> Dict[str, Dict]:
         """Initialize scoring rubrics for different question types."""
         return {
@@ -492,7 +492,7 @@ class QuestionBankGenerator:
                 }
             }
         }
-    
+
     def _init_follow_up_strategies(self) -> Dict[str, List[str]]:
         """Initialize follow-up question strategies by competency."""
         return {
@@ -527,36 +527,36 @@ class QuestionBankGenerator:
                 "What would you do to improve collaboration in the future?"
             ]
         }
-    
-    def generate_question_bank(self, role: str, level: str = "senior", 
+
+    def generate_question_bank(self, role: str, level: str = "senior",
                               competencies: Optional[List[str]] = None,
                               question_types: Optional[List[str]] = None,
                               num_questions: int = 20) -> Dict[str, Any]:
         """Generate a comprehensive question bank for the specified role and competencies."""
-        
+
         # Normalize inputs
         role_key = self._normalize_role(role)
         level_key = level.lower()
-        
+
         # Get competency requirements
         role_competencies = self._get_role_competencies(role_key, level_key, competencies)
-        
+
         # Determine question types to include
         if question_types is None:
             question_types = ["technical", "behavioral", "situational"]
-        
+
         # Generate questions
         questions = self._generate_questions(role_competencies, question_types, level_key, num_questions)
-        
+
         # Create scoring rubrics
         scoring_rubrics = self._create_scoring_rubrics(questions)
-        
+
         # Generate follow-up probes
         follow_up_probes = self._generate_follow_up_probes(questions)
-        
+
         # Create calibration examples
         calibration_examples = self._create_calibration_examples(questions[:5])  # Sample for first 5 questions
-        
+
         return {
             "role": role,
             "level": level,
@@ -570,11 +570,11 @@ class QuestionBankGenerator:
             "calibration_examples": calibration_examples,
             "usage_guidelines": self._generate_usage_guidelines(role_key, level_key)
         }
-    
+
     def _normalize_role(self, role: str) -> str:
         """Normalize role name to match competency mapping keys."""
         role_lower = role.lower().replace(" ", "_").replace("-", "_")
-        
+
         # Map variations to standard roles
         role_mappings = {
             "software_engineer": ["engineer", "developer", "swe", "software_developer"],
@@ -585,81 +585,81 @@ class QuestionBankGenerator:
             "designer": ["ux", "ui", "ux_ui", "product_designer", "visual_designer"],
             "devops_engineer": ["devops", "sre", "platform_engineer", "infrastructure"]
         }
-        
+
         for standard_role, variations in role_mappings.items():
             if any(var in role_lower for var in variations):
                 return standard_role
-        
+
         # Default fallback
         return "software_engineer"
-    
-    def _get_role_competencies(self, role_key: str, level_key: str, 
+
+    def _get_role_competencies(self, role_key: str, level_key: str,
                               custom_competencies: Optional[List[str]]) -> List[str]:
         """Get competencies for the role and level."""
         if role_key not in self.competency_mapping:
             role_key = "software_engineer"
-        
+
         role_mapping = self.competency_mapping[role_key]
         competencies = role_mapping["core_competencies"].copy()
-        
+
         # Add level-specific competencies
         if level_key in role_mapping["level_specific"]:
             competencies.extend(role_mapping["level_specific"][level_key])
         elif "senior" in role_mapping["level_specific"]:
             competencies.extend(role_mapping["level_specific"]["senior"])
-        
+
         # Add custom competencies if specified
         if custom_competencies:
             competencies.extend([comp.strip() for comp in custom_competencies if comp.strip() not in competencies])
-        
+
         return list(set(competencies))  # Remove duplicates
-    
-    def _generate_questions(self, competencies: List[str], question_types: List[str], 
+
+    def _generate_questions(self, competencies: List[str], question_types: List[str],
                            level: str, num_questions: int) -> List[Dict[str, Any]]:
         """Generate questions based on competencies and types."""
         questions = []
         questions_per_competency = max(1, num_questions // len(competencies))
-        
+
         for competency in competencies:
             competency_questions = []
-            
+
             # Add technical questions if requested and available
             if "technical" in question_types and competency in self.technical_questions:
                 tech_questions = []
-                
+
                 # Get questions for current level and below
                 level_order = ["junior", "mid", "senior", "staff", "principal"]
                 current_level_idx = level_order.index(level) if level in level_order else 2
-                
+
                 for lvl_idx in range(current_level_idx + 1):
                     lvl = level_order[lvl_idx]
                     if lvl in self.technical_questions[competency]:
                         tech_questions.extend(self.technical_questions[competency][lvl])
-                
+
                 competency_questions.extend(tech_questions[:questions_per_competency])
-            
+
             # Add behavioral questions if requested
             if "behavioral" in question_types and competency in self.behavioral_questions:
                 behavioral_q = self.behavioral_questions[competency][:questions_per_competency]
                 competency_questions.extend(behavioral_q)
-            
+
             # Add situational questions (variations of behavioral)
             if "situational" in question_types:
                 situational_q = self._generate_situational_questions(competency, questions_per_competency)
                 competency_questions.extend(situational_q)
-            
+
             # Ensure we have enough questions for this competency
             while len(competency_questions) < questions_per_competency:
                 competency_questions.extend(self._generate_fallback_questions(competency, level))
                 if len(competency_questions) >= questions_per_competency:
                     break
-            
+
             questions.extend(competency_questions[:questions_per_competency])
-        
+
         # Shuffle and limit to requested number
         random.shuffle(questions)
         return questions[:num_questions]
-    
+
     def _generate_situational_questions(self, competency: str, count: int) -> List[Dict[str, Any]]:
         """Generate situational questions for a competency."""
         situational_templates = {
@@ -674,7 +674,7 @@ class QuestionBankGenerator:
             "collaboration": [
                 {
                     "question": "You're working on a cross-functional project and two team members have opposing views on the technical approach. How do you resolve this?",
-                    "competency": competency, 
+                    "competency": competency,
                     "type": "situational",
                     "focus_areas": ["conflict_resolution", "technical_decision_making", "facilitation"]
                 }
@@ -683,16 +683,16 @@ class QuestionBankGenerator:
                 {
                     "question": "You've been assigned to improve the performance of a critical system, but you have limited time and budget. Walk me through your approach.",
                     "competency": competency,
-                    "type": "situational", 
+                    "type": "situational",
                     "focus_areas": ["prioritization", "resource_constraints", "systematic_approach"]
                 }
             ]
         }
-        
+
         if competency in situational_templates:
             return situational_templates[competency][:count]
         return []
-    
+
     def _generate_fallback_questions(self, competency: str, level: str) -> List[Dict[str, Any]]:
         """Generate fallback questions when specific ones aren't available."""
         fallback_questions = [
@@ -710,15 +710,15 @@ class QuestionBankGenerator:
             }
         ]
         return fallback_questions
-    
+
     def _create_scoring_rubrics(self, questions: List[Dict[str, Any]]) -> Dict[str, Dict]:
         """Create scoring rubrics for the generated questions."""
         rubrics = {}
-        
+
         for i, question in enumerate(questions, 1):
             question_key = f"question_{i}"
             question_type = question.get("type", "behavioral")
-            
+
             if question_type in self.scoring_rubrics:
                 rubrics[question_key] = {
                     "question": question["question"],
@@ -728,35 +728,35 @@ class QuestionBankGenerator:
                     "weight": self._determine_question_weight(question),
                     "time_limit": question.get("time_limit", 30)
                 }
-        
+
         return rubrics
-    
+
     def _determine_question_weight(self, question: Dict[str, Any]) -> str:
         """Determine the weight/importance of a question."""
         competency = question.get("competency", "")
         question_type = question.get("type", "")
         difficulty = question.get("difficulty", "medium")
-        
+
         # Core competencies get higher weight
         core_competencies = ["coding_fundamentals", "system_design", "leadership", "problem_solving"]
-        
+
         if competency in core_competencies:
             return "high"
         elif question_type in ["coding", "design"] or difficulty == "hard":
-            return "high" 
+            return "high"
         elif difficulty == "easy":
             return "medium"
         else:
             return "medium"
-    
+
     def _generate_follow_up_probes(self, questions: List[Dict[str, Any]]) -> Dict[str, List[str]]:
         """Generate follow-up probes for each question."""
         probes = {}
-        
+
         for i, question in enumerate(questions, 1):
             question_key = f"question_{i}"
             competency = question.get("competency", "")
-            
+
             # Get competency-specific follow-ups
             if competency in self.follow_up_strategies:
                 competency_probes = self.follow_up_strategies[competency].copy()
@@ -766,7 +766,7 @@ class QuestionBankGenerator:
                     "What would you do differently if you had to do this again?",
                     "What challenges did you face and how did you overcome them?"
                 ]
-            
+
             # Add question-type specific probes
             question_type = question.get("type", "")
             if question_type == "coding":
@@ -787,15 +787,15 @@ class QuestionBankGenerator:
                     "What monitoring would you implement?",
                     "How would this scale to 10x the load?"
                 ])
-            
+
             probes[question_key] = competency_probes[:5]  # Limit to 5 follow-ups
-        
+
         return probes
-    
+
     def _create_calibration_examples(self, sample_questions: List[Dict[str, Any]]) -> Dict[str, Dict]:
         """Create calibration examples with poor/good/great answers."""
         examples = {}
-        
+
         for i, question in enumerate(sample_questions, 1):
             question_key = f"question_{i}"
             examples[question_key] = {
@@ -803,19 +803,19 @@ class QuestionBankGenerator:
                 "competency": question["competency"],
                 "sample_answers": {
                     "poor_answer": self._generate_sample_answer(question, "poor"),
-                    "good_answer": self._generate_sample_answer(question, "good"), 
+                    "good_answer": self._generate_sample_answer(question, "good"),
                     "great_answer": self._generate_sample_answer(question, "great")
                 },
                 "scoring_rationale": self._generate_scoring_rationale(question)
             }
-        
+
         return examples
-    
+
     def _generate_sample_answer(self, question: Dict[str, Any], quality: str) -> Dict[str, str]:
         """Generate sample answers of different quality levels."""
         competency = question.get("competency", "")
         question_type = question.get("type", "")
-        
+
         if quality == "poor":
             return {
                 "answer": f"Sample poor answer for {competency} question - lacks detail, specificity, or demonstrates weak competency",
@@ -825,7 +825,7 @@ class QuestionBankGenerator:
         elif quality == "good":
             return {
                 "answer": f"Sample good answer for {competency} question - adequate detail, demonstrates competency clearly",
-                "score": "3", 
+                "score": "3",
                 "strengths": ["Clear structure", "Demonstrates competency", "Adequate detail"]
             }
         else:  # great
@@ -834,7 +834,7 @@ class QuestionBankGenerator:
                 "score": "4",
                 "strengths": ["Exceptional detail", "Strong evidence", "Strategic thinking", "Goes beyond requirements"]
             }
-    
+
     def _generate_scoring_rationale(self, question: Dict[str, Any]) -> Dict[str, str]:
         """Generate rationale for scoring this question."""
         competency = question.get("competency", "")
@@ -843,7 +843,7 @@ class QuestionBankGenerator:
             "red_flags": "Vague answers, lack of specifics, negative outcomes without learning",
             "green_flags": "Specific examples, clear impact, demonstrates growth and learning"
         }
-    
+
     def _generate_usage_guidelines(self, role_key: str, level_key: str) -> Dict[str, Any]:
         """Generate usage guidelines for the question bank."""
         return {
@@ -880,7 +880,7 @@ class QuestionBankGenerator:
 def format_human_readable(question_bank: Dict[str, Any]) -> str:
     """Format question bank data in human-readable format."""
     output = []
-    
+
     # Header
     output.append(f"Interview Question Bank: {question_bank['role']} ({question_bank['level'].title()} Level)")
     output.append("=" * 70)
@@ -889,11 +889,11 @@ def format_human_readable(question_bank: Dict[str, Any]) -> str:
     output.append(f"Question Types: {', '.join(question_bank['question_types'])}")
     output.append(f"Target Competencies: {', '.join(question_bank['competencies'])}")
     output.append("")
-    
+
     # Questions
     output.append("INTERVIEW QUESTIONS")
     output.append("-" * 50)
-    
+
     for i, question in enumerate(question_bank['questions'], 1):
         output.append(f"\n{i}. {question['question']}")
         output.append(f"   Competency: {question['competency'].replace('_', ' ').title()}")
@@ -902,60 +902,60 @@ def format_human_readable(question_bank: Dict[str, Any]) -> str:
             output.append(f"   Time Limit: {question['time_limit']} minutes")
         if 'focus_areas' in question:
             output.append(f"   Focus Areas: {', '.join(question['focus_areas'])}")
-    
+
     # Scoring Guidelines
     output.append("\n\nSCORING RUBRICS")
     output.append("-" * 50)
-    
+
     # Show sample scoring criteria
     if question_bank['scoring_rubrics']:
         first_question = list(question_bank['scoring_rubrics'].keys())[0]
         sample_rubric = question_bank['scoring_rubrics'][first_question]
-        
+
         output.append(f"Sample Scoring Criteria ({sample_rubric['type']} questions):")
         for criterion, scores in sample_rubric['scoring_criteria'].items():
             output.append(f"\n{criterion.replace('_', ' ').title()}:")
             for score, description in scores.items():
                 output.append(f"  {score}: {description}")
-    
+
     # Follow-up Probes
     output.append("\n\nFOLLOW-UP PROBE EXAMPLES")
     output.append("-" * 50)
-    
+
     if question_bank['follow_up_probes']:
         first_question = list(question_bank['follow_up_probes'].keys())[0]
         sample_probes = question_bank['follow_up_probes'][first_question]
-        
+
         output.append("Sample follow-up questions:")
         for probe in sample_probes[:3]:  # Show first 3
             output.append(f"  • {probe}")
-    
+
     # Usage Guidelines
     output.append("\n\nUSAGE GUIDELINES")
     output.append("-" * 50)
-    
+
     guidelines = question_bank['usage_guidelines']
-    
+
     output.append("Interview Flow:")
     for phase, description in guidelines['interview_flow'].items():
         output.append(f"  • {phase.replace('_', ' ').title()}: {description}")
-    
+
     output.append("\nTime Management:")
     for aspect, recommendation in guidelines['time_management'].items():
         output.append(f"  • {aspect.replace('_', ' ').title()}: {recommendation}")
-    
+
     output.append("\nCommon Mistakes to Avoid:")
     for mistake in guidelines['common_mistakes'][:3]:  # Show first 3
         output.append(f"  • {mistake}")
-    
+
     # Calibration Examples (if available)
     if question_bank['calibration_examples']:
         output.append("\n\nCALIBRATION EXAMPLES")
         output.append("-" * 50)
-        
+
         first_example = list(question_bank['calibration_examples'].values())[0]
         output.append(f"Question: {first_example['question']}")
-        
+
         output.append("\nSample Answer Quality Levels:")
         for quality, details in first_example['sample_answers'].items():
             output.append(f"  {quality.replace('_', ' ').title()} (Score {details['score']}):")
@@ -963,7 +963,7 @@ def format_human_readable(question_bank: Dict[str, Any]) -> str:
                 output.append(f"    Issues: {', '.join(details['issues'])}")
             if 'strengths' in details:
                 output.append(f"    Strengths: {', '.join(details['strengths'])}")
-    
+
     return "\n".join(output)
 
 
@@ -977,11 +977,11 @@ def main():
     parser.add_argument("--input", type=str, help="Input JSON file with role requirements")
     parser.add_argument("--output", type=str, help="Output directory or file path")
     parser.add_argument("--format", choices=["json", "text", "both"], default="both", help="Output format")
-    
+
     args = parser.parse_args()
-    
+
     generator = QuestionBankGenerator()
-    
+
     # Handle input
     if args.input:
         try:
@@ -999,13 +999,13 @@ def main():
         if not args.role:
             print("Error: --role is required when not using --input")
             sys.exit(1)
-        
+
         role = args.role
         level = args.level
         competencies = args.competencies.split(',') if args.competencies else None
         question_types = args.question_types.split(',') if args.question_types else None
         num_questions = args.num_questions
-    
+
     # Generate question bank
     try:
         question_bank = generator.generate_question_bank(
@@ -1015,7 +1015,7 @@ def main():
             question_types=question_types,
             num_questions=num_questions
         )
-        
+
         # Handle output
         if args.output:
             output_path = args.output
@@ -1032,25 +1032,25 @@ def main():
             base_filename = f"{safe_role}_{level}_questions"
             json_path = f"{base_filename}.json"
             text_path = f"{base_filename}.txt"
-        
+
         # Write outputs
         if args.format in ["json", "both"]:
             with open(json_path, 'w') as f:
                 json.dump(question_bank, f, indent=2, default=str)
             print(f"JSON output written to: {json_path}")
-        
+
         if args.format in ["text", "both"]:
             with open(text_path, 'w') as f:
                 f.write(format_human_readable(question_bank))
             print(f"Text output written to: {text_path}")
-        
+
         # Print summary
         print(f"\nQuestion Bank Summary:")
         print(f"Role: {question_bank['role']} ({question_bank['level'].title()})")
         print(f"Total Questions: {question_bank['total_questions']}")
         print(f"Competencies Covered: {len(question_bank['competencies'])}")
         print(f"Question Types: {', '.join(question_bank['question_types'])}")
-        
+
     except Exception as e:
         print(f"Error generating question bank: {e}")
         sys.exit(1)

@@ -192,7 +192,7 @@ Rule Logic:
 ```yaml
 Trigger: Scheduled (daily at 9am)
 Condition: JQL = "status != Done AND updated <= -5d AND priority in (High, Highest)"
-Action: 
+Action:
   - Add comment: "⚠️ This {{issue.priority.name}} issue hasn't been updated in 5+ days."
   - Send Slack: "#engineering-alerts: {{issue.key}} is stale ({{issue.assignee.displayName}})"
 ```

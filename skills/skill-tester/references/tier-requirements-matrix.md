@@ -1,8 +1,8 @@
 # Tier Requirements Matrix
 
-**Version**: 1.0.0  
-**Last Updated**: 2026-02-16  
-**Authority**: Claude Skills Engineering Team  
+**Version**: 1.0.0
+**Last Updated**: 2026-02-16
+**Authority**: Claude Skills Engineering Team
 
 ## Overview
 
@@ -13,7 +13,7 @@ This document provides a comprehensive matrix of requirements for each skill tie
 ### BASIC Tier
 Entry-level skills that provide fundamental functionality with minimal complexity. Suitable for simple automation tasks, basic data processing, or straightforward utilities.
 
-### STANDARD Tier  
+### STANDARD Tier
 Intermediate skills that offer enhanced functionality with moderate complexity. Suitable for business processes, advanced data manipulation, or multi-step workflows.
 
 ### POWERFUL Tier
@@ -140,13 +140,13 @@ def classify_tier(skill_metrics):
         skill_metrics['min_script_size'] >= 500 and
         all_required_dirs_present(['scripts', 'assets', 'references', 'expected_outputs'])):
         return 'POWERFUL'
-    
+
     elif (skill_metrics['skill_md_lines'] >= 200 and
           skill_metrics['script_count'] >= 1 and
           skill_metrics['min_script_size'] >= 300 and
           all_required_dirs_present(['scripts', 'assets', 'references'])):
         return 'STANDARD'
-    
+
     else:
         return 'BASIC'
 ```
@@ -213,12 +213,12 @@ try:
         results = batch_process(args.input)
     else:
         results = single_process(args.input)
-    
+
     if args.format == "json":
         print(json.dumps(results, indent=2))
     else:
         print_human_readable(results)
-        
+
 except FileNotFoundError as e:
     logging.error(f"File not found: {e}")
     sys.exit(1)
@@ -240,10 +240,10 @@ parser = argparse.ArgumentParser(
 Examples:
   Basic usage:
     python script.py process input.json --output results/
-  
+
   Advanced batch processing:
     python script.py batch data/ --format json --parallel 4 --filter "*.csv"
-  
+
   Custom configuration:
     python script.py process input.json --config custom.yaml --dry-run
 """
@@ -272,11 +272,11 @@ try:
     else:
         parser.print_help()
         sys.exit(1)
-    
+
     # Multiple output format support
     output_formatter = OutputFormatter(args.format)
     output_formatter.write(result, args.output)
-    
+
 except KeyboardInterrupt:
     logging.info("Processing interrupted by user")
     sys.exit(130)
@@ -305,7 +305,7 @@ except Exception as e:
 
 ### Dimension Weights (All Tiers)
 - **Documentation**: 25%
-- **Code Quality**: 25%  
+- **Code Quality**: 25%
 - **Completeness**: 25%
 - **Usability**: 25%
 

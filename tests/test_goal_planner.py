@@ -392,7 +392,7 @@ class TestGoalPlanner(unittest.TestCase):
     def test_get_subtree_with_nested_children(self) -> None:
         root = self.planner.create_goal("Root")
         c1 = self.planner.create_goal("C1", parent_id=root.id)
-        c2 = self.planner.create_goal("C2", parent_id=root.id)
+        self.planner.create_goal("C2", parent_id=root.id)
         gc = self.planner.create_goal("GC", parent_id=c1.id)
         tree = self.planner.get_subtree(root.id)
         self.assertIsNotNone(tree)

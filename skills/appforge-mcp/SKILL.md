@@ -1,7 +1,7 @@
 # AppForge MCP Semantic Layer
 
 ## Description
-Use this skill when you need to provision backend primitives (Database, Auth, S3 Storage), manage Project Evo state, or interact with the local AppForge MCP Server directly. 
+Use this skill when you need to provision backend primitives (Database, Auth, S3 Storage), manage Project Evo state, or interact with the local AppForge MCP Server directly.
 
 ## Context
 The MCP (Model Context Protocol) Server is a local Semantic Layer bridging AI agents with backend infrastructure (stripped from InsForge). It runs locally at `http://localhost:8000/mcp`. It communicates via JSON-RPC 2.0.

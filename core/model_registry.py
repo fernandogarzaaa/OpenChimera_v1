@@ -12,7 +12,6 @@ from core.credential_store import CredentialStore
 from core.local_model_inventory import discover_local_model_inventory, discover_ollama_models
 from core.transactions import atomic_write_json
 
-
 LOCAL_MODEL_SEEDS: dict[str, dict[str, Any]] = {
     "phi-3.5-mini": {
         "family": "phi",

@@ -394,4 +394,3 @@ Focusing on successes while ignoring failures that aren't visible.
 **Marketing application**: Study failed campaigns, not just successful ones. The viral hit you're copying had 99 failures you didn't see.
 
 ---
-

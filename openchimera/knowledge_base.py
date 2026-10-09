@@ -7,8 +7,8 @@ Usage::
 from __future__ import annotations
 
 from core.knowledge_base import (  # noqa: F401
-    KnowledgeEntry,
     KnowledgeBase,
+    KnowledgeEntry,
 )
 
 __all__ = ["KnowledgeEntry", "KnowledgeBase"]

@@ -1,6 +1,6 @@
 """Verify all SQL migrations apply cleanly against a fresh in-memory SQLite DB."""
-import sqlite3
 import pathlib
+import sqlite3
 
 db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys=ON")

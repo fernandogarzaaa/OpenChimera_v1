@@ -1,7 +1,7 @@
 """SwarmResult — immutable output envelope for swarm task execution."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional
 
 

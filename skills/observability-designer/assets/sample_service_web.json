@@ -14,7 +14,7 @@
     },
     {
       "name": "billing-service",
-      "type": "api", 
+      "type": "api",
       "criticality": "high"
     },
     {
@@ -89,7 +89,7 @@
         "locations": ["us-east", "eu-west", "ap-south"]
       },
       {
-        "name": "checkout_flow", 
+        "name": "checkout_flow",
         "url": "/billing/checkout",
         "frequency": "5m",
         "locations": ["us-east", "eu-west"]

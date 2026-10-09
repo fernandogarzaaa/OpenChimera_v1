@@ -36,4 +36,3 @@ fn chimera_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     Ok(())
 }
-

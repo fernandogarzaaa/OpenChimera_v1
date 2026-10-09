@@ -45,14 +45,14 @@ class Dependency:
     description: Optional[str] = None
     homepage: Optional[str] = None
     vulnerabilities: List[Vulnerability] = None
-    
+
     def __post_init__(self):
         if self.vulnerabilities is None:
             self.vulnerabilities = []
 
 class DependencyScanner:
     """Main dependency scanner class."""
-    
+
     def __init__(self):
         self.known_vulnerabilities = self._load_vulnerability_database()
         self.supported_files = {
@@ -70,7 +70,7 @@ class DependencyScanner:
             'Gemfile': self._parse_gemfile,
             'Gemfile.lock': self._parse_gemfile_lock,
         }
-    
+
     def _load_vulnerability_database(self) -> Dict[str, List[Vulnerability]]:
         """Load built-in vulnerability database with common CVE patterns."""
         return {
@@ -111,7 +111,7 @@ class DependencyScanner:
                     references=['https://nvd.nist.gov/vuln/detail/CVE-2022-24999']
                 )
             ],
-            
+
             # Python vulnerabilities
             'django': [
                 Vulnerability(
@@ -149,7 +149,7 @@ class DependencyScanner:
                     references=['https://nvd.nist.gov/vuln/detail/CVE-2023-50447']
                 )
             ],
-            
+
             # Go vulnerabilities
             'github.com/gin-gonic/gin': [
                 Vulnerability(
@@ -163,7 +163,7 @@ class DependencyScanner:
                     references=['https://nvd.nist.gov/vuln/detail/CVE-2023-26125']
                 )
             ],
-            
+
             # Rust vulnerabilities
             'serde': [
                 Vulnerability(
@@ -177,7 +177,7 @@ class DependencyScanner:
                     references=['https://rustsec.org/advisories/RUSTSEC-2022-0061']
                 )
             ],
-            
+
             # Ruby vulnerabilities
             'rails': [
                 Vulnerability(
@@ -192,14 +192,14 @@ class DependencyScanner:
                 )
             ]
         }
-    
+
     def scan_project(self, project_path: str) -> Dict[str, Any]:
         """Scan a project directory for dependencies and vulnerabilities."""
         project_path = Path(project_path)
-        
+
         if not project_path.exists():
             raise FileNotFoundError(f"Project path does not exist: {project_path}")
-        
+
         scan_results = {
             'timestamp': datetime.now().isoformat(),
             'project_path': str(project_path),
@@ -212,25 +212,25 @@ class DependencyScanner:
             'scan_summary': {},
             'recommendations': []
         }
-        
+
         # Find and parse dependency files
         for file_pattern, parser in self.supported_files.items():
             matching_files = list(project_path.rglob(file_pattern))
-            
+
             for dep_file in matching_files:
                 try:
                     dependencies = parser(dep_file)
                     scan_results['dependencies'].extend(dependencies)
-                    
+
                     for dep in dependencies:
                         scan_results['ecosystems'].add(dep.ecosystem)
-                        
+
                         # Check for vulnerabilities
                         vulnerabilities = self._check_vulnerabilities(dep)
                         dep.vulnerabilities = vulnerabilities
-                        
+
                         scan_results['vulnerabilities_found'] += len(vulnerabilities)
-                        
+
                         for vuln in vulnerabilities:
                             if vuln.severity == 'HIGH':
                                 scan_results['high_severity_count'] += 1
@@ -238,32 +238,32 @@ class DependencyScanner:
                                 scan_results['medium_severity_count'] += 1
                             else:
                                 scan_results['low_severity_count'] += 1
-                
+
                 except Exception as e:
                     print(f"Error parsing {dep_file}: {e}")
                     continue
-        
+
         scan_results['ecosystems'] = list(scan_results['ecosystems'])
         scan_results['scan_summary'] = self._generate_scan_summary(scan_results)
         scan_results['recommendations'] = self._generate_recommendations(scan_results)
-        
+
         return scan_results
-    
+
     def _check_vulnerabilities(self, dependency: Dependency) -> List[Vulnerability]:
         """Check if a dependency has known vulnerabilities."""
         vulnerabilities = []
-        
+
         # Check package name (exact match and common variations)
         package_names = [dependency.name, dependency.name.lower()]
-        
+
         for pkg_name in package_names:
             if pkg_name in self.known_vulnerabilities:
                 for vuln in self.known_vulnerabilities[pkg_name]:
                     if self._version_matches_vulnerability(dependency.version, vuln.affected_versions):
                         vulnerabilities.append(vuln)
-        
+
         return vulnerabilities
-    
+
     def _version_matches_vulnerability(self, version: str, affected_pattern: str) -> bool:
         """Check if a version matches a vulnerability pattern."""
         # Simple version matching - in production, use proper semver library
@@ -278,22 +278,22 @@ class DependencyScanner:
                 parts = affected_pattern.split('<')
                 min_part = parts[0].replace('>=', '').strip()
                 max_part = parts[1].strip()
-                return (self._compare_versions(version, min_part) >= 0 and 
+                return (self._compare_versions(version, min_part) >= 0 and
                        self._compare_versions(version, max_part) < 0)
         except:
             pass
-        
+
         return False
-    
+
     def _compare_versions(self, v1: str, v2: str) -> int:
         """Simple version comparison. Returns -1, 0, or 1."""
         try:
             def normalize(v):
                 return [int(x) for x in re.sub(r'(\.0+)*$','', v).split('.')]
-            
+
             v1_parts = normalize(v1)
             v2_parts = normalize(v2)
-            
+
             if v1_parts < v2_parts:
                 return -1
             elif v1_parts > v2_parts:
@@ -302,17 +302,17 @@ class DependencyScanner:
                 return 0
         except:
             return 0
-    
+
     # Package file parsers
-    
+
     def _parse_package_json(self, file_path: Path) -> List[Dependency]:
         """Parse package.json for Node.js dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            
+
             # Parse dependencies
             for dep_type in ['dependencies', 'devDependencies']:
                 if dep_type in data:
@@ -324,28 +324,28 @@ class DependencyScanner:
                             direct=True
                         )
                         dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing package.json: {e}")
-        
+
         return dependencies
-    
+
     def _parse_package_lock(self, file_path: Path) -> List[Dependency]:
         """Parse package-lock.json for Node.js transitive dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            
+
             if 'packages' in data:
                 for path, pkg_info in data['packages'].items():
                     if path == '':  # Skip root package
                         continue
-                    
+
                     name = path.split('/')[-1] if '/' in path else path
                     version = pkg_info.get('version', '')
-                    
+
                     dep = Dependency(
                         name=name,
                         version=version,
@@ -354,27 +354,27 @@ class DependencyScanner:
                         description=pkg_info.get('description', '')
                     )
                     dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing package-lock.json: {e}")
-        
+
         return dependencies
-    
+
     def _parse_yarn_lock(self, file_path: Path) -> List[Dependency]:
         """Parse yarn.lock for Node.js dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Simple yarn.lock parsing
             packages = re.findall(r'^([^#\s][^:]+):\s*\n(?:\s+.*\n)*?\s+version\s+"([^"]+)"', content, re.MULTILINE)
-            
+
             for package_spec, version in packages:
                 name = package_spec.split('@')[0] if '@' in package_spec else package_spec
                 name = name.strip('"')
-                
+
                 dep = Dependency(
                     name=name,
                     version=version,
@@ -382,20 +382,20 @@ class DependencyScanner:
                     direct=False
                 )
                 dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing yarn.lock: {e}")
-        
+
         return dependencies
-    
+
     def _parse_requirements_txt(self, file_path: Path) -> List[Dependency]:
         """Parse requirements.txt for Python dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 lines = f.readlines()
-            
+
             for line in lines:
                 line = line.strip()
                 if line and not line.startswith('#') and not line.startswith('-'):
@@ -410,20 +410,20 @@ class DependencyScanner:
                             direct=True
                         )
                         dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing requirements.txt: {e}")
-        
+
         return dependencies
-    
+
     def _parse_pyproject_toml(self, file_path: Path) -> List[Dependency]:
         """Parse pyproject.toml for Python dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Simple TOML parsing for dependencies
             dep_section = re.search(r'\[tool\.poetry\.dependencies\](.*?)(?=\[|\Z)', content, re.DOTALL)
             if dep_section:
@@ -439,20 +439,20 @@ class DependencyScanner:
                                 direct=True
                             )
                             dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing pyproject.toml: {e}")
-        
+
         return dependencies
-    
+
     def _parse_pipfile_lock(self, file_path: Path) -> List[Dependency]:
         """Parse Pipfile.lock for Python dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 data = json.load(f)
-            
+
             for section in ['default', 'develop']:
                 if section in data:
                     for name, info in data[section].items():
@@ -464,23 +464,23 @@ class DependencyScanner:
                             direct=(section == 'default')
                         )
                         dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing Pipfile.lock: {e}")
-        
+
         return dependencies
-    
+
     def _parse_poetry_lock(self, file_path: Path) -> List[Dependency]:
         """Parse poetry.lock for Python dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Extract package entries from TOML
             packages = re.findall(r'\[\[package\]\]\nname\s*=\s*"([^"]+)"\nversion\s*=\s*"([^"]+)"', content)
-            
+
             for name, version in packages:
                 dep = Dependency(
                     name=name,
@@ -489,20 +489,20 @@ class DependencyScanner:
                     direct=False
                 )
                 dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing poetry.lock: {e}")
-        
+
         return dependencies
-    
+
     def _parse_go_mod(self, file_path: Path) -> List[Dependency]:
         """Parse go.mod for Go dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Parse require block
             require_match = re.search(r'require\s*\((.*?)\)', content, re.DOTALL)
             if require_match:
@@ -518,24 +518,24 @@ class DependencyScanner:
                             direct=True
                         )
                         dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing go.mod: {e}")
-        
+
         return dependencies
-    
+
     def _parse_go_sum(self, file_path: Path) -> List[Dependency]:
         """Parse go.sum for Go dependency checksums."""
         return []  # go.sum mainly contains checksums, dependencies are in go.mod
-    
+
     def _parse_cargo_toml(self, file_path: Path) -> List[Dependency]:
         """Parse Cargo.toml for Rust dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Parse [dependencies] section
             dep_section = re.search(r'\[dependencies\](.*?)(?=\[|\Z)', content, re.DOTALL)
             if dep_section:
@@ -550,23 +550,23 @@ class DependencyScanner:
                             direct=True
                         )
                         dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing Cargo.toml: {e}")
-        
+
         return dependencies
-    
+
     def _parse_cargo_lock(self, file_path: Path) -> List[Dependency]:
         """Parse Cargo.lock for Rust dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Parse [[package]] entries
             packages = re.findall(r'\[\[package\]\]\nname\s*=\s*"([^"]+)"\nversion\s*=\s*"([^"]+)"', content)
-            
+
             for name, version in packages:
                 dep = Dependency(
                     name=name,
@@ -575,27 +575,27 @@ class DependencyScanner:
                     direct=False
                 )
                 dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing Cargo.lock: {e}")
-        
+
         return dependencies
-    
+
     def _parse_gemfile(self, file_path: Path) -> List[Dependency]:
         """Parse Gemfile for Ruby dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Parse gem declarations
             gems = re.findall(r'gem\s+["\']([^"\']+)["\'](?:\s*,\s*["\']([^"\']+)["\'])?', content)
-            
+
             for gem_info in gems:
                 name = gem_info[0]
                 version = gem_info[1] if len(gem_info) > 1 and gem_info[1] else ''
-                
+
                 dep = Dependency(
                     name=name,
                     version=version,
@@ -603,26 +603,26 @@ class DependencyScanner:
                     direct=True
                 )
                 dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing Gemfile: {e}")
-        
+
         return dependencies
-    
+
     def _parse_gemfile_lock(self, file_path: Path) -> List[Dependency]:
         """Parse Gemfile.lock for Ruby dependencies."""
         dependencies = []
-        
+
         try:
             with open(file_path, 'r') as f:
                 content = f.read()
-            
+
             # Extract GEM section
             gem_section = re.search(r'GEM\s*\n(.*?)(?=\n\S|\Z)', content, re.DOTALL)
             if gem_section:
                 specs = gem_section.group(1)
                 gems = re.findall(r'\s+([a-zA-Z0-9_-]+)\s+\(([^)]+)\)', specs)
-                
+
                 for name, version in gems:
                     dep = Dependency(
                         name=name,
@@ -631,17 +631,17 @@ class DependencyScanner:
                         direct=False
                     )
                     dependencies.append(dep)
-        
+
         except Exception as e:
             print(f"Error parsing Gemfile.lock: {e}")
-        
+
         return dependencies
-    
+
     def _generate_scan_summary(self, scan_results: Dict[str, Any]) -> Dict[str, Any]:
         """Generate a summary of the scan results."""
         total_deps = len(scan_results['dependencies'])
         unique_deps = len(set(dep.name for dep in scan_results['dependencies']))
-        
+
         return {
             'total_dependencies': total_deps,
             'unique_dependencies': unique_deps,
@@ -653,32 +653,32 @@ class DependencyScanner:
                 'low': scan_results['low_severity_count']
             }
         }
-    
+
     def _generate_recommendations(self, scan_results: Dict[str, Any]) -> List[str]:
         """Generate actionable recommendations based on scan results."""
         recommendations = []
-        
+
         high_count = scan_results['high_severity_count']
         medium_count = scan_results['medium_severity_count']
-        
+
         if high_count > 0:
             recommendations.append(f"URGENT: Address {high_count} high-severity vulnerabilities immediately")
-        
+
         if medium_count > 0:
             recommendations.append(f"Schedule fixes for {medium_count} medium-severity vulnerabilities within 30 days")
-        
+
         vulnerable_deps = [dep for dep in scan_results['dependencies'] if dep.vulnerabilities]
         if vulnerable_deps:
             for dep in vulnerable_deps[:3]:  # Top 3 most critical
                 for vuln in dep.vulnerabilities:
                     if vuln.fixed_version:
                         recommendations.append(f"Update {dep.name} from {dep.version} to {vuln.fixed_version} to fix {vuln.id}")
-        
+
         if len(scan_results['ecosystems']) > 3:
             recommendations.append("Consider consolidating package managers to reduce complexity")
-        
+
         return recommendations
-    
+
     def generate_report(self, scan_results: Dict[str, Any], format: str = 'text') -> str:
         """Generate a human-readable or JSON report."""
         if format == 'json':
@@ -696,7 +696,7 @@ class DependencyScanner:
                 for dep in scan_results['dependencies']
             ]
             return json.dumps(serializable_results, indent=2, default=str)
-        
+
         # Text format report
         report = []
         report.append("=" * 60)
@@ -705,7 +705,7 @@ class DependencyScanner:
         report.append(f"Scan Date: {scan_results['timestamp']}")
         report.append(f"Project: {scan_results['project_path']}")
         report.append("")
-        
+
         # Summary
         summary = scan_results['scan_summary']
         report.append("SUMMARY:")
@@ -717,13 +717,13 @@ class DependencyScanner:
         report.append(f"    Medium Severity: {summary['vulnerability_breakdown']['medium']}")
         report.append(f"    Low Severity: {summary['vulnerability_breakdown']['low']}")
         report.append("")
-        
+
         # Vulnerable dependencies
         vulnerable_deps = [dep for dep in scan_results['dependencies'] if dep.vulnerabilities]
         if vulnerable_deps:
             report.append("VULNERABLE DEPENDENCIES:")
             report.append("-" * 30)
-            
+
             for dep in vulnerable_deps:
                 report.append(f"Package: {dep.name} v{dep.version} ({dep.ecosystem})")
                 for vuln in dep.vulnerabilities:
@@ -732,7 +732,7 @@ class DependencyScanner:
                     if vuln.fixed_version:
                         report.append(f"    Fixed in: {vuln.fixed_version}")
                     report.append("")
-        
+
         # Recommendations
         if scan_results['recommendations']:
             report.append("RECOMMENDATIONS:")
@@ -740,7 +740,7 @@ class DependencyScanner:
             for i, rec in enumerate(scan_results['recommendations'], 1):
                 report.append(f"{i}. {rec}")
             report.append("")
-        
+
         report.append("=" * 60)
         return '\n'.join(report)
 
@@ -756,8 +756,8 @@ Examples:
   python dep_scanner.py /app --fail-on-high
         """
     )
-    
-    parser.add_argument('project_path', 
+
+    parser.add_argument('project_path',
                        help='Path to the project directory to scan')
     parser.add_argument('--format', choices=['text', 'json'], default='text',
                        help='Output format (default: text)')
@@ -767,25 +767,25 @@ Examples:
                        help='Exit with error code if high-severity vulnerabilities found')
     parser.add_argument('--quick-scan', action='store_true',
                        help='Perform quick scan (skip transitive dependencies)')
-    
+
     args = parser.parse_args()
-    
+
     try:
         scanner = DependencyScanner()
         results = scanner.scan_project(args.project_path)
         report = scanner.generate_report(results, args.format)
-        
+
         if args.output:
             with open(args.output, 'w') as f:
                 f.write(report)
             print(f"Report saved to {args.output}")
         else:
             print(report)
-        
+
         # Exit with error if high-severity vulnerabilities found and --fail-on-high is set
         if args.fail_on_high and results['high_severity_count'] > 0:
             sys.exit(1)
-    
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

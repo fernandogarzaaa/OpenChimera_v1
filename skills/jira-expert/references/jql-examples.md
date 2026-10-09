@@ -14,19 +14,19 @@ sprint = "Sprint 23" ORDER BY priority DESC
 
 **All sprint work (current and backlog):**
 ```jql
-project = ABC AND issuetype IN (Story, Bug, Task) 
+project = ABC AND issuetype IN (Story, Bug, Task)
 ORDER BY sprint DESC, rank
 ```
 
 **Unscheduled stories:**
 ```jql
-project = ABC AND issuetype = Story AND sprint IS EMPTY 
+project = ABC AND issuetype = Story AND sprint IS EMPTY
 AND status != Done ORDER BY priority DESC
 ```
 
 **Spillover from last sprint:**
 ```jql
-sprint IN closedSprints() AND sprint NOT IN (latestReleasedVersion()) 
+sprint IN closedSprints() AND sprint NOT IN (latestReleasedVersion())
 AND status != Done ORDER BY created DESC
 ```
 
@@ -39,7 +39,7 @@ sprint = "Sprint 23" AND status = Done
 
 **My open issues:**
 ```jql
-assignee = currentUser() AND status != Done 
+assignee = currentUser() AND status != Done
 ORDER BY priority DESC, created ASC
 ```
 
@@ -185,34 +185,34 @@ labels = tech-debt AND status != Done ORDER BY priority DESC
 
 **My team's sprint work:**
 ```jql
-sprint IN openSprints() 
-AND assignee IN membersOf("engineering-team") 
+sprint IN openSprints()
+AND assignee IN membersOf("engineering-team")
 AND status != Done
 ORDER BY assignee, priority DESC
 ```
 
 **Bugs created this month, not in sprint:**
 ```jql
-issuetype = Bug 
-AND created >= startOfMonth() 
-AND sprint IS EMPTY 
+issuetype = Bug
+AND created >= startOfMonth()
+AND sprint IS EMPTY
 AND status != Done
 ORDER BY priority DESC, created DESC
 ```
 
 **High-priority work needing attention:**
 ```jql
-project = ABC 
-AND priority IN (Highest, High) 
-AND status IN ("In Progress", "In Review") 
+project = ABC
+AND priority IN (Highest, High)
+AND status IN ("In Progress", "In Review")
 AND updated <= -3d
 ORDER BY priority DESC, updated ASC
 ```
 
 **Stale issues:**
 ```jql
-project = ABC 
-AND status NOT IN (Done, Cancelled) 
+project = ABC
+AND status NOT IN (Done, Cancelled)
 AND (assignee IS EMPTY OR updated <= -30d)
 ORDER BY created ASC
 ```
@@ -318,20 +318,20 @@ project = ABC AND issuetype = Bug AND created >= startOfMonth()
 
 **Average cycle time:**
 ```jql
-project = ABC AND resolved >= startOfMonth() 
+project = ABC AND resolved >= startOfMonth()
 AND resolved <= endOfMonth()
 ```
 *Calculate time from In Progress to Done*
 
 **Stories delivered this quarter:**
 ```jql
-project = ABC AND issuetype = Story 
+project = ABC AND issuetype = Story
 AND resolved >= startOfYear() AND resolved <= endOfQuarter()
 ```
 
 **Team capacity:**
 ```jql
-assignee IN membersOf("engineering-team") 
+assignee IN membersOf("engineering-team")
 AND sprint IN openSprints()
 ```
 *Sum original estimates*
@@ -345,13 +345,13 @@ status = "Pending Review" AND assignee = currentUser()
 
 **Issues assigned to me, high priority:**
 ```jql
-assignee = currentUser() AND priority IN (Highest, High) 
+assignee = currentUser() AND priority IN (Highest, High)
 AND status != Done
 ```
 
 **Issues created by me, not resolved:**
 ```jql
-reporter = currentUser() AND status != Done 
+reporter = currentUser() AND status != Done
 ORDER BY created DESC
 ```
 
@@ -359,7 +359,7 @@ ORDER BY created DESC
 
 **Issues changed from status:**
 ```jql
-status WAS "In Progress" AND status = "Done" 
+status WAS "In Progress" AND status = "Done"
 AND status CHANGED AFTER startOfWeek()
 ```
 
@@ -387,7 +387,7 @@ parent = ABC-123 ORDER BY rank
 
 **Daily Standup Filter:**
 ```jql
-assignee = currentUser() AND sprint IN openSprints() 
+assignee = currentUser() AND sprint IN openSprints()
 AND status != Done ORDER BY priority DESC
 ```
 
@@ -410,6 +410,6 @@ ORDER BY priority DESC
 
 **Needs Triage:**
 ```jql
-project = ABC AND status = "To Triage" 
+project = ABC AND status = "To Triage"
 AND created >= -7d ORDER BY created ASC
 ```

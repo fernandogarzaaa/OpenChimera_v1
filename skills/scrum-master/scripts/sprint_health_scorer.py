@@ -83,7 +83,7 @@ STORY_STATUS_MAPPING = {
 
 class Story:
     """Represents a user story within a sprint."""
-    
+
     def __init__(self, data: Dict[str, Any]):
         self.id: str = data.get("id", "")
         self.title: str = data.get("title", "")
@@ -94,24 +94,24 @@ class Story:
         self.completed_date: Optional[str] = data.get("completed_date")
         self.blocked_days: int = data.get("blocked_days", 0)
         self.priority: str = data.get("priority", "medium")
-        
+
         # Normalize status
         self.normalized_status = self._normalize_status(self.status)
-    
+
     def _normalize_status(self, status: str) -> str:
         """Normalize status to standard categories."""
         status_lower = status.lower().strip()
-        
+
         for category, statuses in STORY_STATUS_MAPPING.items():
             if status_lower in statuses:
                 return category
-        
+
         return "unknown"
-    
+
     @property
     def is_completed(self) -> bool:
         return self.normalized_status == "completed"
-    
+
     @property
     def is_blocked(self) -> bool:
         return self.normalized_status == "blocked" or self.blocked_days > 0
@@ -119,7 +119,7 @@ class Story:
 
 class SprintHealthData:
     """Comprehensive sprint health data model."""
-    
+
     def __init__(self, data: Dict[str, Any]):
         self.sprint_number: int = data.get("sprint_number", 0)
         self.sprint_name: str = data.get("sprint_name", "")
@@ -127,37 +127,37 @@ class SprintHealthData:
         self.end_date: str = data.get("end_date", "")
         self.team_size: int = data.get("team_size", 0)
         self.working_days: int = data.get("working_days", 10)
-        
+
         # Commitment and delivery
         self.planned_points: int = data.get("planned_points", 0)
         self.completed_points: int = data.get("completed_points", 0)
         self.added_points: int = data.get("added_points", 0)
         self.removed_points: int = data.get("removed_points", 0)
-        
+
         # Stories
         story_data = data.get("stories", [])
         self.stories: List[Story] = [Story(story) for story in story_data]
-        
+
         # Blockers
         self.blockers: List[Dict[str, Any]] = data.get("blockers", [])
-        
+
         # Ceremonies
         self.ceremonies: Dict[str, Any] = data.get("ceremonies", {})
-        
+
         # Calculate derived metrics
         self._calculate_derived_metrics()
-    
+
     def _calculate_derived_metrics(self):
         """Calculate derived health metrics."""
         # Commitment reliability
         self.commitment_ratio = (
             self.completed_points / max(self.planned_points, 1)
         )
-        
+
         # Scope change
         total_scope_change = self.added_points + self.removed_points
         self.scope_change_ratio = total_scope_change / max(self.planned_points, 1)
-        
+
         # Story completion distribution
         total_stories = len(self.stories)
         if total_stories > 0:
@@ -165,7 +165,7 @@ class SprintHealthData:
             self.story_completion_ratio = completed_stories / total_stories
         else:
             self.story_completion_ratio = 0.0
-        
+
         # Blocked stories analysis
         blocked_stories = [story for story in self.stories if story.is_blocked]
         self.blocked_stories_count = len(blocked_stories)
@@ -174,7 +174,7 @@ class SprintHealthData:
 
 class HealthScoreResult:
     """Complete health scoring results."""
-    
+
     def __init__(self):
         self.dimension_scores: Dict[str, Dict[str, Any]] = {}
         self.overall_score: float = 0.0
@@ -192,19 +192,19 @@ def score_commitment_reliability(sprints: List[SprintHealthData]) -> Dict[str, A
     """Score commitment reliability across sprints."""
     if not sprints:
         return {"score": 0, "grade": "insufficient_data"}
-    
+
     commitment_ratios = [sprint.commitment_ratio for sprint in sprints]
     avg_commitment = statistics.mean(commitment_ratios)
     consistency = 1.0 - (statistics.stdev(commitment_ratios) if len(commitment_ratios) > 1 else 0)
-    
+
     # Score based on average achievement and consistency
     config = HEALTH_DIMENSIONS["commitment_reliability"]
     base_score = _calculate_dimension_score(avg_commitment, config)
-    
+
     # Penalty for inconsistency
     consistency_bonus = min(10, consistency * 10)
     final_score = min(100, base_score + consistency_bonus)
-    
+
     return {
         "score": final_score,
         "grade": _score_to_grade(final_score),
@@ -219,13 +219,13 @@ def score_scope_stability(sprints: List[SprintHealthData]) -> Dict[str, Any]:
     """Score scope stability (low scope change is better)."""
     if not sprints:
         return {"score": 0, "grade": "insufficient_data"}
-    
+
     scope_change_ratios = [sprint.scope_change_ratio for sprint in sprints]
     avg_scope_change = statistics.mean(scope_change_ratios)
-    
+
     # For scope change, lower is better, so invert the scoring
     config = HEALTH_DIMENSIONS["scope_stability"]
-    
+
     if avg_scope_change <= config["excellent_threshold"]:
         score = 90 + (config["excellent_threshold"] - avg_scope_change) * 200
     elif avg_scope_change <= config["good_threshold"]:
@@ -234,9 +234,9 @@ def score_scope_stability(sprints: List[SprintHealthData]) -> Dict[str, Any]:
         score = 40 + (config["poor_threshold"] - avg_scope_change) * 200
     else:
         score = max(0, 40 - (avg_scope_change - config["poor_threshold"]) * 100)
-    
+
     score = min(100, max(0, score))
-    
+
     return {
         "score": score,
         "grade": _score_to_grade(score),
@@ -250,11 +250,11 @@ def score_blocker_resolution(sprints: List[SprintHealthData]) -> Dict[str, Any]:
     """Score blocker resolution efficiency."""
     if not sprints:
         return {"score": 0, "grade": "insufficient_data"}
-    
+
     all_blockers = []
     for sprint in sprints:
         all_blockers.extend(sprint.blockers)
-    
+
     if not all_blockers:
         return {
             "score": 100,
@@ -262,22 +262,22 @@ def score_blocker_resolution(sprints: List[SprintHealthData]) -> Dict[str, Any]:
             "average_resolution_time": 0,
             "details": "No blockers reported"
         }
-    
+
     # Calculate average resolution time
     resolution_times = []
     for blocker in all_blockers:
         resolution_time = blocker.get("resolution_days", 0)
         if resolution_time > 0:
             resolution_times.append(resolution_time)
-    
+
     if not resolution_times:
         return {"score": 50, "grade": "fair", "details": "No resolution time data"}
-    
+
     avg_resolution_time = statistics.mean(resolution_times)
-    
+
     # Score based on resolution time (lower is better)
     config = HEALTH_DIMENSIONS["blocker_resolution"]
-    
+
     if avg_resolution_time <= config["excellent_threshold"]:
         score = 95
     elif avg_resolution_time <= config["good_threshold"]:
@@ -286,7 +286,7 @@ def score_blocker_resolution(sprints: List[SprintHealthData]) -> Dict[str, Any]:
         score = 60 - (avg_resolution_time - config["good_threshold"]) * 5
     else:
         score = max(20, 40 - (avg_resolution_time - config["poor_threshold"]) * 3)
-    
+
     return {
         "score": score,
         "grade": _score_to_grade(score),
@@ -301,23 +301,23 @@ def score_ceremony_engagement(sprints: List[SprintHealthData]) -> Dict[str, Any]
     """Score team engagement in scrum ceremonies."""
     if not sprints:
         return {"score": 0, "grade": "insufficient_data"}
-    
+
     ceremony_scores = []
     ceremony_details = {}
-    
+
     for sprint in sprints:
         ceremonies = sprint.ceremonies
         sprint_ceremony_scores = []
-        
+
         for ceremony_name, ceremony_data in ceremonies.items():
             if isinstance(ceremony_data, dict):
                 attendance_rate = ceremony_data.get("attendance_rate", 0)
                 engagement_score = ceremony_data.get("engagement_score", 0)
-                
+
                 # Weight attendance more heavily than engagement
                 ceremony_score = (attendance_rate * 0.7) + (engagement_score * 0.3)
                 sprint_ceremony_scores.append(ceremony_score)
-                
+
                 if ceremony_name not in ceremony_details:
                     ceremony_details[ceremony_name] = []
                 ceremony_details[ceremony_name].append({
@@ -326,18 +326,18 @@ def score_ceremony_engagement(sprints: List[SprintHealthData]) -> Dict[str, Any]
                     "engagement": engagement_score,
                     "score": ceremony_score
                 })
-        
+
         if sprint_ceremony_scores:
             ceremony_scores.append(statistics.mean(sprint_ceremony_scores))
-    
+
     if not ceremony_scores:
         return {"score": 50, "grade": "fair", "details": "No ceremony data available"}
-    
+
     avg_ceremony_score = statistics.mean(ceremony_scores)
-    
+
     config = HEALTH_DIMENSIONS["ceremony_engagement"]
     score = _calculate_dimension_score(avg_ceremony_score, config)
-    
+
     return {
         "score": score,
         "grade": _score_to_grade(score),
@@ -351,7 +351,7 @@ def score_story_completion_distribution(sprints: List[SprintHealthData]) -> Dict
     """Score how well stories are completed vs. partially done."""
     if not sprints:
         return {"score": 0, "grade": "insufficient_data"}
-    
+
     completion_ratios = []
     story_analysis = {
         "total_stories": 0,
@@ -359,30 +359,30 @@ def score_story_completion_distribution(sprints: List[SprintHealthData]) -> Dict
         "blocked_stories": 0,
         "partial_completion": 0
     }
-    
+
     for sprint in sprints:
         if sprint.stories:
             sprint_completion = sprint.story_completion_ratio
             completion_ratios.append(sprint_completion)
-            
+
             story_analysis["total_stories"] += len(sprint.stories)
             story_analysis["completed_stories"] += sum(1 for s in sprint.stories if s.is_completed)
             story_analysis["blocked_stories"] += sum(1 for s in sprint.stories if s.is_blocked)
-    
+
     if not completion_ratios:
         return {"score": 50, "grade": "fair", "details": "No story data available"}
-    
+
     avg_completion_ratio = statistics.mean(completion_ratios)
-    
+
     config = HEALTH_DIMENSIONS["story_completion_distribution"]
     score = _calculate_dimension_score(avg_completion_ratio, config)
-    
+
     # Penalty for high number of blocked stories
     if story_analysis["total_stories"] > 0:
         blocked_ratio = story_analysis["blocked_stories"] / story_analysis["total_stories"]
         if blocked_ratio > 0.20:  # More than 20% blocked
             score = max(0, score - (blocked_ratio - 0.20) * 100)
-    
+
     return {
         "score": score,
         "grade": _score_to_grade(score),
@@ -396,18 +396,18 @@ def score_velocity_predictability(sprints: List[SprintHealthData]) -> Dict[str, 
     """Score velocity predictability based on coefficient of variation."""
     if len(sprints) < 2:
         return {"score": 50, "grade": "fair", "details": "Insufficient sprints for predictability analysis"}
-    
+
     velocities = [sprint.completed_points for sprint in sprints]
     mean_velocity = statistics.mean(velocities)
-    
+
     if mean_velocity == 0:
         return {"score": 0, "grade": "poor", "details": "No velocity recorded"}
-    
+
     velocity_cv = statistics.stdev(velocities) / mean_velocity
-    
+
     # Lower CV is better for predictability
     config = HEALTH_DIMENSIONS["velocity_predictability"]
-    
+
     if velocity_cv <= config["excellent_threshold"]:
         score = 95
     elif velocity_cv <= config["good_threshold"]:
@@ -416,7 +416,7 @@ def score_velocity_predictability(sprints: List[SprintHealthData]) -> Dict[str, 
         score = 60 - (velocity_cv - config["good_threshold"]) * 100
     else:
         score = max(20, 40 - (velocity_cv - config["poor_threshold"]) * 50)
-    
+
     return {
         "score": score,
         "grade": _score_to_grade(score),
@@ -465,18 +465,18 @@ def _score_to_grade(score: float) -> str:
 def analyze_sprint_health(data: Dict[str, Any]) -> HealthScoreResult:
     """Perform comprehensive sprint health analysis."""
     result = HealthScoreResult()
-    
+
     try:
         # Parse sprint data
         sprint_records = data.get("sprints", [])
         sprints = [SprintHealthData(record) for record in sprint_records]
-        
+
         if not sprints:
             raise ValueError("No sprint data found")
-        
+
         # Sort by sprint number
         sprints.sort(key=lambda s: s.sprint_number)
-        
+
         # Calculate dimension scores
         dimensions = {
             "commitment_reliability": score_commitment_reliability,
@@ -486,32 +486,32 @@ def analyze_sprint_health(data: Dict[str, Any]) -> HealthScoreResult:
             "story_completion_distribution": score_story_completion_distribution,
             "velocity_predictability": score_velocity_predictability,
         }
-        
+
         weighted_scores = []
-        
+
         for dimension_name, scoring_func in dimensions.items():
             dimension_result = scoring_func(sprints)
             result.dimension_scores[dimension_name] = dimension_result
-            
+
             # Calculate weighted contribution
             weight = HEALTH_DIMENSIONS[dimension_name]["weight"]
             weighted_score = dimension_result["score"] * weight
             weighted_scores.append(weighted_score)
-        
+
         # Calculate overall score
         result.overall_score = sum(weighted_scores)
         result.health_grade = _score_to_grade(result.overall_score)
-        
+
         # Generate detailed metrics
         result.detailed_metrics = _generate_detailed_metrics(sprints)
-        
+
         # Generate recommendations
         result.recommendations = _generate_health_recommendations(result)
-        
+
     except Exception as e:
         result.dimension_scores = {"error": str(e)}
         result.overall_score = 0
-    
+
     return result
 
 
@@ -527,10 +527,10 @@ def _generate_detailed_metrics(sprints: List[SprintHealthData]) -> Dict[str, Any
         "story_metrics": {},
         "blocker_metrics": {},
     }
-    
+
     if not sprints:
         return metrics
-    
+
     # Team metrics
     team_sizes = [sprint.team_size for sprint in sprints if sprint.team_size > 0]
     if team_sizes:
@@ -538,12 +538,12 @@ def _generate_detailed_metrics(sprints: List[SprintHealthData]) -> Dict[str, Any
             "average_team_size": statistics.mean(team_sizes),
             "team_size_stability": statistics.stdev(team_sizes) if len(team_sizes) > 1 else 0,
         }
-    
+
     # Story metrics
     all_stories = []
     for sprint in sprints:
         all_stories.extend(sprint.stories)
-    
+
     if all_stories:
         story_points = [story.points for story in all_stories if story.points > 0]
         metrics["story_metrics"] = {
@@ -552,12 +552,12 @@ def _generate_detailed_metrics(sprints: List[SprintHealthData]) -> Dict[str, Any
             "completed_stories": sum(1 for story in all_stories if story.is_completed),
             "blocked_stories": sum(1 for story in all_stories if story.is_blocked),
         }
-    
+
     # Blocker metrics
     all_blockers = []
     for sprint in sprints:
         all_blockers.extend(sprint.blockers)
-    
+
     if all_blockers:
         resolution_times = [b.get("resolution_days", 0) for b in all_blockers if b.get("resolution_days", 0) > 0]
         metrics["blocker_metrics"] = {
@@ -565,14 +565,14 @@ def _generate_detailed_metrics(sprints: List[SprintHealthData]) -> Dict[str, Any
             "resolved_blockers": len(resolution_times),
             "average_resolution_days": statistics.mean(resolution_times) if resolution_times else 0,
         }
-    
+
     return metrics
 
 
 def _generate_health_recommendations(result: HealthScoreResult) -> List[str]:
     """Generate actionable recommendations based on health scores."""
     recommendations = []
-    
+
     # Overall health recommendations
     if result.overall_score < OVERALL_HEALTH_THRESHOLDS["poor"]:
         recommendations.append("CRITICAL: Sprint health is poor across multiple dimensions. Immediate intervention required.")
@@ -580,13 +580,13 @@ def _generate_health_recommendations(result: HealthScoreResult) -> List[str]:
         recommendations.append("Sprint health needs improvement. Focus on top 2-3 problem areas.")
     elif result.overall_score >= OVERALL_HEALTH_THRESHOLDS["excellent"]:
         recommendations.append("Excellent sprint health! Maintain current practices and share learnings with other teams.")
-    
+
     # Dimension-specific recommendations
     for dimension, scores in result.dimension_scores.items():
         if isinstance(scores, dict) and "score" in scores:
             score = scores["score"]
             grade = scores["grade"]
-            
+
             if score < 50:  # Poor performance
                 if dimension == "commitment_reliability":
                     recommendations.append("Improve sprint planning accuracy and realistic capacity estimation.")
@@ -600,11 +600,11 @@ def _generate_health_recommendations(result: HealthScoreResult) -> List[str]:
                     recommendations.append("Focus on completing stories fully rather than starting many partially.")
                 elif dimension == "velocity_predictability":
                     recommendations.append("Work on consistent estimation and delivery patterns.")
-            
+
             elif score >= 85:  # Excellent performance
                 dimension_name = dimension.replace("_", " ").title()
                 recommendations.append(f"Excellent {dimension_name}! Document and share best practices.")
-    
+
     return recommendations
 
 
@@ -619,22 +619,22 @@ def format_text_output(result: HealthScoreResult) -> str:
     lines.append("SPRINT HEALTH ANALYSIS REPORT")
     lines.append("="*60)
     lines.append("")
-    
+
     if "error" in result.dimension_scores:
         lines.append(f"ERROR: {result.dimension_scores['error']}")
         return "\n".join(lines)
-    
+
     # Overall health summary
     lines.append("OVERALL HEALTH SUMMARY")
     lines.append("-"*30)
     lines.append(f"Health Score: {result.overall_score:.1f}/100")
     lines.append(f"Health Grade: {result.health_grade.title()}")
     lines.append("")
-    
+
     # Dimension scores
     lines.append("DIMENSION SCORES")
     lines.append("-"*30)
-    
+
     for dimension, scores in result.dimension_scores.items():
         if isinstance(scores, dict) and "score" in scores:
             dimension_name = dimension.replace("_", " ").title()
@@ -643,38 +643,38 @@ def format_text_output(result: HealthScoreResult) -> str:
             lines.append(f"  Score: {scores['score']:.1f}/100 ({scores['grade'].title()})")
             lines.append(f"  Details: {scores['details']}")
             lines.append("")
-    
+
     # Detailed metrics
     metrics = result.detailed_metrics
     if metrics:
         lines.append("DETAILED METRICS")
         lines.append("-"*30)
         lines.append(f"Sprints Analyzed: {metrics.get('sprint_count', 0)}")
-        
+
         if "team_metrics" in metrics and metrics["team_metrics"]:
             team = metrics["team_metrics"]
             lines.append(f"Average Team Size: {team.get('average_team_size', 0):.1f}")
-        
+
         if "story_metrics" in metrics and metrics["story_metrics"]:
             stories = metrics["story_metrics"]
             lines.append(f"Total Stories: {stories.get('total_stories', 0)}")
             lines.append(f"Completed Stories: {stories.get('completed_stories', 0)}")
             lines.append(f"Blocked Stories: {stories.get('blocked_stories', 0)}")
-        
+
         if "blocker_metrics" in metrics and metrics["blocker_metrics"]:
             blockers = metrics["blocker_metrics"]
             lines.append(f"Total Blockers: {blockers.get('total_blockers', 0)}")
             lines.append(f"Average Resolution Time: {blockers.get('average_resolution_days', 0):.1f} days")
-        
+
         lines.append("")
-    
+
     # Recommendations
     if result.recommendations:
         lines.append("RECOMMENDATIONS")
         lines.append("-"*30)
         for i, rec in enumerate(result.recommendations, 1):
             lines.append(f"{i}. {rec}")
-    
+
     return "\n".join(lines)
 
 
@@ -699,26 +699,26 @@ def main() -> int:
         description="Analyze sprint health across multiple dimensions"
     )
     parser.add_argument(
-        "data_file", 
+        "data_file",
         help="JSON file containing sprint health data"
     )
     parser.add_argument(
-        "--format", 
-        choices=["text", "json"], 
+        "--format",
+        choices=["text", "json"],
         default="text",
         help="Output format (default: text)"
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Load and validate data
         with open(args.data_file, 'r') as f:
             data = json.load(f)
-        
+
         # Perform analysis
         result = analyze_sprint_health(data)
-        
+
         # Output results
         if args.format == "json":
             output = format_json_output(result)
@@ -726,9 +726,9 @@ def main() -> int:
         else:
             output = format_text_output(result)
             print(output)
-        
+
         return 0
-        
+
     except FileNotFoundError:
         print(f"Error: File '{args.data_file}' not found", file=sys.stderr)
         return 1
