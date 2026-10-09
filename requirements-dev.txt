@@ -13,6 +13,7 @@ annotated-types==0.7.0
 anyio==4.14.2
     # via
     #   httpx
+    #   httpx2
     #   openai
     #   starlette
     #   watchfiles
@@ -29,8 +30,9 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.3.1
+click==8.5.0
     # via
+    #   huggingface-hub
     #   pip-tools
     #   typer
     #   uvicorn
@@ -61,8 +63,9 @@ fsspec==2026.3.0
 h11==0.16.0
     # via
     #   httpcore
+    #   httpcore2
     #   uvicorn
-hf-xet==1.4.3
+hf-xet==1.7.0
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -72,7 +75,7 @@ httpx==0.28.1
     # via
     #   huggingface-hub
     #   openai
-huggingface-hub==1.10.2
+huggingface-hub==1.33.0
     # via
     #   sentence-transformers
     #   tokenizers
@@ -83,6 +86,7 @@ idna==3.15
     # via
     #   anyio
     #   httpx
+    #   httpx2
     #   requests
 jinja2==3.1.6
     # via torch
@@ -212,7 +216,7 @@ requests==2.33.1
     #   -r requirements.in
 rich==15.0.0
     # via typer
-safetensors==0.7.0
+safetensors==0.8.0
     # via transformers
 scikit-learn==1.8.0
     # via
@@ -239,7 +243,7 @@ sympy==1.14.0
     # via torch
 threadpoolctl==3.6.0
     # via scikit-learn
-tokenizers==0.22.2
+tokenizers==0.23.2
     # via transformers
 torch==2.13.0
     # via
@@ -252,14 +256,14 @@ tqdm==4.67.3
     #   openai
     #   sentence-transformers
     #   transformers
-transformers==5.10.1
-    # via sentence-transformers
+transformers==5.19.0
+    # via
+    #   -r requirements.in
+    #   sentence-transformers
 triton==3.7.1
     # via torch
 typer==0.24.1
-    # via
-    #   huggingface-hub
-    #   transformers
+    # via transformers
 typing-extensions==4.15.0
     # via
     #   anyio
