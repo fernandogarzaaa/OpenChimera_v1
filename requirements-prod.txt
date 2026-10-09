@@ -209,7 +209,7 @@ tqdm==4.67.3
     #   openai
     #   sentence-transformers
     #   transformers
-transformers==5.5.4
+transformers==5.10.1
     # via sentence-transformers
 triton==3.7.1
     # via torch
