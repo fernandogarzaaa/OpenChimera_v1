@@ -1,15 +1,15 @@
 -r requirements.in
 build>=1.5.0,<2
-wheel>=0.47.0,<1
-pip-tools>=7.6.0,<8
-pre-commit>=4.6.1,<5
+wheel>=0.48.0,<1
+pip-tools>=7.6.1,<8
+pre-commit>=4.6.2,<5
 
 # Ensure all runtime/skill dependencies are present in dev
 fastapi>=0.110,<1
 uvicorn[standard]>=0.49.0,<1
 sentence-transformers>=5.5.1,<6
 torch>=2.13.0,<3
-scikit-learn>=1.4,<2
+scikit-learn>=1.9.1,<2
 pandas>=2.2,<3
 requests>=2.31,<3
 openai>=2.41.1,<3
