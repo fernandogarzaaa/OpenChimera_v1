@@ -27,6 +27,36 @@ updates:
       day: monday
     open-pull-requests-limit: 5
 
+  # Rust — root workspace (crates/*) and the standalone chimera-core crate
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: cargo
+    directory: "/chimera-core"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  # npm — root package and the dashboard
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: "/src/dashboard"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+
   # npm — playwright-pro MCP integrations
   - package-ecosystem: npm
     directory: "/skills/playwright-pro/integrations/browserstack-mcp"

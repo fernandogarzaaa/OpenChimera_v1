@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Runtime Tool Execution**: Previously stubbed RuntimeToolRegistry.execute() now fully functional using ToolExecutor
 - **Actuator Timeout Handling**: ActuatorInterface.issue_command() now properly handles timeouts and retries
+- **Packaging**: `networkx` is now a required runtime dependency (it was only in the `dev` extra, so `core/deliberation.py` failed to import on a plain `pip install`)
+- **Dependabot**: now also covers Cargo (`/`, `/chimera-core`) and npm (`/`, `/src/dashboard`)
 
 ### Security
 - Pydantic schemas already use `extra="forbid"` for strict validation (verified as existing feature)
