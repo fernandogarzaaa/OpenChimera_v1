@@ -54,7 +54,7 @@ filelock==3.25.2
     #   python-discovery
     #   torch
     #   virtualenv
-fsspec==2026.3.0
+fsspec==2026.6.0
     # via
     #   huggingface-hub
     #   torch
