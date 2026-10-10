@@ -251,6 +251,7 @@ def load_settings(force_reload: bool = False) -> Settings:
 
     settings = Settings(**merged)
     settings.config_path = paths[0]
+    _apply_provider_key_env(settings)
     _apply_env_overrides(settings)
     _SETTINGS_CACHE = settings
     return settings
@@ -258,6 +259,52 @@ def load_settings(force_reload: bool = False) -> Settings:
 
 ENV_PREFIX = "OPENCHIMERA_"
 ENV_NESTED_SEPARATOR = "__"
+
+# Standard vendor API-key variables that the README documents
+# (`export OPENAI_API_KEY=...`). Setting one enables that provider without
+# editing YAML. Providers that need more than a key (ollama: host only,
+# azure: endpoint, bedrock: AWS credential chain) are configured explicitly.
+PROVIDER_KEY_ENV_VARS: dict[str, str] = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "google": "GOOGLE_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
+    "cohere": "COHERE_API_KEY",
+    "together": "TOGETHER_API_KEY",
+    "fireworks": "FIREWORKS_API_KEY",
+    "xai": "XAI_API_KEY",
+    "perplexity": "PERPLEXITY_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+    "cerebras": "CEREBRAS_API_KEY",
+    "ai21": "AI21_API_KEY",
+}
+
+
+def _apply_provider_key_env(settings: Settings) -> None:
+    """Enable providers whose standard API-key env var is set.
+
+    Fills ``api_key`` only when the config left it empty, and picks up the
+    matching ``<VENDOR>_BASE_URL`` (e.g. ``OPENAI_BASE_URL`` for a local
+    OpenAI-compatible server such as llama.cpp or vLLM) when no base_url is
+    configured. ``OPENCHIMERA_PROVIDERS__*`` variables are applied afterwards
+    and still take precedence.
+    """
+    for name, key_var in PROVIDER_KEY_ENV_VARS.items():
+        key = os.environ.get(key_var, "").strip()
+        if not key:
+            continue
+        cfg = getattr(settings.providers, name, None)
+        if cfg is None:
+            continue
+        if not cfg.api_key:
+            cfg.api_key = key
+        cfg.enabled = True
+        base_var = key_var[: -len("_API_KEY")] + "_BASE_URL"
+        base = os.environ.get(base_var, "").strip()
+        if base and not cfg.base_url:
+            cfg.base_url = base
 
 
 def _apply_env_overrides(settings: Settings) -> None:

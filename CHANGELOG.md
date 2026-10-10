@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Providers from env**: standard key variables (`OPENAI_API_KEY`, `GROQ_API_KEY`, …) now enable their provider as the README documents; `<VENDOR>_BASE_URL` points it at a local OpenAI-compatible server. `OPENCHIMERA_PROVIDERS__*` still wins.
+- **Core install**: `openai` is now a core dependency, so `pip install -e .` can run `openchimera ask` (previously `ModuleNotFoundError`). Missing-client errors are reported, not raised.
+- **`openchimera ask` with no provider** prints the onboarding hint instead of a `RuntimeError` traceback.
+- **Tool loop**: `ask --tools` / `POST /api/v2/query` now send tool results back to the model (up to 4 rounds) and return its final answer; tool names go over the wire as `file__read` (OpenAI rejects dotted function names).
+
 ### Added
 - **DRY Improvements**: Extracted shared `ToolExecutor` helper from tool_registry.py and tool_runtime.py
 - **DRY Improvements**: Extracted shared MCP entry normalization into `mcp_normalization.py`
