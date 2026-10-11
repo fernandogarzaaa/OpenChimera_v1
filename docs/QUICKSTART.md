@@ -33,7 +33,9 @@ pip install -r requirements-prod.lock
 pip install -e .                   # provides the `openchimera` command
 ```
 
-`openchimera` and `python run.py` are the same entry point — use either.
+`openchimera` is the canonical CLI (the v2 package that `pip install` ships).
+`python run.py` at the repo root boots the legacy v1 tree and is kept only as an
+archival reference — use `openchimera` for everything.
 
 ## 2. First-time setup
 
