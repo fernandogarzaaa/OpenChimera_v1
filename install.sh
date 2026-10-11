@@ -137,7 +137,9 @@ echo -e "  ${CYAN}openchimera ask 'hello'${NC}  # One-off query"
 echo ""
 
 if [ -t 0 ]; then
-    read -p "Run onboarding now? [Y/n] " -n 1 -r
+    if ! read -p "Run onboarding now? [Y/n] " -n 1 -r; then
+        REPLY=n
+    fi
     echo
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         "$VENV_PY" -m openchimera onboard
