@@ -32,6 +32,9 @@ openchimera onboard
 
 ## ⚡ Quick Start
 
+> The `openchimera` command is the canonical CLI (v2). The repo-root
+> `python run.py` boots the legacy v1 tree and is archival — use `openchimera`.
+
 ```bash
 # Interactive setup wizard
 openchimera onboard

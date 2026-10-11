@@ -50,13 +50,34 @@ else
     cd "$INSTALL_DIR"
 fi
 
-# ── Install Python deps ──
-echo -e "${CYAN}→${NC} Installing Python dependencies (this may take 2-5 minutes)..."
-if ! $PYTHON_CMD -m pip install -e ".[all]" --quiet 2>/dev/null; then
-    echo -e "${YELLOW}⚠${NC} Full install failed, trying core only..."
-    $PYTHON_CMD -m pip install -e "." --quiet
+# ── Create virtualenv ──
+VENV_DIR="$INSTALL_DIR/venv"
+VENV_PY="$VENV_DIR/bin/python"
+if [ ! -x "$VENV_PY" ]; then
+    echo -e "${CYAN}→${NC} Creating virtual environment at $VENV_DIR..."
+    if ! $PYTHON_CMD -m venv "$VENV_DIR"; then
+        echo -e "${RED}✗ Failed to create virtualenv (is python3-venv installed?).${NC}"
+        echo -e "${RED}  Refusing to install into system Python.${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✓${NC} Using existing virtualenv at $VENV_DIR"
 fi
-echo -e "${GREEN}✓${NC} Python dependencies installed"
+
+# ── Install Python deps (inside the venv — never system Python) ──
+# Unset -> "all" (default). Set-but-empty -> core only.
+EXTRAS="${OPENCHIMERA_EXTRAS-all}"   # e.g. OPENCHIMERA_EXTRAS="" for core only
+if [ -n "$EXTRAS" ]; then
+    SPEC=".[${EXTRAS}]"
+else
+    SPEC="."
+fi
+echo -e "${CYAN}→${NC} Installing Python dependencies into the venv (this may take 2-5 minutes)..."
+if ! "$VENV_PY" -m pip install -e "$SPEC" --quiet 2>/dev/null; then
+    echo -e "${YELLOW}⚠${NC} Extras install failed, trying core only..."
+    "$VENV_PY" -m pip install -e "." --quiet
+fi
+echo -e "${GREEN}✓${NC} Python dependencies installed (venv: $VENV_DIR)"
 
 # ── Check Rust ──
 if command -v cargo &> /dev/null; then
@@ -115,8 +136,15 @@ echo -e "  ${CYAN}openchimera tui${NC}          # Launch Rust TUI"
 echo -e "  ${CYAN}openchimera ask 'hello'${NC}  # One-off query"
 echo ""
 
-read -p "Run onboarding now? [Y/n] " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-    $PYTHON_CMD -m openchimera onboard
+if [ -t 0 ]; then
+    if ! read -p "Run onboarding now? [Y/n] " -n 1 -r; then
+        REPLY=n
+    fi
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+        "$VENV_PY" -m openchimera onboard
+    fi
+else
+    echo -e "${CYAN}→${NC} Non-interactive shell: skipping onboarding prompt."
+    echo -e "  Run ${CYAN}$VENV_DIR/bin/openchimera onboard${NC} to configure providers."
 fi
