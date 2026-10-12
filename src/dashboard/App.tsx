@@ -24,10 +24,12 @@ export default function App() {
   return (
     <DashboardLayout>
       {/* Navigation */}
-      <nav className="mb-6 flex gap-2 border-b border-slate-700 pb-3">
+      <nav aria-label="Dashboard sections" className="mb-6 flex flex-wrap gap-2 border-b border-slate-700 pb-3">
         {NAV_ITEMS.map(item => (
           <button
             key={item.id}
+            type="button"
+            aria-current={route === item.id ? 'page' : undefined}
             onClick={() => setRoute(item.id)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               route === item.id
@@ -35,7 +37,7 @@ export default function App() {
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <span>{item.icon}</span>
+            <span aria-hidden="true">{item.icon}</span>
             <span>{item.label}</span>
           </button>
         ))}

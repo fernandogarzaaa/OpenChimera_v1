@@ -161,3 +161,31 @@ jobs:
           openchimera doctor --production --json
           openchimera status --json
           openchimera backup create --json
+
+  dashboard:
+    name: Dashboard build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/dashboard
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/dashboard/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # Dependabot bumps to the dashboard were merging on green checks that
+      # never compiled it; this makes a broken React/Vite/Tailwind bump fail.
+      - name: Build
+        run: npm run build
+
+      - name: Check styles were compiled
+        run: ls dist/assets/*.css
