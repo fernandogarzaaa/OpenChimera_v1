@@ -177,12 +177,12 @@ pre-commit==4.6.2
     # via -r requirements-dev.in
 psutil==7.2.2
     # via -r requirements.in
-pydantic==2.13.5
+pydantic==2.14.0
     # via
     #   -r requirements.in
     #   fastapi
     #   openai
-pydantic-core==2.46.5
+pydantic-core==2.50.0
     # via pydantic
 pygments==2.20.0
     # via rich
@@ -225,7 +225,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==6.1.0
+sentence-transformers==5.7.0
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -242,7 +242,9 @@ sympy==1.14.0
 threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.22.2
-    # via transformers
+    # via
+    #   sentence-transformers
+    #   transformers
 torch==2.13.0
     # via
     #   -r requirements-dev.in
@@ -264,7 +266,7 @@ typer==0.24.1
     # via
     #   huggingface-hub
     #   transformers
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   anyio
     #   fastapi
@@ -276,7 +278,7 @@ typing-extensions==4.15.0
     #   starlette
     #   torch
     #   typing-inspection
-typing-inspection==0.4.2
+typing-inspection==0.4.4
     # via
     #   fastapi
     #   pydantic
