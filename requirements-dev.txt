@@ -44,7 +44,7 @@ distlib==0.4.0
     # via virtualenv
 distro==1.9.0
     # via openai
-fastapi==0.135.3
+fastapi==0.143.0
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -159,6 +159,8 @@ openai==2.41.1
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
+opentelemetry-api==1.45.1
+    # via fastapi
 packaging==26.0
     # via
     #   build
@@ -225,7 +227,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==6.1.0
+sentence-transformers==5.7.0
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -242,7 +244,9 @@ sympy==1.14.0
 threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.22.2
-    # via transformers
+    # via
+    #   sentence-transformers
+    #   transformers
 torch==2.13.0
     # via
     #   -r requirements-dev.in
@@ -270,6 +274,7 @@ typing-extensions==4.15.0
     #   fastapi
     #   huggingface-hub
     #   openai
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   sentence-transformers

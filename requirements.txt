@@ -33,7 +33,7 @@ cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink
     # via torch
 distro==1.9.0
     # via openai
-fastapi==0.135.3
+fastapi==0.143.0
     # via -r requirements.in
 filelock==3.25.2
     # via
@@ -138,6 +138,8 @@ nvidia-nvtx==13.0.85
     # via cuda-toolkit
 openai==2.41.1
     # via -r requirements.in
+opentelemetry-api==1.45.1
+    # via fastapi
 packaging==26.0
     # via
     #   huggingface-hub
@@ -227,6 +229,7 @@ typing-extensions==4.15.0
     #   fastapi
     #   huggingface-hub
     #   openai
+    #   opentelemetry-api
     #   pydantic
     #   pydantic-core
     #   sentence-transformers
