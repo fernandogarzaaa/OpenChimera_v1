@@ -308,12 +308,15 @@ export default function LiveCanvas({ apiBase = '/api/v1', refreshIntervalMs = 20
             className={`text-xs px-3 py-1 rounded-full font-mono transition-colors ${
               isLive ? 'bg-green-500 text-black' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
             }`}
+            type="button"
+            aria-pressed={isLive}
             onClick={() => setIsLive(v => !v)}
           >
             {isLive ? '● LIVE' : '○ PAUSED'}
           </button>
           <button
             className="text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-300 hover:bg-slate-600 font-mono"
+            type="button"
             onClick={fetchState}
           >
             ↻ Refresh
@@ -325,6 +328,8 @@ export default function LiveCanvas({ apiBase = '/api/v1', refreshIntervalMs = 20
         ref={canvasRef}
         width={width}
         height={height}
+        role="img"
+        aria-label={`Live agent graph: ${canvasState.nodes.length} nodes. Click a node for details.`}
         className="rounded-lg cursor-crosshair w-full"
         style={{ background: '#0f172a' }}
         onClick={handleCanvasClick}

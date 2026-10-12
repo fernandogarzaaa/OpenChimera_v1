@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Dashboard styling**: the React dashboard shipped with no CSS at all. `index.html` linked a non-existent `/dist/output.css`, `src/index.css` was never imported, and it used Tailwind v3 directives against Tailwind v4. It now builds through `@tailwindcss/vite` (19 kB CSS bundle). The unused PostCSS/autoprefixer config is removed, and the dev server uses port 3000 as the README says.
+- **Dashboard readability/a11y**: dark layout shell to match the slate panels (slate-400 text on the old gray-50 background was below WCAG contrast); nav has `aria-label`/`aria-current` and wraps on mobile; the Live Canvas has an accessible label and the LIVE toggle has `aria-pressed`.
+- **CI**: new `Dashboard build` job (`npm ci && npm run build` in `src/dashboard`), so dashboard dependency bumps can no longer merge on checks that never compiled it.
 - **Providers from env**: standard key variables (`OPENAI_API_KEY`, `GROQ_API_KEY`, …) now enable their provider as the README documents; `<VENDOR>_BASE_URL` points it at a local OpenAI-compatible server. `OPENCHIMERA_PROVIDERS__*` still wins.
 - **Core install**: `openai` is now a core dependency, so `pip install -e .` can run `openchimera ask` (previously `ModuleNotFoundError`). Missing-client errors are reported, not raised.
 - **`openchimera ask` with no provider** prints the onboarding hint instead of a `RuntimeError` traceback.
