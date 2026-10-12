@@ -40,6 +40,8 @@ OpenChimera is designed with safe defaults for local and production deployments:
 - **TLS optional but enforced when configured** — if `api.tls.enabled=true` is set, the runtime requires both `certfile` and `keyfile`. Partial TLS configuration is a fast-fail startup error.
 - **No committed secrets** — the default `config/runtime_profile.json` contains only publishable defaults. Machine-specific paths and credentials belong in `config/runtime_profile.local.json` (gitignored) or environment variables.
 - **Restrictive HTTP security headers** — all responses include `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, and HSTS on HTTPS.
+- **Shell tool denied by default** — `shell.exec` / `code.execute language=bash` need `tools.allow_shell`, a `tools.shell_allowlist` entry, or an approval callback; they run without a shell and with secret-looking environment variables removed.
+- **Python code tool runs out of process** — restricted builtins and imports, empty environment, temp working directory, CPU/memory/time limits. This is not a substitute for container isolation.
 - **Credential surfaces are read-only and sanitized** — `openchimera doctor`, `openchimera config --json`, and `GET /v1/config/status` report auth and TLS state without printing raw token values.
 
 ## What Is In Scope

@@ -144,6 +144,14 @@ jobs:
           git config --local user.email "chimera-evo[bot]@users.noreply.github.com"
           git config --local user.name  "OpenChimera Evolution Bot"
 
+          # Normalise generated files the way pre-commit's trailing-whitespace and
+          # end-of-file-fixer hooks do, so evolution commits never break pre-commit.
+          for f in .github/evolution-memory.json data/evolution_reports/*.md; do
+            [ -f "$f" ] || continue
+            sed -i 's/[[:space:]]*$//' "$f"
+            if [ -s "$f" ] && [ -n "$(tail -c1 "$f")" ]; then echo >> "$f"; fi
+          done
+
           git add .github/evolution-memory.json
           git add data/evolution_reports/ 2>/dev/null || true
 

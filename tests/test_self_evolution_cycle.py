@@ -77,6 +77,16 @@ class TestSaveMemory(unittest.TestCase):
                 loaded = json.loads(path.read_text(encoding="utf-8"))
         self.assertAlmostEqual(loaded["last_cycle_timestamp"], 99.9)
 
+    def test_ends_with_single_trailing_newline(self):
+        # pre-commit's end-of-file-fixer rejects JSON without a final newline.
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "mem.json"
+            with patch.object(evo_cycle, "MEMORY_PATH", path):
+                evo_cycle.save_memory(_make_memory(cycles=[{"cycle_id": 1}]))
+                raw = path.read_text(encoding="utf-8")
+        self.assertTrue(raw.endswith("}\n"))
+        self.assertFalse(raw.endswith("\n\n"))
+
     def test_prunes_cycles_beyond_max(self):
         with tempfile.TemporaryDirectory() as td:
             path = Path(td) / "mem.json"

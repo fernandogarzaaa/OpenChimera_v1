@@ -131,7 +131,8 @@ def save_memory(data: dict[str, Any]) -> None:
     data["cycles"] = data.get("cycles", [])[-MEMORY_MAX_CYCLES:]
     MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = MEMORY_PATH.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Trailing newline keeps the end-of-file-fixer pre-commit hook happy.
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     tmp.replace(MEMORY_PATH)
     log.info("Memory log updated → %s", MEMORY_PATH)
 
@@ -413,6 +414,8 @@ def write_insights_report(
 ---
 *Generated automatically by the OpenChimera Self-Evolution workflow.*
 """
+    # Normalise like pre-commit (trailing-whitespace + end-of-file-fixer) would.
+    content = "\n".join(line.rstrip() for line in content.splitlines()).rstrip("\n") + "\n"
     report_path.write_text(content, encoding="utf-8")
     log.info("Insights report written → %s", report_path)
 

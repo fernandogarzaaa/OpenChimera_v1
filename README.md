@@ -145,6 +145,41 @@ providers:
     api_key: "${ANTHROPIC_API_KEY}"
 ```
 
+### Shell and code tools (approval required)
+
+`shell.exec` (and `code.execute` with `language: bash`) is **denied by default**.
+Commands run without a shell (`shlex.split` argv, so pipes/redirects are not
+interpreted) and with a scrubbed environment: only `PATH`, `HOME`, locale and a
+few OS basics are passed; names containing `KEY`, `TOKEN`, `SECRET`, `PASSW`,
+`AUTH`, `CREDENTIAL`, ... and all `OPENCHIMERA_*` variables are never passed.
+Allow it in one of three ways:
+
+```yaml
+# config/local.yaml
+tools:
+  shell_allowlist: ["git", "ls"]   # only these programs
+  # allow_shell: true              # or: any program (trusted local use only)
+  # shell_env_passthrough: ["GOPATH"]
+```
+
+```bash
+export OPENCHIMERA_TOOLS__SHELL_ALLOWLIST='["git","ls"]'
+# or OPENCHIMERA_TOOLS__ALLOW_SHELL=true
+```
+
+or pass `approval_callback=lambda tool_id, argv: ask_user(argv)` (sync or async,
+must return `True`) to `ToolRegistry(...)` to prompt per command.
+
+`code.execute` with Python runs in a **separate interpreter** (`python -I -S`)
+with an empty environment, a temporary working directory, restricted builtins
+(no `open`, `eval`, `exec`, `getattr`, `__import__`), imports limited to
+pure-computation stdlib modules (`math`, `json`, `re`, `collections`, ...), no
+dunder/private attribute access, and CPU/memory/file-size/process limits
+(`tools.python_timeout_s`, `python_cpu_s`, `python_memory_mb`; rlimits are POSIX
+only, Windows gets the timeout). Disable it with `tools.python_enabled: false`.
+This is defence in depth, not a container: do not expose these tools to
+untrusted users without OS-level isolation.
+
 ---
 
 ## 🧠 Cognitive Stack

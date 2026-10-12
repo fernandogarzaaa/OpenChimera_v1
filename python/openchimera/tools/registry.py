@@ -2,21 +2,33 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import inspect
 import io
 import subprocess
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
-from openchimera.config import Settings
+from openchimera.config import Settings, ToolsConfig
+from openchimera.tools import sandbox
+
+#: ``approval_callback(tool_id, argv) -> bool`` (sync or async). Return True to allow.
+ApprovalCallback = Callable[[str, list[str]], Union[bool, Awaitable[bool]]]
 
 
 class ToolRegistry:
     """Central registry for all OpenChimera tools."""
 
-    def __init__(self, settings: Settings | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        approval_callback: ApprovalCallback | None = None,
+    ) -> None:
         self.settings = settings
+        self.approval_callback = approval_callback
         self._tools: dict[str, dict[str, Any]] = self._build_registry()
         self._browser_ctx: Any = None
         self._screenshot_counter = 0
@@ -62,7 +74,7 @@ class ToolRegistry:
             # ── System & Shell ──
             "shell.exec": {
                 "name": "shell.exec",
-                "description": "Execute a shell command",
+                "description": "Execute a command (no shell; needs operator approval)",
                 "category": "system",
                 "requires_admin": True,
                 "schema": {"type": "object", "properties": {"command": {"type": "string"}, "timeout": {"type": "integer"}}, "required": ["command"]},
@@ -91,7 +103,7 @@ class ToolRegistry:
             # ── Code Execution ──
             "code.execute": {
                 "name": "code.execute",
-                "description": "Execute Python code in a sandboxed environment",
+                "description": "Execute Python code in a restricted subprocess (stdlib math/text modules only)",
                 "category": "code",
                 "requires_admin": True,
                 "schema": {"type": "object", "properties": {"code": {"type": "string"}, "language": {"type": "string", "enum": ["python", "bash", "javascript"]}}, "required": ["code"]},
@@ -306,12 +318,50 @@ class ToolRegistry:
 
     # ── System handlers ──
 
-    async def _handle_shell_exec(self, args: dict[str, Any]) -> dict[str, Any]:
-        cmd = args["command"]
+    @property
+    def tools_config(self) -> ToolsConfig:
+        cfg = getattr(self.settings, "tools", None)
+        return cfg if isinstance(cfg, ToolsConfig) else ToolsConfig()
+
+    async def _shell_approved(self, tool_id: str, argv: list[str]) -> bool:
+        """Default deny: config flag, program allowlist, or approval callback."""
+        cfg = self.tools_config
+        if cfg.allow_shell:
+            return True
+        if sandbox.program_name(argv) in set(cfg.shell_allowlist):
+            return True
+        if self.approval_callback is not None:
+            decision = self.approval_callback(tool_id, list(argv))
+            if inspect.isawaitable(decision):
+                decision = await decision
+            return decision is True
+        return False
+
+    async def _handle_shell_exec(self, args: dict[str, Any], tool_id: str = "shell.exec") -> dict[str, Any]:
+        cmd = args.get("command")
         timeout = args.get("timeout", 30)
+        if not isinstance(cmd, str) or not cmd.strip():
+            return {"error": "command must be a non-empty string", "returncode": -1}
         try:
-            result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=timeout,
+            argv = sandbox.split_command(cmd)
+        except ValueError as e:
+            return {"error": f"Could not parse command: {e}", "returncode": -1}
+        if not argv:
+            return {"error": "command must be a non-empty string", "returncode": -1}
+        if not await self._shell_approved(tool_id, argv):
+            return {
+                "error": (
+                    "Shell execution denied: not approved. Set tools.allow_shell, add the program "
+                    "to tools.shell_allowlist, or pass an approval_callback to ToolRegistry."
+                ),
+                "denied": True,
+                "returncode": -1,
+            }
+        env = sandbox.scrubbed_env(passthrough=self.tools_config.shell_env_passthrough)
+        try:
+            result = await asyncio.to_thread(
+                subprocess.run,
+                argv, shell=False, capture_output=True, text=True, timeout=timeout, env=env,
             )
             return {
                 "returncode": result.returncode,
@@ -320,6 +370,8 @@ class ToolRegistry:
             }
         except subprocess.TimeoutExpired:
             return {"error": f"Command timed out after {timeout}s", "returncode": -1}
+        except FileNotFoundError:
+            return {"error": f"Program not found: {argv[0]}", "returncode": -1}
         except Exception as e:
             return {"error": str(e)}
 
@@ -372,44 +424,23 @@ class ToolRegistry:
         if language == "python":
             return await self._exec_python(code)
         elif language == "bash":
-            return await self._handle_shell_exec({"command": code, "timeout": 30})
+            return await self._handle_shell_exec({"command": code, "timeout": 30}, tool_id="code.execute")
         return {"error": f"Language '{language}' not supported"}
 
     async def _exec_python(self, code: str) -> dict[str, Any]:
-        """Execute Python in a restricted sandbox."""
-        import ast
-        try:
-            tree = ast.parse(code)
-            # Basic security: block dangerous imports
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Import):
-                    for alias in node.names:
-                        if alias.name in {"os", "sys", "subprocess", "ctypes", "socket"}:
-                            return {"error": f"Import of '{alias.name}' is blocked in sandbox"}
-                elif isinstance(node, ast.ImportFrom):
-                    if node.module in {"os", "sys", "subprocess", "ctypes", "socket"}:
-                        return {"error": f"Import from '{node.module}' is blocked in sandbox"}
-        except SyntaxError as e:
-            return {"error": f"Syntax error: {e}"}
-
-        stdout_buffer = io.StringIO()
-        stderr_buffer = io.StringIO()
-        try:
-            import contextlib
-            with contextlib.redirect_stdout(stdout_buffer), contextlib.redirect_stderr(stderr_buffer):
-                exec(compile(tree, "<sandbox>", "exec"), {"__builtins__": __builtins__})
-            return {
-                "stdout": stdout_buffer.getvalue()[:10000],
-                "stderr": stderr_buffer.getvalue()[:5000],
-                "returncode": 0,
-            }
-        except Exception as e:
-            return {
-                "error": str(e),
-                "stdout": stdout_buffer.getvalue()[:10000],
-                "stderr": stderr_buffer.getvalue()[:5000],
-                "returncode": 1,
-            }
+        """Execute Python out of process with restricted builtins and resource limits."""
+        cfg = self.tools_config
+        if not cfg.python_enabled:
+            return {"error": "Python execution is disabled (tools.python_enabled=false)", "returncode": -1}
+        if not isinstance(code, str):
+            return {"error": "code must be a string", "returncode": -1}
+        return await asyncio.to_thread(
+            sandbox.run_python_sandboxed,
+            code,
+            timeout=cfg.python_timeout_s,
+            cpu_seconds=cfg.python_cpu_s,
+            memory_mb=cfg.python_memory_mb,
+        )
 
     # ── Computer use ──
 

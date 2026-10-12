@@ -200,6 +200,25 @@ class ComputerUseConfig(BaseModel):
     viewport_height: int = 720
 
 
+class ToolsConfig(BaseModel):
+    """Policy for the dangerous built-in tools (``shell.exec``, ``code.execute``).
+
+    ``shell.exec`` (and ``code.execute`` with ``language=bash``) is denied unless
+    ``allow_shell`` is true, the program is in ``shell_allowlist``, or the
+    ``ToolRegistry`` was given an approval callback that approves the call.
+    Env: ``OPENCHIMERA_TOOLS__ALLOW_SHELL=true``,
+    ``OPENCHIMERA_TOOLS__SHELL_ALLOWLIST='["git","ls"]'``.
+    """
+
+    allow_shell: bool = False
+    shell_allowlist: list[str] = Field(default_factory=list)
+    shell_env_passthrough: list[str] = Field(default_factory=list)
+    python_enabled: bool = True
+    python_timeout_s: int = 10
+    python_cpu_s: int = 5
+    python_memory_mb: int = 256
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Top-level Settings
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -219,6 +238,7 @@ class Settings(BaseSettings):
     rag: RagConfig = Field(default_factory=RagConfig)
     cognitive: CognitiveConfig = Field(default_factory=CognitiveConfig)
     computer_use: ComputerUseConfig = Field(default_factory=ComputerUseConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
