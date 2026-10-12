@@ -208,7 +208,7 @@ pyyaml==6.0.3
     #   uvicorn
 regex==2026.4.4
     # via transformers
-requests==2.33.1
+requests==2.34.2
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -225,7 +225,7 @@ scipy==1.17.1
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==6.1.0
+sentence-transformers==5.7.0
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -242,7 +242,9 @@ sympy==1.14.0
 threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.22.2
-    # via transformers
+    # via
+    #   sentence-transformers
+    #   transformers
 torch==2.13.0
     # via
     #   -r requirements-dev.in
