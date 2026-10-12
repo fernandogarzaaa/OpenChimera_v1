@@ -56,6 +56,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 is the native (Go) compiler rewrite. CI does not type-check
+      # the dashboard yet, so a green check would not prove the bump works.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # npm — playwright-pro MCP integrations
   - package-ecosystem: npm
