@@ -37,6 +37,10 @@ from core.schemas import GET_QUERY_SCHEMAS, POST_BODY_SCHEMAS, HealthResponse, R
 
 LOGGER = logging.getLogger(__name__)
 MAX_JSON_BODY_BYTES = 10 * 1024 * 1024
+# Oversized bodies are drained (and discarded) in small chunks up to this cap so
+# the client can still read the 413; beyond it the connection is simply closed.
+MAX_DISCARD_BODY_BYTES = 2 * MAX_JSON_BODY_BYTES
+_DISCARD_CHUNK_BYTES = 64 * 1024
 
 
 class RequestValidationFailure(Exception):
@@ -1047,6 +1051,14 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         LOGGER.debug("OpenChimera API: " + format, *args)
 
+    def _discard_request_body(self, content_length: int) -> None:
+        remaining = min(content_length, MAX_DISCARD_BODY_BYTES)
+        while remaining > 0:
+            chunk = self.rfile.read(min(remaining, _DISCARD_CHUNK_BYTES))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+
     def _read_json_body(self) -> dict[str, Any]:
         try:
             content_length = int(self.headers.get("Content-Length", "0"))
@@ -1054,8 +1066,10 @@ class _ProviderRequestHandler(BaseHTTPRequestHandler):
             raise RequestValidationFailure("Invalid Content-Length header", status=HTTPStatus.BAD_REQUEST)
 
         if content_length > MAX_JSON_BODY_BYTES:
-            if content_length > 0:
-                self.rfile.read(content_length)
+            # Never buffer an oversized body: a client-controlled Content-Length
+            # (e.g. several GB) would otherwise be read fully into memory.
+            self._discard_request_body(content_length)
+            self.close_connection = True
             raise RequestValidationFailure(
                 "JSON payload exceeds the 10MB limit",
                 status=HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
