@@ -264,27 +264,30 @@ class GoogleProvider(BaseProvider):
         max_tokens: int | None = None,
         stream: bool = False,
     ) -> dict[str, Any]:
-        import google.generativeai as genai
-        genai.configure(api_key=self.api_key)
+        from google import genai
+
         m = model or self.default_model
         start = time.perf_counter()
         try:
-            client = genai.GenerativeModel(m)
-            contents = []
+            client = genai.Client(api_key=self.api_key)
+            contents: list[Any] = []
             for msg in messages:
                 if msg["role"] == "user":
                     contents.append(msg["content"])
                 elif msg["role"] == "assistant":
-                    contents.append({"role": "model", "parts": [msg["content"]]})
+                    contents.append({"role": "model", "parts": [{"text": msg["content"]}]})
 
-            kwargs: dict[str, Any] = {}
+            config_kwargs: dict[str, Any] = {}
             if temperature is not None:
-                kwargs["temperature"] = temperature
+                config_kwargs["temperature"] = temperature
             if max_tokens is not None:
-                from google.generativeai.types import GenerationConfig
-                kwargs["generation_config"] = GenerationConfig(max_output_tokens=max_tokens)
+                config_kwargs["max_output_tokens"] = max_tokens
 
-            resp = await client.generate_content_async(contents, **kwargs)
+            generate_kwargs: dict[str, Any] = {"model": m, "contents": contents}
+            if config_kwargs:
+                generate_kwargs["config"] = genai.types.GenerateContentConfig(**config_kwargs)
+
+            resp = await client.aio.models.generate_content(**generate_kwargs)
             self._latency_ms = int((time.perf_counter() - start) * 1000)
             self._healthy = True
             return {
@@ -299,10 +302,10 @@ class GoogleProvider(BaseProvider):
 
     async def health_check(self) -> bool:
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            client = genai.GenerativeModel(self.default_model)
-            await client.generate_content_async("hello")
+            from google import genai
+
+            client = genai.Client(api_key=self.api_key)
+            await client.aio.models.generate_content(model=self.default_model, contents="hello")
             self._healthy = True
             return True
         except Exception:
