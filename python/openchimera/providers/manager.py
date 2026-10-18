@@ -268,6 +268,7 @@ class GoogleProvider(BaseProvider):
 
         m = model or self.default_model
         start = time.perf_counter()
+        client = None
         try:
             client = genai.Client(api_key=self.api_key)
             contents: list[Any] = []
@@ -299,13 +300,21 @@ class GoogleProvider(BaseProvider):
         except Exception as e:
             self._healthy = False
             return {"text": f"Error: {e}", "tool_calls": [], "provider": self.name, "model": m}
+        finally:
+            if client is not None:
+                await client.aio.aclose()
 
     async def health_check(self) -> bool:
         try:
             from google import genai
 
-            client = genai.Client(api_key=self.api_key)
-            await client.aio.models.generate_content(model=self.default_model, contents="hello")
+            client = None
+            try:
+                client = genai.Client(api_key=self.api_key)
+                await client.aio.models.generate_content(model=self.default_model, contents="hello")
+            finally:
+                if client is not None:
+                    await client.aio.aclose()
             self._healthy = True
             return True
         except Exception:

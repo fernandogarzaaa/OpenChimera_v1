@@ -46,15 +46,27 @@ class _FakeModels:
         return self._client.response
 
 
+class _FakeAio:
+    def __init__(self, client: "_FakeClient") -> None:
+        self.models = _FakeModels(client)
+        self.aclose_calls = 0
+
+    async def aclose(self) -> None:
+        self.aclose_calls += 1
+
+
 class _FakeClient:
     instances: list["_FakeClient"] = []
+    fail_construct = False
 
     def __init__(self, api_key: str | None = None) -> None:
+        if _FakeClient.fail_construct:
+            raise RuntimeError("no client")
         self.api_key = api_key
         self.calls: list[dict[str, Any]] = []
         self.response = _FakeResponse("hello from gemini")
         self.error: Exception | None = None
-        self.aio = stdlib_types.SimpleNamespace(models=_FakeModels(self))
+        self.aio = _FakeAio(self)
         _FakeClient.instances.append(self)
 
 
@@ -175,8 +187,6 @@ def test_chat_uses_explicit_model(manager_module):
 
 def test_chat_error_path_keeps_contract(manager_module):
     provider = _google(manager_module)
-    _FakeClient.instances  # created on next client construction
-    result_holder: dict[str, Any] = {}
 
     real_init = _FakeClient.__init__
 
@@ -190,11 +200,30 @@ def test_chat_error_path_keeps_contract(manager_module):
     finally:
         _FakeClient.__init__ = real_init  # type: ignore[method-assign]
 
-    result_holder.update(result)
-    assert result_holder["text"] == "Error: boom"
-    assert result_holder["tool_calls"] == []
-    assert result_holder["provider"] == "google"
+    assert result["text"] == "Error: boom"
+    assert result["tool_calls"] == []
+    assert result["provider"] == "google"
     assert provider._healthy is False
+    assert _FakeClient.instances[-1].aio.aclose_calls == 1
+
+
+def test_chat_constructor_failure_keeps_contract(manager_module):
+    provider = _google(manager_module)
+    _FakeClient.fail_construct = True
+    try:
+        result = asyncio.run(provider.chat([{"role": "user", "content": "hi"}]))
+    finally:
+        _FakeClient.fail_construct = False
+
+    assert result["text"] == "Error: no client"
+    assert result["tool_calls"] == []
+    assert provider._healthy is False
+
+
+def test_chat_closes_client_on_success(manager_module):
+    provider = _google(manager_module)
+    asyncio.run(provider.chat([{"role": "user", "content": "hi"}]))
+    assert _FakeClient.instances[-1].aio.aclose_calls == 1
 
 
 def test_health_check_keeps_semantics(manager_module):
@@ -205,6 +234,7 @@ def test_health_check_keeps_semantics(manager_module):
     assert provider._healthy is True
     call = _FakeClient.instances[-1].calls[0]
     assert call == {"model": "gemini-2.5-flash", "contents": "hello"}
+    assert _FakeClient.instances[-1].aio.aclose_calls == 1
 
 
 def test_health_check_error_path(manager_module):
@@ -224,6 +254,7 @@ def test_health_check_error_path(manager_module):
 
     assert ok is False
     assert provider._healthy is False
+    assert _FakeClient.instances[-1].aio.aclose_calls == 1
 
 
 def test_chat_records_elapsed_latency_in_ms(manager_module):
