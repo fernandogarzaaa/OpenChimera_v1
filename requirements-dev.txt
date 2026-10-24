@@ -40,7 +40,7 @@ cuda-pathfinder==1.5.3
     # via cuda-bindings
 cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.0.3.0
     # via torch
-distlib==0.4.0
+distlib==0.4.4
     # via virtualenv
 distro==1.9.0
     # via openai
@@ -159,11 +159,12 @@ openai==2.41.1
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
-packaging==26.0
+packaging==26.3
     # via
     #   build
     #   huggingface-hub
     #   transformers
+    #   virtualenv
     #   wheel
 pandas==2.3.3
     # via
@@ -292,7 +293,7 @@ uvicorn[standard]==0.49.0
     #   -r requirements.in
 uvloop==0.22.1
     # via uvicorn
-virtualenv==21.7.13
+virtualenv==21.14.13
     # via pre-commit
 watchfiles==1.1.1
     # via uvicorn
