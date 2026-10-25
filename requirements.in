@@ -13,7 +13,7 @@ sentence-transformers>=5.5.1,<7
 transformers>=5.0,<6  # security floor: CVE-2026-4372, CVE-2026-5241, CVE-2026-9856
 torch>=2.13.0,<3
 scikit-learn>=1.9.1,<2
-pandas>=2.2,<3
+pandas>=3.1.0,<4
 
 # General utilities
 requests>=2.34.2,<3
