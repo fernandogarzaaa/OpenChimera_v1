@@ -1,6 +1,6 @@
 # Core web framework
 Django==5.2.17
-djangorestframework==3.17.2
+djangorestframework==3.18.2
 django-cors-headers==3.14.0
 django-environ==0.10.0
 django-extensions==3.2.1
@@ -39,7 +39,7 @@ factory-boy==3.2.1
 freezegun==1.2.2
 
 # Development tools
-black==26.3.1
+black==26.10.1
 flake8==6.0.0
 isort==5.12.0
 pre-commit==3.3.2
