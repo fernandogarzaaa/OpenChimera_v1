@@ -13,6 +13,7 @@ annotated-types==0.7.0
 anyio==4.14.2
     # via
     #   httpx
+    #   httpx2
     #   openai
     #   starlette
     #   watchfiles
@@ -42,8 +43,6 @@ cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink
     # via torch
 distlib==0.4.0
     # via virtualenv
-distro==1.9.0
-    # via openai
 fastapi==0.135.3
     # via
     #   -r requirements-dev.in
@@ -61,17 +60,20 @@ fsspec==2026.6.0
 h11==0.16.0
     # via
     #   httpcore
+    #   httpcore2
     #   uvicorn
 hf-xet==1.4.3
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
+httpcore2==2.16.0
+    # via httpx2
 httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
-    # via
-    #   huggingface-hub
-    #   openai
+    # via huggingface-hub
+httpx2==2.16.0
+    # via openai
 huggingface-hub==1.10.2
     # via
     #   sentence-transformers
@@ -79,14 +81,15 @@ huggingface-hub==1.10.2
     #   transformers
 identify==2.6.18
     # via pre-commit
-idna==3.15
+idna==3.20
     # via
     #   anyio
     #   httpx
+    #   httpx2
     #   requests
 jinja2==3.1.6
     # via torch
-jiter==0.14.0
+jiter==0.18.0
     # via openai
 joblib==1.5.3
     # via scikit-learn
@@ -155,7 +158,7 @@ nvidia-nvshmem-cu13==3.4.5
     # via torch
 nvidia-nvtx==13.0.85
     # via cuda-toolkit
-openai==2.41.1
+openai==3.36.1
     # via
     #   -r requirements-dev.in
     #   -r requirements.in
@@ -253,7 +256,6 @@ torch==2.13.0
 tqdm==4.67.3
     # via
     #   huggingface-hub
-    #   openai
     #   sentence-transformers
     #   transformers
 transformers==5.10.1
@@ -262,6 +264,10 @@ transformers==5.10.1
     #   sentence-transformers
 triton==3.7.1
     # via torch
+truststore==0.10.5
+    # via
+    #   httpcore2
+    #   httpx2
 typer==0.24.1
     # via
     #   huggingface-hub
@@ -270,6 +276,7 @@ typing-extensions==4.16.0
     # via
     #   anyio
     #   fastapi
+    #   httpx2
     #   huggingface-hub
     #   openai
     #   pydantic
