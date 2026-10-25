@@ -58,7 +58,7 @@ cognitive = [
 ]
 computer-use = [
     "playwright>=1.48.0",
-    "pillow>=11.0.0",
+    "pillow>=13.0.0",
     "pyautogui>=0.9.54",
 ]
 mcp = [
@@ -78,7 +78,7 @@ all = [
     "chromadb>=0.5.0",
     "numpy>=2.1.0",
     "playwright>=1.48.0",
-    "pillow>=11.0.0",
+    "pillow>=13.0.0",
     "pyautogui>=0.9.54",
     "mcp>=1.0.0",
 ]
