@@ -344,7 +344,10 @@ def doctor(production: bool, as_json: bool) -> None:
 
     if as_json:
         payload = {
-            "status": "ok" if not issues and not production_warnings else "warning",
+            # Real issues are an error, expected warnings are only a warning.
+            # JSON mode still exits 0 so CI smoke reporting can parse this
+            # payload; text mode already exits 1 when issues are present.
+            "status": "error" if issues else "warning" if warnings or production_warnings else "ok",
             "version": "2.0.0",
             "issues": issues,
             "warnings": warnings,

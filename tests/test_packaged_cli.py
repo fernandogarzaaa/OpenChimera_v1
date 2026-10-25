@@ -108,6 +108,14 @@ class PackagedCliSmokeTests(unittest.TestCase):
             self.assertIn("checks", payload["production"])
             self.assertIn("warnings", payload["production"])
 
+    def test_doctor_json_reports_error_status_when_issues_present(self) -> None:
+        with self.runner.isolated_filesystem():
+            result = self.runner.invoke(self._cli, ["doctor", "--json"])
+            self.assertEqual(result.exit_code, 0, msg=result.output)
+            payload = json.loads(result.output)
+            self.assertTrue(payload["issues"], msg=result.output)
+            self.assertEqual(payload["status"], "error", msg=result.output)
+
     def test_backup_create_then_list(self) -> None:
         with self.runner.isolated_filesystem():
             created = self.runner.invoke(self._cli, ["backup", "create", "--json"])
